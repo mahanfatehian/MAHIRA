@@ -1,0 +1,271 @@
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import re
+from pathlib import Path
+from typing import Optional
+
+CEFR_LEVELS = {"a1", "a2", "b1", "b2", "c1", "c2"}
+ALLOWED_OBJECTIVES = {"vocab", "grammar", "sentences"}
+
+_TOKEN_RE = re.compile(
+    r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"“”„‚’‘…–—-]"
+)
+
+
+def sha1_file(path: Path) -> str:
+    h = hashlib.sha1()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _tokenize_sentence(text: str) -> list[str]:
+    return [t for t in _TOKEN_RE.findall(text or "") if t and not t.isspace()]
+
+
+def _split_words_bank(raw: str, fallback_sentence: str) -> list[str]:
+    raw = (raw or "").strip()
+    if raw:
+        if raw.startswith("[") and raw.endswith("]"):
+            try:
+                arr = json.loads(raw)
+                if isinstance(arr, list):
+                    out = [str(x).strip() for x in arr if str(x).strip()]
+                    if out:
+                        return out
+            except Exception:
+                pass
+
+        if "|" in raw:
+            toks = [t.strip() for t in raw.split("|") if t.strip()]
+        else:
+            toks = [t.strip() for t in raw.split() if t.strip()]
+        if toks:
+            return toks
+
+    return _tokenize_sentence(fallback_sentence)
+
+
+def parse_seed_filename(name: str) -> Optional[tuple[str, str]]:
+    name = (name or "").lower().strip()
+    if not name.endswith(".csv"):
+        return None
+
+    base = name[:-4]
+    parts = base.split("_", 1)
+    if len(parts) != 2:
+        return None
+
+    level, objective = parts[0], parts[1]
+    if level not in CEFR_LEVELS:
+        return None
+    if objective not in ALLOWED_OBJECTIVES:
+        return None
+
+    return level.upper(), objective
+
+
+def _norm_key(*parts: str) -> tuple[str, ...]:
+    return tuple((p or "").strip().lower() for p in parts)
+
+
+def _sentences_deck_needs_reimport(repo, deck_id: int) -> bool:
+    try:
+        with repo._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                FROM sentences
+                WHERE deck_id=?
+                  AND (
+                    target_text IS NULL OR TRIM(target_text)=''
+                    OR words_json IS NULL OR TRIM(words_json)=''
+                    OR TRIM(words_json)='[]'
+                  )
+                """,
+                (deck_id,),
+            ).fetchone()
+            return bool(row) and int(row["c"]) > 0
+    except Exception:
+        return False
+
+
+def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
+    parsed = parse_seed_filename(csv_path.name)
+    if not parsed:
+        return
+
+    level, objective = parsed
+
+    try:
+        if csv_path.stat().st_size == 0:
+            return
+    except Exception:
+        pass
+
+    seed_sha1 = sha1_file(csv_path)
+    deck_id, changed = repo.upsert_deck(language_code, level, objective, csv_path.name, seed_sha1)
+
+    # ---------- VOCAB ----------
+    if objective == "vocab":
+        if not changed and repo.deck_vocab_count(deck_id) > 0:
+            return
+        repo.clear_vocab_deck(deck_id)
+
+        seen: set[tuple[str, str, str]] = set()
+
+        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames:
+                return
+
+            for row in reader:
+                pos = (row.get("pos") or "").strip()
+                word = (row.get("word") or "").strip()
+                meaning = (row.get("meaning") or "").strip()
+                if not pos or not word or not meaning:
+                    continue
+
+                key = _norm_key(pos, word, meaning)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                gender_tip = (row.get("gender_tip") or "").strip()
+
+                vocab_id = repo.insert_vocab(
+                    deck_id=deck_id,
+                    pos=pos,
+                    word=word,
+                    article=(row.get("article") or "").strip(),
+                    gender=(row.get("gender") or "").strip(),
+                    plural=(row.get("plural") or "").strip(),
+                    meaning=meaning,
+                    gender_tip=gender_tip or None,
+                )
+
+                seen_ex: set[tuple[str, str]] = set()
+                for i in range(1, 6):
+                    de = (row.get(f"ex{i}_de") or "").strip()
+                    en = (row.get(f"ex{i}_en") or "").strip()
+                    if not de:
+                        continue
+                    ex_key = _norm_key(de, en)
+                    if ex_key in seen_ex:
+                        continue
+                    seen_ex.add(ex_key)
+                    repo.insert_example(vocab_id, de, en or None)
+        return
+
+    # ---------- GRAMMAR ----------
+    if objective == "grammar":
+        if not changed and repo.deck_grammar_count(deck_id) > 0:
+            return
+        repo.clear_grammar_deck(deck_id)
+
+        seen: set[tuple[str, str]] = set()
+
+        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames:
+                return
+
+            for row in reader:
+                test_text = (row.get("test_text") or "").strip()
+                answer = (row.get("answer") or "").strip()
+                if not test_text or not answer:
+                    continue
+
+                key = _norm_key(test_text, answer)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                repo.insert_grammar(
+                    deck_id=deck_id,
+                    test_text=test_text,
+                    answer=answer,
+                    test_verb=(row.get("test_verb") or "").strip() or None,
+                    tip=(row.get("tip") or "").strip() or None,
+                    meaning=(row.get("meaning") or "").strip() or None,
+                    grammar_tip=(row.get("grammar_tip") or "").strip() or None,
+                )
+        return
+
+    # ---------- SENTENCES ----------
+    if objective == "sentences":
+        if not changed and repo.deck_sentences_count(deck_id) > 0 and not _sentences_deck_needs_reimport(repo, deck_id):
+            return
+
+        repo.clear_sentences_deck(deck_id)
+
+        def _get(row: dict, *names: str) -> str:
+            for n in names:
+                n = (n or "").strip().lower()
+                for k in row.keys():
+                    kk = (k or "").strip().lower().lstrip("\ufeff")
+                    if kk == n:
+                        return (row.get(k) or "").strip()
+            return ""
+
+        seen: set[tuple[str]] = set()
+
+        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames:
+                return
+
+            for row in reader:
+                # Prefer generic names first for future language support
+                target = _get(
+                    row,
+                    "sentence",
+                    "target_text",
+                    "text",
+                    "prompt",
+                    "sentence_de",
+                    "sentence_en",
+                    "sentence_fr",
+                    "sentence_es",
+                    "de",
+                    "en",
+                    "fr",
+                    "es",
+                )
+                if not target:
+                    continue
+
+                key = _norm_key(target)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                words_raw = _get(row, "words", "word_bank", "bank")
+                words = _split_words_bank(words_raw, target)
+                if not words:
+                    words = _tokenize_sentence(target)
+
+                tip = _get(row, "tip") or None
+                translation = _get(row, "translation_en", "translation", "en") or None
+
+                req_raw = _get(row, "required") or ""
+                required: list[str] = []
+                if req_raw:
+                    if "|" in req_raw:
+                        required = [x.strip() for x in req_raw.split("|") if x.strip()]
+                    else:
+                        required = [x.strip() for x in re.split(r"[,;]", req_raw) if x.strip()]
+
+                repo.insert_sentence(
+                    deck_id=deck_id,
+                    target_text=target,
+                    translation=translation,
+                    tip=tip,
+                    words_json=json.dumps(words, ensure_ascii=False),
+                    required_json=json.dumps(required, ensure_ascii=False) if required else None,
+                )
+        return
