@@ -680,7 +680,7 @@ class LearnPage(QWidget):
 
         pr = _pages_root()
         self.lang_hint.setText(
-            "Loading LOVE from MAHAN s heart for RAYA"
+            "Choose Your Learning Language"
             if pr.exists()
             else "Create data/pages/<lang>/ and add .md lessons."
         )
@@ -783,7 +783,7 @@ class LearnPage(QWidget):
         self.level_hint.setText(
             "No lessons found for this language. Add .md files into data/pages/<lang>/"
             if not available else
-            "I LOVE RAYA THE MOST"
+            "Good Luck Leanrning"
         )
 
     def _choose_level(self, lvl: str):
