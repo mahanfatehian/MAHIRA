@@ -1,0 +1,80 @@
+# -----------------------------
+# MAHIRA app-specific ignores
+# -----------------------------
+.mahira/
+mahira.db
+mahira.sqlite
+mahira.sqlite3
+*.seed.json
+
+# Local runtime data
+*.log
+*.cache
+__pycache__/
+
+# -----------------------------
+# Python general ignores
+# -----------------------------
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.pkl
+*.orig
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.so
+*.dll
+*.dylib
+
+# Virtual environments
+venv/
+.env/
+.env.bak/
+.python-version
+
+# Pip’s wheel build cache
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# -----------------------------
+# OS junk
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# IDE / Editor configs
+# -----------------------------
+.vscode/
+.idea/
+*.iml
+
+# -----------------------------
+# Qt / PySide6 build + UI cache
+# -----------------------------
+*.qmlc
+*.jsc
+qtcreator*  
+*.pro.user
+*.pro.user.*
+
+# Auto-generated PySide6 UI .py files (if you generate them)
+ui_*.py
+
+# -----------------------------
+# SQLite backups, WAL, etc.
+# -----------------------------
+*.db-journal
+*.db-wal
+*.db-shm
+
+# -----------------------------
+# Development scratch
+# -----------------------------
+tmp/
+scratch/
+notes/
