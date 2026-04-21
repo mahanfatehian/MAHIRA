@@ -21,6 +21,7 @@ __pycache__/
 *.pdb
 *.pkl
 *.orig
+__pycache__/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
