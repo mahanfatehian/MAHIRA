@@ -1,15 +1,9 @@
 # -----------------------------
 # MAHIRA app-specific ignores
-# -----------------------------
 .mahira/
-mahira.db
-mahira.sqlite
-mahira.sqlite3
-*.seed.json
-
-# MAHIRA runtime database
 mahira*.db
 mahira*.sqlite*
+*.seed.json
 *.log
 
 
