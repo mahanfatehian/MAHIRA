@@ -252,13 +252,6 @@ def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
                 tip = _get(row, "tip") or None
                 translation = _get(row, "translation_en", "translation", "en") or None
 
-                req_raw = _get(row, "required") or ""
-                required: list[str] = []
-                if req_raw:
-                    if "|" in req_raw:
-                        required = [x.strip() for x in req_raw.split("|") if x.strip()]
-                    else:
-                        required = [x.strip() for x in re.split(r"[,;]", req_raw) if x.strip()]
 
                 repo.insert_sentence(
                     deck_id=deck_id,
@@ -266,6 +259,5 @@ def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
                     translation=translation,
                     tip=tip,
                     words_json=json.dumps(words, ensure_ascii=False),
-                    required_json=json.dumps(required, ensure_ascii=False) if required else None,
                 )
         return

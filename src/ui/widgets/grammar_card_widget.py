@@ -436,6 +436,14 @@ class GrammarCardWidget(QWidget):
         self.btn_reveal_grammar.setEnabled(False)
         self.btn_reveal_grammar.setVisible(True)
 
+    def insert_special_char(self, ch: str) -> None:
+        """Manually inserts character if automatic focus tracking fails."""
+        if self.in_blank.isEnabled():
+            self.in_blank.insert(ch)
+            self.in_blank.setFocus()
+
+
+
     def set_prompt(self, text: str) -> None:
         self.prompt.setText(text)
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import time
 from typing import Any
 
@@ -123,7 +122,6 @@ class SentenceReviewPage(QWidget):
         target = (getattr(item, "target_text", "") or "").strip()
         words = list(getattr(item, "words", []) or [])
 
-        logging.info("UI sentence target=%r words_len=%s", target, len(words))
 
         self.card.set_item(
             words=words,

@@ -110,7 +110,7 @@ class SklearnRanker:
     def is_ready(self, *, lang: str, level: str, objective: str, direction: str, min_seen: int = 80) -> bool:
         if not self.enabled:
             return False
-        ctx = self._ctx(lang, level, objective, direction)
+        ctx = self._ctx(lang, level, objective)
         pack = self._load_pack_if_exists(ctx)
         if not pack:
             return False
@@ -131,7 +131,6 @@ class SklearnRanker:
 
         lang = str(self._kw(kwargs, "language_code", "lang", default=""))
         level = str(self._kw(kwargs, "level", default=""))
-        direction = str(self._kw(kwargs, "direction", default=""))
 
         y_meaning = kwargs.get("y_meaning")
         y_gender = kwargs.get("y_gender")
@@ -144,7 +143,8 @@ class SklearnRanker:
             return
 
         features = self._vocab_training_features_from_kwargs(kwargs)
-        ctx = self._ctx(lang, level, "vocab", direction)
+        ctx = self._ctx(lang, level, "vocab")
+
         pack = self._ensure_pack(ctx, targets=("meaning", "gender", "plural"))
 
         X = [self._vectorize_vocab_training(features)]
@@ -175,7 +175,7 @@ class SklearnRanker:
             return
 
         features = self._grammar_training_features_from_kwargs(kwargs)
-        ctx = self._ctx(lang, level, "grammar", "")
+        ctx = self._ctx(lang, level, "grammar")
         pack = self._ensure_pack(ctx, targets=("ok",))
 
         X = [self._vectorize_grammar_training(features)]
@@ -192,9 +192,8 @@ class SklearnRanker:
 
         lang = str(self._kw(kwargs, "language_code", "lang", default=""))
         level = str(self._kw(kwargs, "level", default=""))
-        direction = str(self._kw(kwargs, "direction", default=""))
 
-        ctx = self._ctx(lang, level, "vocab", direction)
+        ctx = self._ctx(lang, level, "vocab")
         pack = self._load_pack_if_exists(ctx)
         if not pack:
             return ids
@@ -220,11 +219,12 @@ class SklearnRanker:
     def rank_grammar_ids(self, ids: list[int], *args, **kwargs) -> list[int]:
         if not self.enabled or not ids:
             return ids
-
+        
         lang = str(self._kw(kwargs, "language_code", "lang", default=""))
         level = str(self._kw(kwargs, "level", default=""))
 
-        ctx = self._ctx(lang, level, "grammar", "")
+        ctx = self._ctx(lang, level, "grammar")
+
         pack = self._load_pack_if_exists(ctx)
         if not pack:
             return ids
@@ -249,8 +249,9 @@ class SklearnRanker:
 
     # -------- persistence --------
 
-    def _ctx(self, language_code: str, level: str, objective: str, direction: str) -> str:
-        return "__".join([_safe_key(language_code), _safe_key(level), _safe_key(objective), _safe_key(direction)])
+    def _ctx(self, language_code: str, level: str, objective: str) -> str:
+        return "__".join([_safe_key(language_code), _safe_key(level), _safe_key(objective)])
+
 
     def _ctx_path(self, ctx: str) -> Path:
         return self.model_dir / f"{ctx}.joblib"

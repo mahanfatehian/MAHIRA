@@ -92,7 +92,6 @@ class AppState:
     language_code: str = "de"
     level: str = "A1"
     objective: str = "vocab"       # vocab | grammar | sentences
-    direction: str = "DE2EN"       # UI-only
 
 
 @dataclass
@@ -127,11 +126,10 @@ class SessionService:
     # ---------------------------
     # Context / deck selection
     # ---------------------------
-    def set_context(self, language_code: str, level: str, objective: str, direction: str = "DE2EN") -> None:
+    def set_context(self, language_code: str, level: str, objective: str) -> None:
         lang = _norm_lang(language_code)
         lvl = _norm_level(level)
         obj = _norm_objective(objective)
-        direction = (direction or "DE2EN").strip().upper()
 
         deck_id = self.repo.get_deck_id(lang, lvl, obj)
         if deck_id is None:
@@ -145,8 +143,8 @@ class SessionService:
         self.state.language_code = lang
         self.state.level = lvl
         self.state.objective = obj
-        self.state.direction = direction
         self._active_deck_id = deck_id
+
 
     def active_deck_id(self) -> int | None:
         lang = _norm_lang(getattr(self.state, "language_code", "de"))
@@ -171,8 +169,6 @@ class SessionService:
         for args, kwargs in (
             ((deck_id, lim, self.plan.mode), {"cooldown_hours": 12}),
             ((deck_id, lim, self.plan.mode), {}),
-            ((deck_id, self.state.direction, lim, self.plan.mode), {"cooldown_hours": 12}),
-            ((deck_id, self.state.direction, lim, self.plan.mode), {}),
         ):
             try:
                 out = fn(*args, **kwargs)
@@ -301,7 +297,6 @@ class SessionService:
                         lang=self.state.language_code,
                         level=self.state.level,
                         objective="grammar",
-                        direction="",
                         min_seen=self.ml_min_seen_before_ranking,
                     )
                 except Exception:
@@ -310,9 +305,14 @@ class SessionService:
                 exploring = (self.rng.random() < float(self.ml_exploration_eps))
                 if ready and not exploring:
                     try:
-                        ids = self.ml.rank_grammar_ids(ids, level=self.state.level, lang=self.state.language_code)
+                        ids = self.ml.rank_vocab_ids(
+                            ids,
+                            level=self.state.level,
+                            lang=self.state.language_code,
+                        )
                     except Exception:
                         pass
+
 
         else:
             ids = self._pick_vocab_ids(deck_id, limit=pool_size)
@@ -331,7 +331,6 @@ class SessionService:
                         lang=self.state.language_code,
                         level=self.state.level,
                         objective="vocab",
-                        direction=self.state.direction,
                         min_seen=self.ml_min_seen_before_ranking,
                     )
                 except Exception:
@@ -342,12 +341,12 @@ class SessionService:
                     try:
                         ids = self.ml.rank_vocab_ids(
                             ids,
-                            direction=self.state.direction,
                             level=self.state.level,
                             lang=self.state.language_code,
                         )
                     except Exception:
                         pass
+
 
         ids = _unique_preserve_order(ids)
         self._queue = ids[:desired]
@@ -380,16 +379,13 @@ class SessionService:
         return self.repo.get_vocab_by_id(vid)
 
     def prompt_text(self, item: VocabItem) -> str:
-        return item.word if self.state.direction == "DE2EN" else item.meaning
+        return item.word
 
     def check_vocab_fields(self, item: VocabItem, typed_meaning: str, typed_gender: str, typed_plural: str) -> dict:
-        if self.state.direction == "DE2EN":
-            accepted = _split_answers(item.meaning)
-            meaning_ok = _norm(typed_meaning) in accepted
-            expected_meaning = item.meaning
-        else:
-            meaning_ok = _norm(typed_meaning) == _norm(item.word)
-            expected_meaning = item.word
+        # Always check target -> English meaning
+        accepted = _split_answers(item.meaning)
+        meaning_ok = _norm(typed_meaning) in accepted
+        expected_meaning = item.meaning
 
         gender_ok: bool | None = None
         plural_ok: bool | None = None

@@ -5,7 +5,7 @@ import time
 from typing import Any
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout , QApplication
 
 from core.session import SessionService
 from ui.widgets.card_widget import CardWidget, VocabCheckPayload
@@ -76,6 +76,7 @@ class VocabReviewPage(QWidget):
         self.special_kbd.setVisible(False)  # will be enabled in on_show()
 
         self.card = CardWidget()
+        self.special_kbd.char_clicked.connect(self.card.insert_special_char)
         self.card.check_clicked.connect(self._on_check)
         self.card.rated.connect(self._on_rated)
         self.card.tip_clicked.connect(self._on_tip)
@@ -239,27 +240,34 @@ class VocabReviewPage(QWidget):
         self.card_started_at = time.time()
 
         item = self.current_item
-        direction = getattr(self.session.state, "direction", "DE2EN")
 
-        self.card.set_direction(direction)
-        self.card.set_pos(getattr(item, "pos", ""))
-
-        tip_text = getattr(item, "gender_tip", None)
-        if (getattr(item, "pos", "") or "").lower() != "noun":
-            tip_text = None
-        self.card.set_gender_tip(tip_text)
+        word = getattr(item, "word", "")
 
         if hasattr(self.session, "prompt_text"):
             try:
-                self.card.set_prompt(self.session.prompt_text(item))
+                word = self.session.prompt_text(item)
             except Exception:
-                self.card.set_prompt(getattr(item, "word", "") if direction == "DE2EN" else getattr(item, "meaning", ""))
-        else:
-            self.card.set_prompt(getattr(item, "word", "") if direction == "DE2EN" else getattr(item, "meaning", ""))
+                pass
 
-        ask_gender = (getattr(item, "pos", "") == "noun") and bool(getattr(item, "gender", None))
-        ask_plural = (getattr(item, "pos", "") == "noun") and bool(getattr(item, "plural", None))
-        self.card.configure_fields(ask_gender=ask_gender, ask_plural=ask_plural)
+        self.card.set_prompt(word)
+        self.card.set_pos(getattr(item, "pos", ""))
+
+        pos = (getattr(item, "pos", "") or "").lower()
+
+        tip_text = getattr(item, "gender_tip", None)
+        if pos != "noun":
+            tip_text = None
+
+        self.card.set_gender_tip(tip_text)
+
+        ask_gender = pos == "noun" and bool(getattr(item, "gender", None))
+        ask_plural = pos == "noun" and bool(getattr(item, "plural", None))
+
+        self.card.configure_fields(
+            ask_gender=ask_gender,
+            ask_plural=ask_plural,
+        )
+
 
         if hasattr(self.session.repo, "get_examples"):
             exs = self.session.repo.get_examples(item.id, limit=1)
@@ -270,15 +278,10 @@ class VocabReviewPage(QWidget):
         self._update_counter()
 
     def _check_fields_fallback(self, item, typed_meaning: str, typed_gender: str, typed_plural: str) -> dict:
-        direction = getattr(self.session.state, "direction", "DE2EN")
+        
 
-        if direction == "DE2EN":
-            expected_meaning = getattr(item, "meaning", "") or ""
-            expected_set = {_norm(x) for x in expected_meaning.split(";") if _norm(x)}
-            meaning_ok = (_norm(typed_meaning) in expected_set) if expected_set else None
-        else:
-            expected_meaning = getattr(item, "word", "") or ""
-            meaning_ok = (_norm(typed_meaning) == _norm(expected_meaning)) if expected_meaning else None
+        expected_meaning = getattr(item, "meaning", "") or ""
+        meaning_ok = (_norm(typed_meaning) == _norm(expected_meaning)) if expected_meaning else None
 
         expected_gender = _gender_norm(getattr(item, "gender", "") or "")
         typed_g = _gender_norm(typed_gender or "")
@@ -308,16 +311,17 @@ class VocabReviewPage(QWidget):
         self.typed_gender = typed_gender or ""
         self.typed_plural = typed_plural or ""
 
-        if hasattr(self.session, "check_fields"):
+        if hasattr(self.session, "check_vocab_fields"):
             try:
-                res = self.session.check_fields(self.current_item, self.typed_meaning, self.typed_gender, self.typed_plural)
+                res = self.session.check_vocab_fields(self.current_item, self.typed_meaning, self.typed_gender, self.typed_plural)
             except Exception:
                 res = self._check_fields_fallback(self.current_item, self.typed_meaning, self.typed_gender, self.typed_plural)
         else:
             res = self._check_fields_fallback(self.current_item, self.typed_meaning, self.typed_gender, self.typed_plural)
 
-        direction = getattr(self.session.state, "direction", "DE2EN")
-        meaning_label = "Meaning" if direction == "DE2EN" else "German word"
+
+        
+        meaning_label = "Meaning"
 
         payload = VocabCheckPayload(
             meaning_ok=res.get("meaning_ok"),
@@ -341,9 +345,9 @@ class VocabReviewPage(QWidget):
 
         response_ms = None if self.card_started_at is None else int((time.time() - self.card_started_at) * 1000)
 
-        if hasattr(self.session, "submit"):
+        if hasattr(self.session, "submit_vocab"):
             try:
-                self.session.submit(
+                self.session.submit_vocab(
                     item=self.current_item,
                     typed_meaning=self.typed_meaning,
                     typed_gender=self.typed_gender,
@@ -357,5 +361,6 @@ class VocabReviewPage(QWidget):
                 )
             except Exception:
                 pass
+
 
         self._load_next()

@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from PySide6.QtWidgets import QApplication
+
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
@@ -99,6 +101,7 @@ class CardWidget(QWidget):
     def __init__(self):
         super().__init__()
 
+        self._active_input: QLineEdit | None = None
         self._blur_en: QGraphicsBlurEffect | None = None
         self._blur_gt: QGraphicsBlurEffect | None = None
         self._gender_tip_text: str | None = None
@@ -114,9 +117,22 @@ class CardWidget(QWidget):
         """)
 
         self._setup_ui()
+
+        self.in_meaning.focusInEvent = self._make_focus_handler(self.in_meaning)
+        self.in_gender.focusInEvent = self._make_focus_handler(self.in_gender)
+        self.in_plural.focusInEvent = self._make_focus_handler(self.in_plural)
+
+
         self._connect_signals()
         self.reset_for_next()
 
+
+    def _make_focus_handler(self, widget: QLineEdit):
+        def handler(event):
+            self._active_input = widget
+            QLineEdit.focusInEvent(widget, event)
+        return handler
+    
     # ---------------- UI ----------------
     def _setup_ui(self):
         root = QVBoxLayout(self)
@@ -140,21 +156,13 @@ class CardWidget(QWidget):
                 font-family: 'Segoe UI', Arial, sans-serif;
             }
         """)
-        self.prompt_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.prompt_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred
+        )
 
-        self.direction_indicator = QLabel("")
-        self.direction_indicator.setStyleSheet("""
-            QLabel {
-                font-size: 11px;
-                color: #9A9A9A;
-                font-weight: 500;
-                font-family: 'Segoe UI', Arial, sans-serif;
-            }
-        """)
-        self.direction_indicator.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-
+        # ✅ THIS WAS MISSING
         prompt_container.addWidget(self.prompt_label)
-        prompt_container.addWidget(self.direction_indicator)
 
         self.pos_badge = GlowBadge("")
         self.pos_badge.setFixedWidth(80)
@@ -592,10 +600,6 @@ class CardWidget(QWidget):
     def set_prompt(self, text: str) -> None:
         self.prompt_label.setText(text or "")
 
-    def set_direction(self, direction: str) -> None:
-        mapping = {"DE2EN": "German to English", "EN2DE": "English to German"}
-        self.direction_indicator.setText(mapping.get(direction, direction))
-
     def set_pos(self, pos: str | None) -> None:
         pos = (pos or "").strip().upper()
         if not pos:
@@ -691,6 +695,9 @@ class CardWidget(QWidget):
         self._recommended_rating = None
         self.results_frame.setVisible(False)
 
+        self.set_prompt("")
+        self._active_input = self.in_meaning
+
         self.in_meaning.setEnabled(True)
         self.in_gender.setEnabled(True)
         self.in_plural.setEnabled(True)
@@ -737,6 +744,22 @@ class CardWidget(QWidget):
         # re-apply highlight after enabling
         if self._recommended_rating is not None:
             self.set_recommended_rating(self._recommended_rating)
+
+
+    def insert_special_char(self, ch: str) -> None:
+        """Insert into the last focused input field."""
+        target = self._active_input
+
+        if target and target.isEnabled():
+            target.insert(ch)
+            target.setFocus()
+            return
+
+        # fallback
+        if self.in_meaning.isEnabled():
+            self.in_meaning.insert(ch)
+            self.in_meaning.setFocus()
+
 
     # ---------------- Signals ----------------
     def _connect_signals(self):

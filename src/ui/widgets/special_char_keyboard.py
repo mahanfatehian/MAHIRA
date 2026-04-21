@@ -93,7 +93,8 @@ class SpecialCharKeyboard(QWidget):
             b.setFont(QFont("Segoe UI", 10, QFont.Weight.Black))
 
             # IMPORTANT: don't steal focus from the input field
-            b.setFocusPolicy(Qt.NoFocus)
+            b.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
 
             b.clicked.connect(lambda checked=False, c=ch: self._insert_char(c))
             self._layout.addWidget(b)
@@ -101,15 +102,5 @@ class SpecialCharKeyboard(QWidget):
         self._layout.addStretch(1)
 
     def _insert_char(self, ch: str) -> None:
-        w = QApplication.focusWidget()
-
-        # Insert into common text inputs
-        if isinstance(w, QLineEdit):
-            w.insert(ch)
-        elif isinstance(w, (QTextEdit, QPlainTextEdit)):
-            w.insertPlainText(ch)
-        else:
-            # Not an input field — do nothing
-            return
-
+        # Just emit the signal and let the card widgets handle the insertion!
         self.char_clicked.emit(ch)

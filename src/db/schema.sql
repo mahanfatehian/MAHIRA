@@ -151,6 +151,7 @@ CREATE INDEX IF NOT EXISTS idx_grammar_reviews_created ON grammar_reviews(create
 -- =========================
 -- Sentences
 -- =========================
+-- Modified sentences table without required_json
 CREATE TABLE IF NOT EXISTS sentences (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   deck_id INTEGER NOT NULL,
@@ -158,11 +159,11 @@ CREATE TABLE IF NOT EXISTS sentences (
   translation TEXT,
   tip TEXT,
   words_json TEXT,
-  required_json TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   UNIQUE(deck_id, target_text),
   FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
 );
+
 
 CREATE INDEX IF NOT EXISTS idx_sentences_deck ON sentences(deck_id);
 

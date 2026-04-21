@@ -67,7 +67,7 @@ class SentenceItem:
     translation: Optional[str]
     tip: Optional[str]
     words: list[str]
-    required: list[str]
+
 
 
 @dataclass(frozen=True)
@@ -575,15 +575,14 @@ class Repo:
         translation: str | None,
         tip: str | None,
         words_json: str | None,
-        required_json: str | None,
     ) -> int:
         now = int(time.time())
         tt = (target_text or "").strip()
         with self._conn() as conn:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO sentences(deck_id,target_text,translation,tip,words_json,required_json,created_at)
-                VALUES(?,?,?,?,?,?,?)
+                INSERT OR IGNORE INTO sentences(deck_id,target_text,translation,tip,words_json,created_at)
+                VALUES(?,?,?,?,?,?)
                 """,
                 (
                     deck_id,
@@ -591,7 +590,6 @@ class Repo:
                     (translation or "").strip() or None,
                     (tip or "").strip() or None,
                     words_json or None,
-                    required_json or None,
                     now,
                 ),
             )
@@ -625,7 +623,6 @@ class Repo:
                             translation=item.translation,
                             tip=item.tip,
                             words=words,
-                            required=item.required,
                         )
             except Exception:
                 pass
@@ -1027,27 +1024,10 @@ class Repo:
             out = [t.strip() for t in s.split() if t.strip()]
             return out if out else Repo._tokenize_sentence(target)
 
-        def parse_required(raw: str | None) -> list[str]:
-            s = (raw or "").strip()
-            if not s or s == "[]":
-                return []
-            if s.startswith("[") and s.endswith("]"):
-                try:
-                    arr = json.loads(s)
-                    if isinstance(arr, list):
-                        return [str(x).strip() for x in arr if str(x).strip()]
-                except Exception:
-                    pass
-            if "|" in s:
-                return [x.strip() for x in s.split("|") if x.strip()]
-            return [x.strip() for x in re.split(r"[,;]", s) if x.strip()]
-
         keys = set(r.keys())
         target_text = str(r["target_text"] or "")
 
         words_json = str(r["words_json"]) if ("words_json" in keys and r["words_json"] is not None) else None
-        required_json = str(r["required_json"]) if (
-                    "required_json" in keys and r["required_json"] is not None) else None
 
         words = parse_words(words_json, target_text)
 
@@ -1058,7 +1038,6 @@ class Repo:
             translation=str(r["translation"]) if r["translation"] is not None else None,
             tip=str(r["tip"]) if r["tip"] is not None else None,
             words=words,
-            required=parse_required(required_json),
         )
     @staticmethod
     def _row_to_sentence_state(r: sqlite3.Row) -> SentenceState:

@@ -659,16 +659,14 @@ class SetupPage(QWidget):
             return
 
         key = _norm_objective(key)
-        direction = getattr(self.session.state, "direction", "DE2EN")
 
         try:
-            self.session.set_context(self.lang, self.level, key, direction)
+            self.session.set_context(self.lang, self.level, key)
         except Exception:
             self.session.state.language_code = self.lang
             self.session.state.level = self.level
             self.session.state.objective = key
-            self.session.state.direction = direction
-
+   
         self._sync_from_state()
         self._update_breadcrumb()
         self.start_practice.emit()

@@ -43,7 +43,8 @@ def _repair_sentences(conn) -> None:
     if not row:
         return
 
-    rows = conn.execute("SELECT id, target_text, words_json, required_json FROM sentences").fetchall()
+    rows = conn.execute("SELECT id, target_text, words_json FROM sentences").fetchall()
+
     for r in rows:
         try:
             sid = int(r["id"])

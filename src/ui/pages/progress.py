@@ -193,8 +193,6 @@ class ProgressPage(QWidget):
 
     def _normalized_objective(self) -> str:
         obj = (getattr(self.session.state, "objective", None) or "").lower().strip()
-        if obj == "grammer":
-            obj = "grammar"
         return obj
 
     # ----- vocab helpers -----
@@ -207,18 +205,22 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _due_count(self, deck_id: int) -> int:
-        repo = self.session.repo
-        if hasattr(repo, "due_count"):
-            return int(repo.due_count(deck_id))
         now = int(time.time())
+        cooldown_hours = 12
+        cooldown_since = now - cooldown_hours * 3600
+
         with self._conn() as conn:
             row = conn.execute("""
-                SELECT COUNT(*) AS c
+                SELECT COUNT(*)
                 FROM vocab v
-                JOIN vocab_states s ON s.vocab_id=v.id
-                WHERE v.deck_id=? AND s.due_at<=?
-            """, (deck_id, now)).fetchone()
-            return int(row["c"]) if row else 0
+                JOIN vocab_states s ON s.vocab_id = v.id
+                WHERE v.deck_id = ?
+                AND s.due_at <= ?
+                AND (s.last_review_at IS NULL OR s.last_review_at <= ?)
+            """, (deck_id, now, cooldown_since)).fetchone()
+
+            return int(row["COUNT(*)"]) if row else 0
+
 
     def _reviewed_last_24h(self, deck_id: int) -> int:
         repo = self.session.repo

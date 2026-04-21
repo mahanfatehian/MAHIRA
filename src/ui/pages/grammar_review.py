@@ -54,6 +54,7 @@ class GrammarReviewPage(QWidget):
         self.special_kbd.setVisible(False)  # enabled in on_show()
 
         self.card = GrammarCardWidget()
+        self.special_kbd.char_clicked.connect(self.card.insert_special_char)
         self.card.check_clicked.connect(self._on_check)
         self.card.rated.connect(self._on_rated)
         self.card.skipped.connect(self._on_skipped)
