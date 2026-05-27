@@ -38,8 +38,7 @@ class MainWindow(QMainWindow):
         try:
             project_root = self.session.repo.db_path.parent.parent
             candidates = [
-                project_root / "mahira" / "assets" / "logo.ico",
-                project_root / "src" / "mahira" / "assets" / "logo.ico",
+                project_root / "assets" / "logo.ico",
             ]
             for p in candidates:
                 if p.exists():

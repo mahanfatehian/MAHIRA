@@ -51,9 +51,7 @@ def run(project_root: Path, start_page: str | None = None) -> int:
         from PySide6.QtGui import QIcon
 
         try:
-            icon_path = paths.project_root / "mahira" / "assets" / "logo.ico"
-            if not icon_path.exists():
-                icon_path = paths.project_root / "src" / "mahira" / "assets" / "logo.ico"
+            icon_path = paths.project_root / "assets" / "logo.ico"
             if icon_path.exists():
                 app.setWindowIcon(QIcon(str(icon_path)))
         except Exception:

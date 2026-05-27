@@ -1,7 +1,7 @@
 # 🧠 Mahira — Intelligent Language Learning App
 
 <p align="center">
-  <img src="src/mahira/assets/logo.ico" width="180" alt="Mahira Log">
+  <img src="assets/logo.ico" width="180" alt="Mahira Log">
 </p>
 
 <p align="center">
