@@ -186,7 +186,9 @@ class SentenceBuilderWidget(QWidget):
         root.addLayout(self.header_row)
 
         self.answer_frame = QFrame()
-        self.answer_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.answer_frame.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.answer_frame.setStyleSheet(
             """
             QFrame {
@@ -209,7 +211,9 @@ class SentenceBuilderWidget(QWidget):
         )
 
         self.count_lbl = QLabel("0 / 0 words used")
-        self.count_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.count_lbl.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         self.count_lbl.setStyleSheet(
             "color:#B0B0B0; font-size:12px; font-weight:900; border:none;"
         )
@@ -237,7 +241,9 @@ class SentenceBuilderWidget(QWidget):
         root.addWidget(self.answer_frame, 3)
 
         self.bank_frame = QFrame()
-        self.bank_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.bank_frame.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.bank_frame.setStyleSheet(
             """
             QFrame {
@@ -292,10 +298,14 @@ class SentenceBuilderWidget(QWidget):
         tip_layout.setSpacing(6)
 
         tip_title = QLabel("Tip")
-        tip_title.setStyleSheet("color:#9A9A9A; font-size:11px; font-weight:900; border:none;")
+        tip_title.setStyleSheet(
+            "color:#9A9A9A; font-size:11px; font-weight:900; border:none;"
+        )
         self.tip_lbl = QLabel("")
         self.tip_lbl.setWordWrap(True)
-        self.tip_lbl.setStyleSheet("color:#E6E6E6; font-size:13px; font-weight:700; border:none;")
+        self.tip_lbl.setStyleSheet(
+            "color:#E6E6E6; font-size:13px; font-weight:700; border:none;"
+        )
 
         tip_layout.addWidget(tip_title)
         tip_layout.addWidget(self.tip_lbl)
@@ -317,10 +327,14 @@ class SentenceBuilderWidget(QWidget):
         tr_layout.setSpacing(6)
 
         tr_title = QLabel("Translation")
-        tr_title.setStyleSheet("color:#9A9A9A; font-size:11px; font-weight:900; border:none;")
+        tr_title.setStyleSheet(
+            "color:#9A9A9A; font-size:11px; font-weight:900; border:none;"
+        )
         self.translation_lbl = QLabel("")
         self.translation_lbl.setWordWrap(True)
-        self.translation_lbl.setStyleSheet("color:#E6E6E6; font-size:13px; font-weight:700; border:none;")
+        self.translation_lbl.setStyleSheet(
+            "color:#E6E6E6; font-size:13px; font-weight:700; border:none;"
+        )
 
         tr_layout.addWidget(tr_title)
         tr_layout.addWidget(self.translation_lbl)
@@ -425,7 +439,9 @@ class SentenceBuilderWidget(QWidget):
 
         for btn in (self.btn_again, self.btn_hard, self.btn_good, self.btn_easy):
             btn.setMinimumHeight(40)
-            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            )
             rate_row.addWidget(btn)
 
         rate_outer.addWidget(self.rate_title)
@@ -532,7 +548,7 @@ class SentenceBuilderWidget(QWidget):
             )
         else:
             has_details = bool(details)
-            self.result_lbl.setText("⚠ Word Order Issue" if has_details else "✗ Incorrect")
+            self.result_lbl.setText("⚠ Needs Attention" if has_details else "✗ Incorrect")
             self.result_lbl.setStyleSheet(
                 "color:#FFB020; font-size:22px; font-weight:950; border:none;"
                 if has_details
@@ -591,10 +607,17 @@ class SentenceBuilderWidget(QWidget):
         self._refresh_answer_area_style()
 
     def _join_tokens(self, tokens: list[str]) -> str:
-        return " ".join(token.strip() for token in tokens if token is not None).strip()
+        text = " ".join(token.strip() for token in tokens if token is not None).strip()
+        text = text.replace(" .", ".")
+        text = text.replace(" ,", ",")
+        text = text.replace(" !", "!")
+        text = text.replace(" ?", "?")
+        text = text.replace(" ;", ";")
+        text = text.replace(" :", ":")
+        return text.strip()
 
     def _select_from_bank(self, btn: QPushButton) -> None:
-        if self._locked:
+        if self._locked or self._checked:
             return
 
         token = btn.text()
@@ -605,7 +628,9 @@ class SentenceBuilderWidget(QWidget):
         built_btn = QPushButton(token)
         built_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         built_btn.setStyleSheet(self._built_chip_style())
-        built_btn.clicked.connect(lambda checked=False, b=built_btn: self._remove_built_chip(b))
+        built_btn.clicked.connect(
+            lambda checked=False, b=built_btn: self._remove_built_chip(b)
+        )
         self.built_flow.addWidget(built_btn)
 
         self._built_buttons.append(built_btn)
@@ -616,7 +641,7 @@ class SentenceBuilderWidget(QWidget):
         self._refresh_answer_area_style()
 
     def _remove_built_chip(self, built_btn: QPushButton) -> None:
-        if self._locked:
+        if self._locked or self._checked:
             return
 
         idx = self._built_buttons.index(built_btn) if built_btn in self._built_buttons else -1
@@ -646,12 +671,12 @@ class SentenceBuilderWidget(QWidget):
                 return
 
     def _on_backspace(self) -> None:
-        if self._locked or not self._built_buttons:
+        if self._locked or self._checked or not self._built_buttons:
             return
         self._remove_built_chip(self._built_buttons[-1])
 
     def _on_clear(self) -> None:
-        if self._locked or not self._selected_tokens:
+        if self._locked or self._checked or not self._selected_tokens:
             return
 
         while self._built_buttons:
@@ -663,6 +688,7 @@ class SentenceBuilderWidget(QWidget):
         self.tip_panel.show()
         self.tip_lbl.setText(self._tip_text)
         self.tip_btn.setText("Tip revealed")
+        self.tip_btn.setEnabled(False)
         self.tip_clicked.emit()
 
     def _reveal_translation(self) -> None:
@@ -671,10 +697,11 @@ class SentenceBuilderWidget(QWidget):
         self.translation_panel.show()
         self.translation_lbl.setText(self._translation_text)
         self.tr_btn.setText("Translation revealed")
+        self.tr_btn.setEnabled(False)
         self.translation_clicked.emit()
 
     def _emit_check(self) -> None:
-        if self._locked:
+        if self._locked or self._checked:
             return
         self.check_clicked.emit(self.typed_text())
 
@@ -703,8 +730,8 @@ class SentenceBuilderWidget(QWidget):
         used = len(self._selected_tokens)
         total = len(self._words)
         self.count_lbl.setText(f"{used} / {total} words used")
-        self.btn_backspace.setEnabled((used > 0) and (not self._locked))
-        self.btn_clear.setEnabled((used > 0) and (not self._locked))
+        self.btn_backspace.setEnabled((used > 0) and (not self._locked) and (not self._checked))
+        self.btn_clear.setEnabled((used > 0) and (not self._locked) and (not self._checked))
 
     def _refresh_answer_area_style(self) -> None:
         if self._locked:

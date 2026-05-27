@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+import re
 import time
 from typing import Any
 
@@ -136,14 +138,18 @@ class SentenceReviewPage(QWidget):
 
         self.main_shell = QFrame()
         self.main_shell.setObjectName("MainShell")
-        self.main_shell.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.main_shell.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
 
         shell_layout = QVBoxLayout(self.main_shell)
         shell_layout.setContentsMargins(18, 18, 18, 18)
         shell_layout.setSpacing(0)
 
         self.card = SentenceBuilderWidget(accent="#FFB020")
-        self.card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.card.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.card.check_clicked.connect(self._on_check)
         self.card.rated.connect(self._on_rated)
         self.card.tip_clicked.connect(self._on_tip)
@@ -205,6 +211,79 @@ class SentenceReviewPage(QWidget):
         else:
             self.counter_lbl.setText(f"{completed} / ?")
 
+    def _normalize_sentence(self, text: str) -> str:
+        text = str(text or "").strip()
+
+        # collapse whitespace
+        text = re.sub(r"\s+", " ", text)
+
+        # remove spaces before punctuation: "Anna ." -> "Anna."
+        text = re.sub(r"\s+([.,!?;:])", r"\1", text)
+
+        # remove spaces after opening brackets/quotes
+        text = re.sub(r'([\(\[\{„"“])\s+', r"\1", text)
+
+        # remove spaces before closing brackets/quotes
+        text = re.sub(r'\s+([\)\]\}»"”])', r"\1", text)
+
+        # contractions/apostrophes
+        text = re.sub(r"\s+'\s*", "'", text)
+
+        return text.strip()
+
+    def _extract_expected_sentence(self, item: Any) -> str:
+        for attr in ("target_text", "sentence", "text"):
+            value = getattr(item, attr, None)
+            if value:
+                return self._normalize_sentence(str(value))
+        return ""
+
+    def _extract_words(self, item: Any) -> list[str]:
+        words = getattr(item, "words", None)
+
+        if isinstance(words, list):
+            result = [str(w) for w in words if str(w).strip()]
+            if result:
+                return result
+
+        if isinstance(words, str) and words.strip():
+            if "|" in words:
+                result = [part.strip() for part in words.split("|") if part.strip()]
+                if result:
+                    return result
+            result = [part for part in words.split() if part.strip()]
+            if result:
+                return result
+
+        words_json = getattr(item, "words_json", None)
+        if isinstance(words_json, str) and words_json.strip():
+            if "|" in words_json:
+                result = [part.strip() for part in words_json.split("|") if part.strip()]
+                if result:
+                    return result
+
+        expected = self._extract_expected_sentence(item)
+        if expected:
+            if "|" in expected:
+                return [part.strip() for part in expected.split("|") if part.strip()]
+            return expected.split()
+
+        return []
+
+    def _extract_tip(self, item: Any) -> str | None:
+        for attr in ("tip", "hint"):
+            value = getattr(item, attr, None)
+            if value:
+                return str(value)
+        return None
+
+    def _extract_translation(self, item: Any) -> str | None:
+        for attr in ("translation", "translation_en", "english", "meaning"):
+            value = getattr(item, attr, None)
+            if value:
+                return str(value)
+        return None
+
     def _load_next(self) -> None:
         self._update_counter()
         self.current_item = self.session.next_sentence_item()
@@ -228,11 +307,16 @@ class SentenceReviewPage(QWidget):
 
         self.card_started_at = time.time()
 
-        words = list(getattr(self.current_item, "words", []) or [])
+        words = self._extract_words(self.current_item)
+        random.shuffle(words)
+
+        tip = self._extract_tip(self.current_item)
+        translation = self._extract_translation(self.current_item)
+
         self.card.set_item(
             words=words,
-            tip=getattr(self.current_item, "tip", None),
-            translation=getattr(self.current_item, "translation", None),
+            tip=tip,
+            translation=translation,
         )
         self._update_counter()
 
@@ -252,20 +336,42 @@ class SentenceReviewPage(QWidget):
             return
 
         self.was_checked = True
-        res = self.session.check_sentence(self.current_item, typed_text)
+
+        expected = self._extract_expected_sentence(self.current_item)
+        typed_norm = self._normalize_sentence(typed_text)
+        expected_norm = self._normalize_sentence(expected)
+
+        ok = typed_norm == expected_norm
 
         details: list[str] = []
-        cap_errors = list(getattr(res, "cap_errors", []) or [])
-        punct_errors = list(getattr(res, "punct_errors", []) or [])
 
-        if cap_errors:
-            details.append("Capitalization needs attention.")
-        if punct_errors:
-            details.append("Punctuation needs attention.")
+        if not ok:
+            typed_compact = re.sub(r"\s+", "", typed_norm)
+            expected_compact = re.sub(r"\s+", "", expected_norm)
+
+            if typed_compact == expected_compact:
+                details.append("Spacing needs attention.")
+            else:
+                typed_lower = typed_norm.lower()
+                expected_lower = expected_norm.lower()
+
+                if typed_lower == expected_lower:
+                    details.append("Capitalization needs attention.")
+                else:
+                    typed_no_punct = re.sub(r"[.,!?;:]", "", typed_lower)
+                    expected_no_punct = re.sub(r"[.,!?;:]", "", expected_lower)
+
+                    if typed_no_punct == expected_no_punct:
+                        details.append("Punctuation needs attention.")
+                    else:
+                        typed_words = typed_no_punct.split()
+                        expected_words = expected_no_punct.split()
+                        if sorted(typed_words) == sorted(expected_words) and typed_words != expected_words:
+                            details.append("Word order needs attention.")
 
         self.card.show_result(
-            ok=bool(getattr(res, "ok", False)),
-            expected=str(getattr(res, "expected", "") or ""),
+            ok=ok,
+            expected=expected_norm,
             details=" ".join(details),
         )
 
@@ -273,8 +379,10 @@ class SentenceReviewPage(QWidget):
         if not self.current_item:
             return
 
-        typed = self.card.typed_text()
-        response_ms = int(max(0.0, time.time() - float(self.card_started_at or time.time())) * 1000)
+        typed = self._normalize_sentence(self.card.typed_text())
+        response_ms = int(
+            max(0.0, time.time() - float(self.card_started_at or time.time())) * 1000
+        )
 
         self.session.submit_sentence(
             item=self.current_item,
