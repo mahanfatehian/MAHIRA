@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-import logging
-import random
+from typing import Any
 
-from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
+    QHBoxLayout,
     QLabel,
     QPushButton,
-    QHBoxLayout,
-    QFrame,
-    QScrollArea,
     QSizePolicy,
-    QGraphicsBlurEffect,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ui.widgets.flow_layout import FlowLayout
@@ -30,8 +26,18 @@ def _btn_secondary() -> str:
         padding: 8px 14px;
         font-weight: 800;
     }
-    QPushButton:hover { border: 1px solid #FFFFFF; background-color:#232323; }
-    QPushButton:disabled { background-color: #101010; color: #6B6B6B; border: 1px solid #252525; }
+    QPushButton:hover {
+        border: 1px solid #FFFFFF;
+        background-color: #232323;
+    }
+    QPushButton:pressed {
+        background-color: #2B2B2B;
+    }
+    QPushButton:disabled {
+        background-color: #101010;
+        color: #6B6B6B;
+        border: 1px solid #252525;
+    }
     """
 
 
@@ -45,39 +51,43 @@ def _btn_colored(bg: str, fg: str = "#0B0B0B") -> str:
         padding: 9px 18px;
         font-weight: 900;
     }}
-    QPushButton:hover {{ border: 1px solid #FFFFFF; }}
+    QPushButton:hover {{
+        border: 1px solid #FFFFFF;
+    }}
     QPushButton:disabled {{
-        background-color:#101010;
-        color:#6B6B6B;
-        border:1px solid #252525;
+        background-color: #101010;
+        color: #6B6B6B;
+        border: 1px solid #252525;
     }}
     """
 
 
 def _rating_style(rating: int) -> str:
     palette = {
-        0: ("#2B2B14", "#FFD700"),  # Again
-        1: ("#2B1414", "#FF6B6B"),  # Hard
-        2: ("#14142B", "#6B9FFF"),  # Good
-        3: ("#142B14", "#66E39A"),  # Easy
+        0: ("#2B2B14", "#FFD700"),
+        1: ("#2B1414", "#FF6B6B"),
+        2: ("#14142B", "#6B9FFF"),
+        3: ("#142B14", "#66E39A"),
     }
-    bg, accent = palette.get(rating, ("#1B1B1B", "#C8C8C8"))
+    bg, accent = palette.get(rating, ("#1B1B1B", "#FFFFFF"))
     return f"""
-        QPushButton {{
-            background-color: {bg};
-            color: {accent};
-            border: 1px solid #2A2A2A;
-            border-radius: 10px;
-            padding: 7px 12px;
-            font-weight: 900;
-            font-size: 12px;
-        }}
-        QPushButton:hover {{ border: 1px solid #FFFFFF; color: #FFFFFF; }}
-        QPushButton:disabled {{
-            background-color: #151515;
-            color: #6B6B6B;
-            border: 1px solid #252525;
-        }}
+    QPushButton {{
+        background-color: {bg};
+        color: {accent};
+        border: 1px solid #2A2A2A;
+        border-radius: 10px;
+        padding: 7px 12px;
+        font-weight: 900;
+        font-size: 12px;
+    }}
+    QPushButton:hover {{
+        border: 1px solid {accent};
+    }}
+    QPushButton:disabled {{
+        background-color: #101010;
+        color: #6B6B6B;
+        border: 1px solid #252525;
+    }}
     """
 
 
@@ -86,495 +96,651 @@ def _chip_style(accent: str, *, used: bool) -> str:
         return """
         QPushButton {
             background-color: #101010;
-            color: #9A9A9A;
+            color: #6E6E6E;
             border: 1px solid #252525;
-            border-radius: 16px;
-            padding: 9px 14px;
+            border-radius: 18px;
+            padding: 10px 16px;
             font-weight: 900;
-            font-size: 14px;
-            min-height: 38px;
+            font-size: 16px;
+            min-height: 42px;
         }
-        QPushButton:hover { border: 1px solid #FFFFFF; }
         """
     return f"""
     QPushButton {{
-        background-color: #151515;
+        background-color: #1A1A1A;
         color: #FFFFFF;
         border: 1px solid #2E2E2E;
-        border-radius: 16px;
-        padding: 9px 14px;
+        border-radius: 18px;
+        padding: 10px 16px;
         font-weight: 900;
-        font-size: 14px;
-        min-height: 38px;
+        font-size: 16px;
+        min-height: 42px;
     }}
-    QPushButton:hover {{ border: 1px solid {accent}; }}
+    QPushButton:hover {{
+        background-color: #262626;
+        border: 1px solid {accent};
+    }}
+    QPushButton:pressed {{
+        background-color: #303030;
+    }}
     """
 
 
 class SentenceBuilderWidget(QWidget):
     check_clicked = Signal(str)
-    rated = Signal(int)  # 0..3
+    rated = Signal(int)
     tip_clicked = Signal()
     translation_clicked = Signal()
     skipped = Signal()
 
     def __init__(self, accent: str = "#FFB020"):
         super().__init__()
-        self._accent = accent
+        self.accent = accent
 
-        self._bank: list[tuple[int, str]] = []
-        self._used: set[int] = set()
-        self._built: list[int] = []
-
+        self._words: list[str] = []
+        self._selected_tokens: list[str] = []
+        self._bank_buttons: list[QPushButton] = []
+        self._built_buttons: list[QPushButton] = []
         self._tip_text: str | None = None
-        self._tr_text: str | None = None
-        self._blur_tip: QGraphicsBlurEffect | None = None
-        self._blur_tr: QGraphicsBlurEffect | None = None
+        self._translation_text: str | None = None
+        self._checked = False
+        self._locked = False
+        self._result_ok: bool | None = None
 
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
-        self.setStyleSheet("""
+        self.setObjectName("SentenceBuilderWidget")
+        self.setStyleSheet(
+            """
             SentenceBuilderWidget {
-                background-color: #141414;
-                border: 1px solid #2A2A2A;
-                border-radius: 14px;
+                background-color: transparent;
+                border: none;
             }
-            QLabel { color: #E6E6E6; }
-        """)
+            QLabel {
+                color: #E6E6E6;
+            }
+            """
+        )
 
         self._setup_ui()
         self.reset_for_next()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 8, 10, 8)
-        root.setSpacing(4)  # Reduced from 6
+        root.setContentsMargins(4, 4, 4, 4)
+        root.setSpacing(12)
 
-        self.prompt = QLabel("Build the sentence")
-        self.prompt.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
-        self.prompt.setStyleSheet("QLabel { color:#FFFFFF; }")
-        root.addWidget(self.prompt)
+        self.header_row = QVBoxLayout()
+        self.header_row.setSpacing(3)
 
-        info_row = QHBoxLayout()
-        info_row.setSpacing(10)
-
-        self.tip_btn = QPushButton("Reveal tip")
-        self.tip_btn.setFixedHeight(34)
-        self.tip_btn.setStyleSheet(_btn_secondary())
-        self.tip_btn.clicked.connect(self._on_tip)
-
-        self.tr_btn = QPushButton("Reveal translation")
-        self.tr_btn.setFixedHeight(34)
-        self.tr_btn.setStyleSheet(_btn_secondary())
-        self.tr_btn.clicked.connect(self._on_translation)
-
-        info_row.addWidget(self.tip_btn)
-        info_row.addWidget(self.tr_btn)
-        info_row.addStretch(1)
-        root.addLayout(info_row)
-
-        self.tip_label = QLabel("")
-        self.tip_label.setWordWrap(True)
-        self.tip_label.setVisible(False)
-        self.tip_label.setStyleSheet(
-            "QLabel { background:#101010; border:1px solid #2A2A2A; border-radius:10px; padding:10px; }"
+        self.title_lbl = QLabel("Build the sentence")
+        self.title_lbl.setStyleSheet(
+            "color:#FFFFFF; font-size:28px; font-weight:950; border:none;"
         )
-        root.addWidget(self.tip_label)
 
-        self.tr_label = QLabel("")
-        self.tr_label.setWordWrap(True)
-        self.tr_label.setVisible(False)
-        self.tr_label.setStyleSheet(
-            "QLabel { background:#101010; border:1px solid #2A2A2A; border-radius:10px; padding:10px; color:#B0B0B0; }"
+        self.subtitle_lbl = QLabel("Tap the words in the correct order")
+        self.subtitle_lbl.setStyleSheet(
+            "color:#9A9A9A; font-size:14px; font-weight:700; border:none;"
         )
-        root.addWidget(self.tr_label)
 
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("QFrame { background-color:#2A2A2A; margin: 2px 0; }")
-        root.addWidget(sep)
+        self.header_row.addWidget(self.title_lbl)
+        self.header_row.addWidget(self.subtitle_lbl)
+        root.addLayout(self.header_row)
 
-        built_title = QLabel("Your sentence (chips)")
-        built_title.setStyleSheet("QLabel { font-weight: 900; color:#B0B0B0; }")
-        built_title.setContentsMargins(0, 2, 0, 2)
-        root.addWidget(built_title)
+        self.answer_frame = QFrame()
+        self.answer_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.answer_frame.setStyleSheet(
+            """
+            QFrame {
+                background-color: #101010;
+                border: 1px solid #2E2E2E;
+                border-radius: 18px;
+            }
+            """
+        )
+        answer_layout = QVBoxLayout(self.answer_frame)
+        answer_layout.setContentsMargins(16, 16, 16, 14)
+        answer_layout.setSpacing(8)
+
+        top_meta = QHBoxLayout()
+        top_meta.setSpacing(8)
+
+        self.answer_hint_lbl = QLabel("Your sentence")
+        self.answer_hint_lbl.setStyleSheet(
+            "color:#B0B0B0; font-size:12px; font-weight:900; border:none;"
+        )
+
+        self.count_lbl = QLabel("0 / 0 words used")
+        self.count_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.count_lbl.setStyleSheet(
+            "color:#B0B0B0; font-size:12px; font-weight:900; border:none;"
+        )
+
+        top_meta.addWidget(self.answer_hint_lbl)
+        top_meta.addStretch(1)
+        top_meta.addWidget(self.count_lbl)
+
+        answer_layout.addLayout(top_meta)
 
         self.built_wrap = QWidget()
-        self.built_flow = FlowLayout(self.built_wrap, margin=0, hspacing=4, vspacing=4)
-        self.built_wrap.setLayout(self.built_flow)
-        self.built_wrap.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.built_wrap.setStyleSheet("background: transparent; border: none;")
+        self.built_flow = FlowLayout(self.built_wrap, margin=0, hspacing=8, vspacing=8)
 
-        self.built_scroll = QScrollArea()
-        self.built_scroll.setWidgetResizable(True)
-        self.built_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.built_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.built_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.built_scroll.setStyleSheet("QScrollArea { background: transparent; }")
-        self.built_scroll.setWidget(self.built_wrap)
-        self.built_scroll.setMinimumHeight(52)
-        self.built_scroll.setMaximumHeight(96)
-        self.built_scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        root.addWidget(self.built_scroll)
+        answer_layout.addWidget(self.built_wrap, 1)
+
+        self.empty_lbl = QLabel("Tap words below to build the sentence")
+        self.empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_lbl.setWordWrap(True)
+        self.empty_lbl.setStyleSheet(
+            "color:#707070; font-size:15px; font-weight:800; border:none;"
+        )
+        answer_layout.addWidget(self.empty_lbl)
+
+        root.addWidget(self.answer_frame, 3)
+
+        self.bank_frame = QFrame()
+        self.bank_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.bank_frame.setStyleSheet(
+            """
+            QFrame {
+                background-color: #101010;
+                border: 1px solid #2A2A2A;
+                border-radius: 18px;
+            }
+            """
+        )
+        bank_layout = QVBoxLayout(self.bank_frame)
+        bank_layout.setContentsMargins(16, 14, 16, 14)
+        bank_layout.setSpacing(10)
+
+        bank_title = QLabel("Available words")
+        bank_title.setStyleSheet(
+            "color:#B0B0B0; font-size:12px; font-weight:900; border:none;"
+        )
+        bank_layout.addWidget(bank_title)
+
+        self.bank_wrap = QWidget()
+        self.bank_wrap.setStyleSheet("background: transparent; border: none;")
+        self.bank_flow = FlowLayout(self.bank_wrap, margin=0, hspacing=8, vspacing=8)
+        bank_layout.addWidget(self.bank_wrap, 1)
+
+        root.addWidget(self.bank_frame, 3)
+
+        self.reveal_row = QHBoxLayout()
+        self.reveal_row.setSpacing(10)
+
+        self.tip_btn = QPushButton("Reveal tip")
+        self.tip_btn.setStyleSheet(_btn_secondary())
+
+        self.tr_btn = QPushButton("Reveal translation")
+        self.tr_btn.setStyleSheet(_btn_secondary())
+
+        self.reveal_row.addWidget(self.tip_btn)
+        self.reveal_row.addWidget(self.tr_btn)
+        root.addLayout(self.reveal_row)
+
+        self.tip_panel = QFrame()
+        self.tip_panel.setStyleSheet(
+            """
+            QFrame {
+                background-color: #101010;
+                border: 1px solid #2A2A2A;
+                border-radius: 12px;
+            }
+            """
+        )
+        tip_layout = QVBoxLayout(self.tip_panel)
+        tip_layout.setContentsMargins(14, 12, 14, 12)
+        tip_layout.setSpacing(6)
+
+        tip_title = QLabel("Tip")
+        tip_title.setStyleSheet("color:#9A9A9A; font-size:11px; font-weight:900; border:none;")
+        self.tip_lbl = QLabel("")
+        self.tip_lbl.setWordWrap(True)
+        self.tip_lbl.setStyleSheet("color:#E6E6E6; font-size:13px; font-weight:700; border:none;")
+
+        tip_layout.addWidget(tip_title)
+        tip_layout.addWidget(self.tip_lbl)
+        self.tip_panel.hide()
+        root.addWidget(self.tip_panel)
+
+        self.translation_panel = QFrame()
+        self.translation_panel.setStyleSheet(
+            """
+            QFrame {
+                background-color: #101010;
+                border: 1px solid #2A2A2A;
+                border-radius: 12px;
+            }
+            """
+        )
+        tr_layout = QVBoxLayout(self.translation_panel)
+        tr_layout.setContentsMargins(14, 12, 14, 12)
+        tr_layout.setSpacing(6)
+
+        tr_title = QLabel("Translation")
+        tr_title.setStyleSheet("color:#9A9A9A; font-size:11px; font-weight:900; border:none;")
+        self.translation_lbl = QLabel("")
+        self.translation_lbl.setWordWrap(True)
+        self.translation_lbl.setStyleSheet("color:#E6E6E6; font-size:13px; font-weight:700; border:none;")
+
+        tr_layout.addWidget(tr_title)
+        tr_layout.addWidget(self.translation_lbl)
+        self.translation_panel.hide()
+        root.addWidget(self.translation_panel)
 
         ctrl = QHBoxLayout()
         ctrl.setSpacing(10)
-        ctrl.setContentsMargins(0, 2, 0, 2)  # Reduced vertical margins
 
-        self.btn_backspace = QPushButton("Backspace")
-        self.btn_backspace.setFixedHeight(38)
+        self.btn_backspace = QPushButton("Undo")
         self.btn_backspace.setStyleSheet(_btn_secondary())
-        self.btn_backspace.clicked.connect(self._backspace)
 
         self.btn_clear = QPushButton("Clear")
-        self.btn_clear.setFixedHeight(38)
         self.btn_clear.setStyleSheet(_btn_secondary())
-        self.btn_clear.clicked.connect(self.clear_sentence)
+
+        self.btn_skip = QPushButton("Skip")
+        self.btn_skip.setStyleSheet(_btn_secondary())
+
+        self.btn_check = QPushButton("Check")
+        self.btn_check.setStyleSheet(_btn_colored("#1F5F3A", "#FFFFFF"))
 
         ctrl.addWidget(self.btn_backspace)
         ctrl.addWidget(self.btn_clear)
         ctrl.addStretch(1)
+        ctrl.addWidget(self.btn_skip)
+        ctrl.addWidget(self.btn_check)
         root.addLayout(ctrl)
 
-        bank_title = QLabel("Word bank")
-        bank_title.setStyleSheet("QLabel { font-weight: 900; color:#B0B0B0; }")
-        bank_title.setContentsMargins(0, 2, 0, 2)
-        root.addWidget(bank_title)
-
-        self.bank_wrap = QWidget()
-        self.bank_flow = FlowLayout(self.bank_wrap, margin=0, hspacing=4, vspacing=4)
-        self.bank_wrap.setLayout(self.bank_flow)
-        self.bank_wrap.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-
-        self.bank_scroll = QScrollArea()
-        self.bank_scroll.setWidgetResizable(True)
-        self.bank_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.bank_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.bank_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.bank_scroll.setStyleSheet("QScrollArea { background: transparent; }")
-        self.bank_scroll.setWidget(self.bank_wrap)
-        self.bank_scroll.setMinimumHeight(54)
-        self.bank_scroll.setMaximumHeight(140)
-        self.bank_scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        root.addWidget(self.bank_scroll)
-
-        action = QHBoxLayout()
-        action.setSpacing(10)
-        action.setContentsMargins(0, 4, 0, 4)
-
-        self.btn_skip = QPushButton("Skip")
-        self.btn_skip.setFixedHeight(56)
-        self.btn_skip.setMinimumWidth(110)
-        self.btn_skip.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-        self.btn_skip.setStyleSheet(
-            _btn_colored("#6B9FFF", fg="#0B0B0B")
-            + " QPushButton { padding-top: 7px; padding-bottom: 7px; }"
+        self.feedback_frame = QFrame()
+        self.feedback_frame.setStyleSheet(
+            """
+            QFrame {
+                background-color: #101010;
+                border: 1px solid #2A2A2A;
+                border-radius: 14px;
+            }
+            """
         )
-        self.btn_skip.clicked.connect(self._emit_skip)
+        feedback_layout = QVBoxLayout(self.feedback_frame)
+        feedback_layout.setContentsMargins(14, 12, 14, 12)
+        feedback_layout.setSpacing(6)
 
-        self.btn_check = QPushButton("Check")
-        self.btn_check.setFixedHeight(56)
-        self.btn_check.setMinimumWidth(110)
-        self.btn_check.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-        self.btn_check.setStyleSheet(
-            _btn_colored("#66E39A", fg="#0B0B0B")
-            + " QPushButton { padding-top: 7px; padding-bottom: 7px; }"
+        self.result_lbl = QLabel("")
+        self.result_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.result_lbl.setWordWrap(True)
+        self.result_lbl.setStyleSheet(
+            "color:#D0D0D0; font-size:22px; font-weight:950; border:none;"
         )
-        self.btn_check.clicked.connect(lambda: self.check_clicked.emit(self.typed_text()))
 
-        action.addWidget(self.btn_skip)
-        action.addStretch(1)
-        action.addWidget(self.btn_check)
-        root.addLayout(action)
-
-        self.result = QLabel("Press Check to compare your built sentence.")
-        self.result.setWordWrap(True)
-        self.result.setStyleSheet(
-            "QLabel { background:#101010; border:1px solid #2A2A2A; border-radius:10px; padding:10px; color:#B0B0B0; }"
+        self.details_lbl = QLabel("")
+        self.details_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.details_lbl.setWordWrap(True)
+        self.details_lbl.setStyleSheet(
+            "color:#AFAFAF; font-size:12px; font-weight:700; border:none;"
         )
-        root.addWidget(self.result)
+
+        self.expected_lbl = QLabel("")
+        self.expected_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.expected_lbl.setWordWrap(True)
+        self.expected_lbl.setStyleSheet(
+            "color:#E6E6E6; font-size:14px; font-weight:800; border:none;"
+        )
+
+        feedback_layout.addWidget(self.result_lbl)
+        feedback_layout.addWidget(self.details_lbl)
+        feedback_layout.addWidget(self.expected_lbl)
+        self.feedback_frame.hide()
+        root.addWidget(self.feedback_frame)
+
+        self.rating_frame = QFrame()
+        self.rating_frame.setStyleSheet(
+            """
+            QFrame {
+                background-color: #101010;
+                border: 1px solid #2A2A2A;
+                border-radius: 14px;
+            }
+            """
+        )
+        rate_outer = QVBoxLayout(self.rating_frame)
+        rate_outer.setContentsMargins(12, 12, 12, 12)
+        rate_outer.setSpacing(8)
+
+        self.rate_title = QLabel("How did that feel?")
+        self.rate_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.rate_title.setStyleSheet(
+            "color:#B8B8B8; font-size:12px; font-weight:900; border:none;"
+        )
 
         rate_row = QHBoxLayout()
         rate_row.setSpacing(10)
-        rate_row.setContentsMargins(0, 4, 0, 0)  # Reduced bottom margin
 
         self.btn_again = QPushButton("Again")
         self.btn_hard = QPushButton("Hard")
         self.btn_good = QPushButton("Good")
         self.btn_easy = QPushButton("Easy")
 
-        for i, b in enumerate([self.btn_again, self.btn_hard, self.btn_good, self.btn_easy]):
-            b.setFixedHeight(38)
-            b.setStyleSheet(_rating_style(i))
-            b.setEnabled(False)
-            rate_row.addWidget(b)
+        self.btn_again.setStyleSheet(_rating_style(0))
+        self.btn_hard.setStyleSheet(_rating_style(1))
+        self.btn_good.setStyleSheet(_rating_style(2))
+        self.btn_easy.setStyleSheet(_rating_style(3))
 
+        for btn in (self.btn_again, self.btn_hard, self.btn_good, self.btn_easy):
+            btn.setMinimumHeight(40)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            rate_row.addWidget(btn)
+
+        rate_outer.addWidget(self.rate_title)
+        rate_outer.addLayout(rate_row)
+        root.addWidget(self.rating_frame)
+
+        self.tip_btn.clicked.connect(self._reveal_tip)
+        self.tr_btn.clicked.connect(self._reveal_translation)
+        self.btn_backspace.clicked.connect(self._on_backspace)
+        self.btn_clear.clicked.connect(self._on_clear)
+        self.btn_skip.clicked.connect(self.skipped.emit)
+        self.btn_check.clicked.connect(self._emit_check)
         self.btn_again.clicked.connect(lambda: self.rated.emit(0))
         self.btn_hard.clicked.connect(lambda: self.rated.emit(1))
         self.btn_good.clicked.connect(lambda: self.rated.emit(2))
         self.btn_easy.clicked.connect(lambda: self.rated.emit(3))
 
-        root.addLayout(rate_row)
-        
-    def reset_for_next(self):
-        self._bank = []
-        self._used = set()
-        self._built = []
+    def reset_for_next(self) -> None:
+        self._checked = False
+        self._locked = False
+        self._result_ok = None
+        self._words = []
+        self._selected_tokens = []
         self._tip_text = None
-        self._tr_text = None
+        self._translation_text = None
 
-        self.tip_label.setVisible(False)
-        self.tr_label.setVisible(False)
-        self.tip_label.setGraphicsEffect(None)
-        self.tr_label.setGraphicsEffect(None)
-        self._blur_tip = None
-        self._blur_tr = None
+        self.tip_lbl.clear()
+        self.translation_lbl.clear()
+        self.result_lbl.clear()
+        self.details_lbl.clear()
+        self.expected_lbl.clear()
+
+        self.feedback_frame.hide()
+        self.tip_panel.hide()
+        self.translation_panel.hide()
+
+        self.tip_btn.setText("Reveal tip")
+        self.tr_btn.setText("Reveal translation")
 
         self.tip_btn.setEnabled(False)
         self.tr_btn.setEnabled(False)
 
-        self.result.setText("Press Check to compare your built sentence.")
-
         self.btn_check.setEnabled(True)
         self.btn_skip.setEnabled(True)
-        for b in (self.btn_again, self.btn_hard, self.btn_good, self.btn_easy):
-            b.setEnabled(False)
+        self.btn_backspace.setEnabled(False)
+        self.btn_clear.setEnabled(False)
 
-        try:
-            self.bank_flow.clear(delete_widgets=True)
-            self.built_flow.clear(delete_widgets=True)
-        except Exception:
-            logging.exception("FlowLayout.clear() failed")
+        self.btn_again.setEnabled(False)
+        self.btn_hard.setEnabled(False)
+        self.btn_good.setEnabled(False)
+        self.btn_easy.setEnabled(False)
 
-        self._fit_scroll_heights()
+        self._clear_layout(self.bank_flow)
+        self._clear_layout(self.built_flow)
 
-    def set_item(self, *, words: list[str], tip: str | None, translation: str | None):
+        self._bank_buttons.clear()
+        self._built_buttons.clear()
+
+        self.empty_lbl.show()
+        self._update_count()
+        self._refresh_answer_area_style()
+
+    def set_item(self, *, words: list[str], tip: str | None, translation: str | None) -> None:
         self.reset_for_next()
-        self._bank = [(i, str(tok)) for i, tok in enumerate(words or [])]
-        if len(self._bank) > 1:
-            random.shuffle(self._bank)
 
-        self._tip_text = (tip or "").strip() or None
-        self._tr_text = (translation or "").strip() or None
+        self._words = list(words or [])
+        self._tip_text = tip
+        self._translation_text = translation
 
-        if self._tip_text:
-            self.tip_label.setText(self._tip_text)
-            self.tip_label.setVisible(True)
-            self._blur_tip = QGraphicsBlurEffect()
-            self._blur_tip.setBlurRadius(6.0)
-            self.tip_label.setGraphicsEffect(self._blur_tip)
-            self.tip_btn.setEnabled(True)
+        self.tip_btn.setEnabled(bool(tip))
+        self.tr_btn.setEnabled(bool(translation))
 
-        if self._tr_text:
-            self.tr_label.setText(self._tr_text)
-            self.tr_label.setVisible(True)
-            self._blur_tr = QGraphicsBlurEffect()
-            self._blur_tr.setBlurRadius(6.0)
-            self.tr_label.setGraphicsEffect(self._blur_tr)
-            self.tr_btn.setEnabled(True)
+        for word in self._words:
+            btn = QPushButton(word)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setStyleSheet(_chip_style(self.accent, used=False))
+            btn.clicked.connect(lambda checked=False, b=btn: self._select_from_bank(b))
+            self.bank_flow.addWidget(btn)
+            self._bank_buttons.append(btn)
 
-        self._rebuild_bank()
-        self._rebuild_built()
-        self._fit_scroll_heights()
+        self._update_count()
+        self._refresh_answer_area_style()
 
     def typed_text(self) -> str:
-        toks = [self._token_for_id(i) for i in self._built]
-        toks = [t for t in toks if t]
-        return self._join_tokens(toks)
+        return self._join_tokens(self._selected_tokens)
 
-    @staticmethod
-    def _join_tokens(tokens: list[str]) -> str:
-        no_space_before = {".", ",", "!", "?", ";", ":", ")", "]", "}", "…"}
-        no_space_after = {"(", "[", "{", "\"", "„", "“"}
-        out: list[str] = []
-        for i, tok in enumerate(tokens):
-            if i == 0:
-                out.append(tok)
-                continue
-            prev = tokens[i - 1]
-            if tok in no_space_before:
-                out.append(tok)
-            elif prev in no_space_after:
-                out.append(tok)
-            else:
-                out.append(" " + tok)
-        return "".join(out)
+    def show_result(self, ok: bool, expected: str = "", details: str = "") -> None:
+        self._checked = True
+        self._result_ok = bool(ok)
 
-    def show_result(self, *, ok: bool, expected: str, details: str | None = None):
-        badge = "✅ Correct" if ok else "❌ Not quite"
-        extra = f"\n\n{details.strip()}" if details and details.strip() else ""
-        self.result.setText(f"{badge}\n\nExpected:\n{expected}{extra}")
+        if ok:
+            self.result_lbl.setText("✓ Perfect")
+            self.result_lbl.setStyleSheet(
+                "color:#66E39A; font-size:22px; font-weight:950; border:none;"
+            )
+            self.feedback_frame.setStyleSheet(
+                """
+                QFrame {
+                    background-color: #101010;
+                    border: 1px solid #2D6A4F;
+                    border-radius: 14px;
+                }
+                """
+            )
+        else:
+            has_details = bool(details)
+            self.result_lbl.setText("⚠ Word Order Issue" if has_details else "✗ Incorrect")
+            self.result_lbl.setStyleSheet(
+                "color:#FFB020; font-size:22px; font-weight:950; border:none;"
+                if has_details
+                else "color:#FF6B6B; font-size:22px; font-weight:950; border:none;"
+            )
+            self.feedback_frame.setStyleSheet(
+                """
+                QFrame {
+                    background-color: #101010;
+                    border: 1px solid #5A2A2A;
+                    border-radius: 14px;
+                }
+                """
+            )
 
-        for b in (self.btn_again, self.btn_hard, self.btn_good, self.btn_easy):
-            b.setEnabled(True)
+        self.details_lbl.setText(details or "")
+        self.expected_lbl.setText(f"Expected: {expected}" if expected else "")
+        self.feedback_frame.show()
 
         self.btn_check.setEnabled(False)
         self.btn_skip.setEnabled(False)
-        for btn in self.bank_wrap.findChildren(QPushButton):
-            btn.setEnabled(False)
-        for btn in self.built_wrap.findChildren(QPushButton):
-            btn.setEnabled(False)
 
-    def lock_after_finish(self, message: str):
+        self.btn_again.setEnabled(True)
+        self.btn_hard.setEnabled(True)
+        self.btn_good.setEnabled(True)
+        self.btn_easy.setEnabled(True)
+
+        self._refresh_answer_area_style()
+
+    def lock_after_finish(self, message: str) -> None:
         self.reset_for_next()
-        self.prompt.setText(message)
+        self._locked = True
+
+        self.result_lbl.setText(message)
+        self.result_lbl.setStyleSheet(
+            "color:#E6E6E6; font-size:22px; font-weight:950; border:none;"
+        )
+        self.feedback_frame.show()
+
+        self.empty_lbl.setText("No sentence reviews available.")
+        self.empty_lbl.show()
+        self.count_lbl.setText("0 / 0 words used")
+
         self.btn_check.setEnabled(False)
         self.btn_skip.setEnabled(False)
-        for b in (self.btn_again, self.btn_hard, self.btn_good, self.btn_easy):
-            b.setEnabled(False)
+        self.btn_backspace.setEnabled(False)
+        self.btn_clear.setEnabled(False)
+        self.tip_btn.setEnabled(False)
+        self.tr_btn.setEnabled(False)
 
-    def _token_for_id(self, token_id: int) -> str:
-        for i, t in self._bank:
-            if i == token_id:
-                return t
-        return ""
+        self.btn_again.setEnabled(False)
+        self.btn_hard.setEnabled(False)
+        self.btn_good.setEnabled(False)
+        self.btn_easy.setEnabled(False)
 
-    def _update_line(self):
-        # No longer needed since we removed the QLineEdit
-        pass
+        self._refresh_answer_area_style()
 
-    def _flow_content_height(self, wrap: QWidget, fallback: int) -> int:
-        try:
-            wrap.adjustSize()
-            hint = wrap.sizeHint()
-            h = hint.height()
-            if h and h > 0:
-                return h
-        except Exception:
-            pass
-        return fallback
+    def _join_tokens(self, tokens: list[str]) -> str:
+        return " ".join(token.strip() for token in tokens if token is not None).strip()
 
-    def _fit_scroll_heights(self):
-        try:
-            # Calculate heights based on content
-            built_h = self._flow_content_height(self.built_wrap, 42) + 10
-            built_h = max(52, min(built_h, 96))
-            self.built_scroll.setFixedHeight(built_h)
-
-            bank_h = self._flow_content_height(self.bank_wrap, 42) + 10
-            bank_h = max(54, min(bank_h, 140))
-            self.bank_scroll.setFixedHeight(bank_h)
-
-            self.updateGeometry()
-        except Exception:
-            logging.exception("SentenceBuilderWidget._fit_scroll_heights failed")
-
-    def _rebuild_bank(self):
-        try:
-            self.bank_flow.clear(delete_widgets=True)
-
-            if not self._bank:
-                hint = QLabel("No word bank loaded.", self.bank_wrap)
-                hint.setStyleSheet("QLabel { color:#808080; padding: 6px; }")
-                hint.setWordWrap(True)
-                hint.show()
-                self.bank_flow.addWidget(hint)
-            else:
-                for token_id, tok in self._bank:
-                    b = QPushButton(tok, self.bank_wrap)
-                    b.setCheckable(True)
-                    b.setChecked(token_id in self._used)
-                    b.setStyleSheet(_chip_style(self._accent, used=(token_id in self._used)))
-                    b.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
-                    b.setFocusPolicy(Qt.NoFocus)
-                    b.show()
-                    b.clicked.connect(lambda checked=False, tid=token_id: self._toggle_token(tid))
-                    self.bank_flow.addWidget(b)
-
-            self.bank_flow.invalidate()
-            self.bank_wrap.updateGeometry()
-            self.bank_wrap.update()
-        except Exception:
-            logging.exception("SentenceBuilderWidget._rebuild_bank failed")
-
-    def _rebuild_built(self):
-        try:
-            self.built_flow.clear(delete_widgets=True)
-
-            for token_id in self._built:
-                tok = self._token_for_id(token_id)
-                b = QPushButton(tok, self.built_wrap)
-                b.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: #1B1B1B;
-                        color: #FFFFFF;
-                        border: 1px solid {self._accent};
-                        border-radius: 16px;
-                        padding: 9px 14px;
-                        font-weight: 900;
-                        font-size: 14px;
-                        min-height: 38px;
-                    }}
-                    QPushButton:hover {{ border: 1px solid #FFFFFF; }}
-                """)
-                b.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
-                b.setFocusPolicy(Qt.NoFocus)
-                b.show()
-                b.clicked.connect(lambda checked=False, tid=token_id: self._remove_token(tid))
-                self.built_flow.addWidget(b)
-
-            # Removed _update_line() call since we removed the QLineEdit
-            self.built_flow.invalidate()
-            self.built_wrap.updateGeometry()
-            self.built_wrap.update()
-        except Exception:
-            logging.exception("SentenceBuilderWidget._rebuild_built failed")
-
-    def _toggle_token(self, token_id: int):
-        if token_id in self._used:
-            self._remove_token(token_id)
+    def _select_from_bank(self, btn: QPushButton) -> None:
+        if self._locked:
             return
-        self._used.add(token_id)
-        self._built.append(token_id)
-        self._prevent_layout_jumps()  # Add this line
-        self._rebuild_bank()
-        self._rebuild_built()
-        self._fit_scroll_heights()
 
-    def _remove_token(self, token_id: int):
-        if token_id in self._used:
-            self._used.remove(token_id)
-        self._built = [i for i in self._built if i != token_id]
-        self._prevent_layout_jumps()  # Add this line
-        self._rebuild_bank()
-        self._rebuild_built()
-        self._fit_scroll_heights()
+        token = btn.text()
+        btn.setVisible(False)
+        btn.setEnabled(False)
+        btn.setStyleSheet(_chip_style(self.accent, used=True))
 
-    def _backspace(self):
-        if self._built:
-            self._prevent_layout_jumps()  # Add this line
-            self._remove_token(self._built[-1])
+        built_btn = QPushButton(token)
+        built_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        built_btn.setStyleSheet(self._built_chip_style())
+        built_btn.clicked.connect(lambda checked=False, b=built_btn: self._remove_built_chip(b))
+        self.built_flow.addWidget(built_btn)
 
-    def clear_sentence(self):
-        self._used = set()
-        self._built = []
-        self._prevent_layout_jumps()  # Add this line
-        self._rebuild_bank()
-        self._rebuild_built()
-        self._fit_scroll_heights()
+        self._built_buttons.append(built_btn)
+        self._selected_tokens.append(token)
 
+        self.empty_lbl.setVisible(len(self._selected_tokens) == 0)
+        self._update_count()
+        self._refresh_answer_area_style()
 
-    def _on_tip(self):
-        if self._blur_tip is not None:
-            self.tip_label.setGraphicsEffect(None)
-            self._blur_tip = None
-            self.tip_btn.setEnabled(False)
+    def _remove_built_chip(self, built_btn: QPushButton) -> None:
+        if self._locked:
+            return
+
+        idx = self._built_buttons.index(built_btn) if built_btn in self._built_buttons else -1
+        if idx < 0:
+            return
+
+        token = built_btn.text()
+
+        self._built_buttons.pop(idx)
+        if idx < len(self._selected_tokens):
+            self._selected_tokens.pop(idx)
+
+        built_btn.setParent(None)
+        built_btn.deleteLater()
+
+        self._restore_one_bank_button(token)
+        self.empty_lbl.setVisible(len(self._selected_tokens) == 0)
+        self._update_count()
+        self._refresh_answer_area_style()
+
+    def _restore_one_bank_button(self, token: str) -> None:
+        for btn in self._bank_buttons:
+            if btn.text() == token and not btn.isVisible():
+                btn.setVisible(True)
+                btn.setEnabled(True)
+                btn.setStyleSheet(_chip_style(self.accent, used=False))
+                return
+
+    def _on_backspace(self) -> None:
+        if self._locked or not self._built_buttons:
+            return
+        self._remove_built_chip(self._built_buttons[-1])
+
+    def _on_clear(self) -> None:
+        if self._locked or not self._selected_tokens:
+            return
+
+        while self._built_buttons:
+            self._remove_built_chip(self._built_buttons[-1])
+
+    def _reveal_tip(self) -> None:
+        if not self._tip_text:
+            return
+        self.tip_panel.show()
+        self.tip_lbl.setText(self._tip_text)
+        self.tip_btn.setText("Tip revealed")
         self.tip_clicked.emit()
 
-    def _on_translation(self):
-        if self._blur_tr is not None:
-            self.tr_label.setGraphicsEffect(None)
-            self._blur_tr = None
-            self.tr_btn.setEnabled(False)
+    def _reveal_translation(self) -> None:
+        if not self._translation_text:
+            return
+        self.translation_panel.show()
+        self.translation_lbl.setText(self._translation_text)
+        self.tr_btn.setText("Translation revealed")
         self.translation_clicked.emit()
 
-    def _emit_skip(self):
-        self.skipped.emit()
-        
-    def _prevent_layout_jumps(self):
-        """Prevent layout jumps by fixing heights temporarily"""
-        # Store current heights
-        built_height = self.built_scroll.height()
-        bank_height = self.bank_scroll.height()
-        
-        # Fix heights to prevent jumping
-        self.built_scroll.setFixedHeight(max(52, min(built_height, 96)))
-        self.bank_scroll.setFixedHeight(max(54, min(bank_height, 140)))
+    def _emit_check(self) -> None:
+        if self._locked:
+            return
+        self.check_clicked.emit(self.typed_text())
+
+    def _built_chip_style(self) -> str:
+        return """
+        QPushButton {
+            background-color: #244B36;
+            color: #F4FFF7;
+            border: 1px solid #4CAF50;
+            border-radius: 18px;
+            padding: 10px 16px;
+            font-weight: 900;
+            font-size: 16px;
+            min-height: 42px;
+        }
+        QPushButton:hover {
+            background-color: #2B5B41;
+            border: 1px solid #7AE582;
+        }
+        QPushButton:pressed {
+            background-color: #214734;
+        }
+        """
+
+    def _update_count(self) -> None:
+        used = len(self._selected_tokens)
+        total = len(self._words)
+        self.count_lbl.setText(f"{used} / {total} words used")
+        self.btn_backspace.setEnabled((used > 0) and (not self._locked))
+        self.btn_clear.setEnabled((used > 0) and (not self._locked))
+
+    def _refresh_answer_area_style(self) -> None:
+        if self._locked:
+            border = "#2A2A2A"
+            bg = "#101010"
+        elif self._checked and self._result_ok is True:
+            border = "#2D6A4F"
+            bg = "#0F1713"
+        elif self._checked and self._result_ok is False:
+            border = "#7A4D1D" if self._selected_tokens else "#5A2A2A"
+            bg = "#17120D" if self._selected_tokens else "#170F0F"
+        else:
+            border = "#3A3A3A" if self._selected_tokens else "#2E2E2E"
+            bg = "#111111" if self._selected_tokens else "#101010"
+
+        self.answer_frame.setStyleSheet(
+            f"""
+            QFrame {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 18px;
+            }}
+            """
+        )
+
+    def _clear_layout(self, layout: Any) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            if item is None:
+                continue
+
+            widget = item.widget()
+            child_layout = item.layout()
+
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+            elif child_layout is not None:
+                self._clear_layout(child_layout)
