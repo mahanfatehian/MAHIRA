@@ -4,10 +4,19 @@ import random
 import time
 from typing import Any
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout , QApplication
+from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QPushButton,
+    QHBoxLayout,
+    QMessageBox,
+)
 
 from core.session import SessionService
+from core.audio import PiperModelManager, PronunciationService, PlaybackService
+from ui.widgets.audio_button import AudioButton
 from ui.widgets.card_widget import CardWidget, VocabCheckPayload
 from ui.widgets.special_char_keyboard import SpecialCharKeyboard
 
@@ -21,6 +30,23 @@ def _gender_norm(s: str) -> str:
     mapping = {"der": "m", "die": "f", "das": "n"}
     return mapping.get(s, s)
 
+
+class PronunciationWorker(QObject):
+    finished = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, service: PronunciationService, text: str) -> None:
+        super().__init__()
+        self.service = service
+        self.text = text
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            wav_path = self.service.generate_wav(self.text)
+            self.finished.emit(str(wav_path))
+        except Exception as e:
+            self.failed.emit(str(e))
 
 
 class VocabReviewPage(QWidget):
@@ -47,8 +73,26 @@ class VocabReviewPage(QWidget):
 
         self.card_started_at: float | None = None
 
-        # fallback session queue (only used if SessionService lacks next_item/next_vocab/next)
         self._fallback_ids: list[int] = []
+
+        self.model_manager = PiperModelManager()
+        self.pronunciation_service = PronunciationService(self.model_manager)
+        try:
+            self.pronunciation_service.clear_all_cached_audio()
+        except Exception:
+            pass
+        self.playback_service = PlaybackService(self)
+
+
+        self.playback_service.started.connect(self._on_playback_started)
+        self.playback_service.finished.connect(self._on_playback_finished)
+        self.playback_service.failed.connect(self._on_playback_failed)
+
+        self._audio_thread: QThread | None = None
+        self._audio_worker: PronunciationWorker | None = None
+
+        self._current_audio_text: str = ""
+        self._current_audio_path: str = ""
 
         layout = QVBoxLayout(self)
 
@@ -71,9 +115,24 @@ class VocabReviewPage(QWidget):
         top.addWidget(btn_start)
         top.addWidget(btn_progress)
 
-        # ✅ Special character keyboard (DE etc.)
+        audio_row = QHBoxLayout()
+
+        self.word_preview = QLabel("")
+        self.word_preview.setStyleSheet("font-size:15px; font-weight:600;")
+
+        self.audio_button = AudioButton()
+        self.audio_button.clicked.connect(self._play_current_word_pronunciation)
+
+        self.audio_status = QLabel("")
+        self.audio_status.setStyleSheet("color:#666;")
+
+        audio_row.addWidget(self.word_preview)
+        audio_row.addWidget(self.audio_button)
+        audio_row.addWidget(self.audio_status)
+        audio_row.addStretch(1)
+
         self.special_kbd = SpecialCharKeyboard()
-        self.special_kbd.setVisible(False)  # will be enabled in on_show()
+        self.special_kbd.setVisible(False)
 
         self.card = CardWidget()
         self.special_kbd.char_clicked.connect(self.card.insert_special_char)
@@ -84,8 +143,21 @@ class VocabReviewPage(QWidget):
         self.card.skipped.connect(self._on_skipped)
 
         layout.addLayout(top)
-        layout.addWidget(self.special_kbd, 0)  # keyboard appears above the card
+        layout.addLayout(audio_row)
+        layout.addWidget(self.special_kbd, 0)
         layout.addWidget(self.card, 1)
+
+        self.audio_button.setEnabled(False)
+
+    def cleanup_audio_cache_on_startup(self) -> None:
+        """
+        Call this once when app/page starts to remove stale WAV files from previous crashes
+        or unclean shutdowns.
+        """
+        try:
+            self.pronunciation_service.clear_all_cached_audio()
+        except Exception:
+            pass
 
     def _on_tip(self):
         self.tip_used = True
@@ -107,7 +179,6 @@ class VocabReviewPage(QWidget):
             except Exception:
                 return None
 
-        # fallback: compute from state + repo
         lang = getattr(self.session.state, "language_code", None)
         level = getattr(self.session.state, "level", None)
         obj = getattr(self.session.state, "objective", None) or "vocab"
@@ -118,7 +189,6 @@ class VocabReviewPage(QWidget):
         return None
 
     def on_show(self):
-        # ✅ configure keyboard for current language
         lang = getattr(self.session.state, "language_code", "de") or "de"
         self.special_kbd.set_language(lang)
 
@@ -130,9 +200,12 @@ class VocabReviewPage(QWidget):
             self.card.set_helper("Go to Home and select language, level, and objective.")
             self.card.configure_fields(ask_gender=False, ask_plural=False)
             self.card.lock_after_check()
+
+            self.word_preview.setText("")
+            self.audio_status.setText("")
+            self.audio_button.setEnabled(False)
             return
 
-        # If SessionService has its own sessions, use it. Otherwise build fallback ids.
         if hasattr(self.session, "remaining") and callable(self.session.remaining):
             try:
                 if self.session.remaining() == 0 and hasattr(self.session, "start_new_session"):
@@ -152,6 +225,10 @@ class VocabReviewPage(QWidget):
             self.card.set_helper("Go to language, level, then objective.")
             self.card.configure_fields(False, False)
             self.card.lock_after_check()
+
+            self.word_preview.setText("")
+            self.audio_status.setText("")
+            self.audio_button.setEnabled(False)
             return
 
         if hasattr(self.session, "start_new_session"):
@@ -204,7 +281,48 @@ class VocabReviewPage(QWidget):
                 return fn()
         return None
 
+    def _extract_word_for_audio(self, item: Any) -> str:
+        if not item:
+            return ""
+
+        word = getattr(item, "word", "") or ""
+
+        if hasattr(self.session, "prompt_text"):
+            try:
+                prompt = self.session.prompt_text(item)
+                if isinstance(prompt, str) and prompt.strip():
+                    word = prompt.strip()
+            except Exception:
+                pass
+
+        return word.strip()
+
+    def _clear_current_audio_cache(self) -> None:
+        """
+        Delete cached audio for the current card/word so cache does not grow indefinitely.
+        Safe to call multiple times.
+        """
+        self.playback_service.stop()
+
+        deleted = False
+
+        if self._current_audio_path:
+            deleted = self.pronunciation_service.delete_cached_file(self._current_audio_path)
+
+        if not deleted and self._current_audio_text:
+            self.pronunciation_service.delete_cached_audio(self._current_audio_text)
+
+        self._current_audio_text = ""
+        self._current_audio_path = ""
+
     def _load_next(self):
+        self.playback_service.stop()
+        self.audio_status.setText("")
+        self.audio_button.set_busy(False)
+
+        self._current_audio_text = ""
+        self._current_audio_path = ""
+
         self._update_counter()
 
         self.current_item = self._next_item_any_api()
@@ -235,22 +353,23 @@ class VocabReviewPage(QWidget):
             self.card.set_helper("Click Start New Session to practice another set.")
             self.card.lock_after_check()
             self._update_counter()
+
+            self.word_preview.setText("")
+            self.audio_status.setText("")
+            self.audio_button.setEnabled(False)
             return
 
         self.card_started_at = time.time()
 
         item = self.current_item
-
-        word = getattr(item, "word", "")
-
-        if hasattr(self.session, "prompt_text"):
-            try:
-                word = self.session.prompt_text(item)
-            except Exception:
-                pass
+        word = self._extract_word_for_audio(item)
 
         self.card.set_prompt(word)
         self.card.set_pos(getattr(item, "pos", ""))
+
+        self.word_preview.setText(word)
+        self.audio_status.setText("")
+        self.audio_button.setEnabled(bool(word))
 
         pos = (getattr(item, "pos", "") or "").lower()
 
@@ -268,18 +387,16 @@ class VocabReviewPage(QWidget):
             ask_plural=ask_plural,
         )
 
-
         if hasattr(self.session.repo, "get_examples"):
             exs = self.session.repo.get_examples(item.id, limit=1)
             if exs:
                 self.example_de, self.example_en = exs[0]
+
         self.card.set_example_de_visible_en_blurred(self.example_de, self.example_en)
         self.card.set_helper("")
         self._update_counter()
 
     def _check_fields_fallback(self, item, typed_meaning: str, typed_gender: str, typed_plural: str) -> dict:
-        
-
         expected_meaning = getattr(item, "meaning", "") or ""
         meaning_ok = (_norm(typed_meaning) == _norm(expected_meaning)) if expected_meaning else None
 
@@ -313,14 +430,27 @@ class VocabReviewPage(QWidget):
 
         if hasattr(self.session, "check_vocab_fields"):
             try:
-                res = self.session.check_vocab_fields(self.current_item, self.typed_meaning, self.typed_gender, self.typed_plural)
+                res = self.session.check_vocab_fields(
+                    self.current_item,
+                    self.typed_meaning,
+                    self.typed_gender,
+                    self.typed_plural,
+                )
             except Exception:
-                res = self._check_fields_fallback(self.current_item, self.typed_meaning, self.typed_gender, self.typed_plural)
+                res = self._check_fields_fallback(
+                    self.current_item,
+                    self.typed_meaning,
+                    self.typed_gender,
+                    self.typed_plural,
+                )
         else:
-            res = self._check_fields_fallback(self.current_item, self.typed_meaning, self.typed_gender, self.typed_plural)
+            res = self._check_fields_fallback(
+                self.current_item,
+                self.typed_meaning,
+                self.typed_gender,
+                self.typed_plural,
+            )
 
-
-        
         meaning_label = "Meaning"
 
         payload = VocabCheckPayload(
@@ -362,5 +492,77 @@ class VocabReviewPage(QWidget):
             except Exception:
                 pass
 
-
+        self._clear_current_audio_cache()
         self._load_next()
+
+    def _play_current_word_pronunciation(self) -> None:
+        if not self.current_item:
+            return
+
+        word = self._extract_word_for_audio(self.current_item)
+        if not word:
+            return
+
+        self._current_audio_text = word
+
+        self.playback_service.stop()
+        self.audio_button.set_busy(True)
+        self.audio_status.setText("Generating...")
+
+        self._audio_thread = QThread(self)
+        self._audio_worker = PronunciationWorker(
+            service=self.pronunciation_service,
+            text=word,
+        )
+
+        self._audio_worker.moveToThread(self._audio_thread)
+
+        self._audio_thread.started.connect(self._audio_worker.run)
+        self._audio_worker.finished.connect(self._on_audio_ready)
+        self._audio_worker.failed.connect(self._on_audio_failed)
+
+        self._audio_worker.finished.connect(self._audio_thread.quit)
+        self._audio_worker.failed.connect(self._audio_thread.quit)
+
+        self._audio_worker.finished.connect(self._audio_worker.deleteLater)
+        self._audio_worker.failed.connect(self._audio_worker.deleteLater)
+        self._audio_thread.finished.connect(self._audio_thread.deleteLater)
+
+        self._audio_thread.start()
+
+    @Slot(str)
+    def _on_audio_ready(self, wav_path: str) -> None:
+        self._current_audio_path = wav_path
+        self.audio_button.set_busy(False)
+        self.audio_status.setText("Playing...")
+        self.playback_service.play_file(wav_path)
+
+    @Slot(str)
+    def _on_audio_failed(self, message: str) -> None:
+        self.audio_button.set_busy(False)
+        self.audio_status.setText("Failed")
+        QMessageBox.warning(self, "Pronunciation Error", message)
+
+    @Slot(str)
+    def _on_playback_started(self, path: str) -> None:
+        self.audio_status.setText("Playing...")
+
+    @Slot()
+    def _on_playback_finished(self) -> None:
+        self.audio_status.setText("")
+
+    @Slot(str)
+    def _on_playback_failed(self, message: str) -> None:
+        self.audio_status.setText("Playback failed")
+        QMessageBox.warning(self, "Playback Error", message)
+
+    def closeEvent(self, event) -> None:
+        """
+        Extra safety: if page/widget is closed while a temp audio file exists,
+        try to clean it up.
+        """
+        try:
+            self._clear_current_audio_cache()
+        except Exception:
+            pass
+        super().closeEvent(event)
