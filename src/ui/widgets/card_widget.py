@@ -1,26 +1,22 @@
-# ui/widgets/card_widget.py
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from PySide6.QtWidgets import QApplication
-
-from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
+    QGraphicsBlurEffect,
+    QGridLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
-    QHBoxLayout,
-    QFormLayout,
-    QGraphicsBlurEffect,
-    QFrame,
-    QGridLayout,
     QScrollArea,
     QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 
@@ -28,7 +24,8 @@ class GlowBadge(QLabel):
     def __init__(self, text: str = "", parent=None):
         super().__init__(text, parent)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setMinimumSize(70, 28)
+        self.setMinimumHeight(28)
+        self.setMinimumWidth(74)
 
         font = QFont("Segoe UI", 9, QFont.Weight.Bold)
         font.setCapitalization(QFont.Capitalization.AllUppercase)
@@ -49,20 +46,21 @@ class GlowBadge(QLabel):
             "PHRASE": QColor("#607D8B"),
             "OTHER": QColor("#9E9E9E"),
         }
-        color = color_map.get(text, QColor("#673AB7"))
-        self.setStyleSheet(f"""
+        color = color_map.get(text, QColor("#8C7BFF"))
+        self.setStyleSheet(
+            f"""
             QLabel {{
-                background-color: rgba(30, 30, 30, 220);
+                background-color: #181818;
                 color: {color.name()};
+                border: 1px solid {color.name()}66;
                 border-radius: 14px;
-                font-weight: 700;
+                padding: 4px 10px;
                 font-size: 10px;
-                padding: 4px 8px;
-                border: 1px solid {color.name()}80;
-                min-width: 70px;
-                min-height: 28px;
+                font-weight: 900;
+                letter-spacing: 0.5px;
             }}
-        """)
+            """
+        )
 
 
 @dataclass(frozen=True)
@@ -83,17 +81,8 @@ class VocabCheckPayload:
 
 
 class CardWidget(QWidget):
-    """
-    Vocab review card UI.
-
-    Important:
-    - Recommendation logic is inside this widget.
-    - Results panel always renders (no more "not visible" bug).
-    - Scroll area prevents compression when results appear.
-    """
-
-    check_clicked = Signal(str, str, str)   # meaning, gender, plural
-    rated = Signal(int)                    # 0..3 Again/Hard/Good/Easy
+    check_clicked = Signal(str, str, str)
+    rated = Signal(int)
     tip_clicked = Signal()
     gender_tip_clicked = Signal()
     skipped = Signal()
@@ -107,14 +96,20 @@ class CardWidget(QWidget):
         self._gender_tip_text: str | None = None
         self._recommended_rating: int | None = None
 
-        self.setStyleSheet("""
-            CardWidget {
+        self.setObjectName("VocabCardWidget")
+        self.setStyleSheet(
+            """
+            QWidget#VocabCardWidget {
                 background-color: #141414;
-                border-radius: 12px;
                 border: 1px solid #2A2A2A;
+                border-radius: 16px;
             }
-            QLabel { color: #E6E6E6; }
-        """)
+            QLabel {
+                color: #E6E6E6;
+                border: none;
+            }
+            """
+        )
 
         self._setup_ui()
 
@@ -122,204 +117,196 @@ class CardWidget(QWidget):
         self.in_gender.focusInEvent = self._make_focus_handler(self.in_gender)
         self.in_plural.focusInEvent = self._make_focus_handler(self.in_plural)
 
-
         self._connect_signals()
         self.reset_for_next()
-
 
     def _make_focus_handler(self, widget: QLineEdit):
         def handler(event):
             self._active_input = widget
             QLineEdit.focusInEvent(widget, event)
         return handler
-    
-    # ---------------- UI ----------------
+
     def _setup_ui(self):
         root = QVBoxLayout(self)
-        root.setSpacing(10)
-        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(12)
+        root.setContentsMargins(18, 18, 18, 18)
 
-        # Header
-        header_layout = QHBoxLayout()
-        header_layout.setSpacing(10)
+        header = QHBoxLayout()
+        header.setSpacing(12)
 
-        prompt_container = QVBoxLayout()
-        prompt_container.setSpacing(2)
+        title_col = QVBoxLayout()
+        title_col.setSpacing(4)
 
         self.prompt_label = QLabel("")
         self.prompt_label.setWordWrap(True)
-        self.prompt_label.setStyleSheet("""
+        self.prompt_label.setStyleSheet(
+            """
             QLabel {
-                font-size: 20px;
-                font-weight: 800;
+                font-size: 24px;
+                font-weight: 950;
                 color: #FFFFFF;
-                font-family: 'Segoe UI', Arial, sans-serif;
+                line-height: 1.15;
             }
-        """)
+            """
+        )
         self.prompt_label.setSizePolicy(
             QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Preferred
+            QSizePolicy.Policy.Preferred,
         )
 
-        # ✅ THIS WAS MISSING
-        prompt_container.addWidget(self.prompt_label)
+        self.prompt_sub = QLabel("Recall the meaning and any required noun details.")
+        self.prompt_sub.setWordWrap(True)
+        self.prompt_sub.setStyleSheet(
+            """
+            QLabel {
+                font-size: 12px;
+                font-weight: 700;
+                color: #8E8E93;
+            }
+            """
+        )
+
+        title_col.addWidget(self.prompt_label)
+        title_col.addWidget(self.prompt_sub)
 
         self.pos_badge = GlowBadge("")
-        self.pos_badge.setFixedWidth(80)
+        self.pos_badge.setVisible(False)
+        self.pos_badge.setFixedWidth(86)
 
-        header_layout.addLayout(prompt_container, 1)
-        header_layout.addWidget(self.pos_badge, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        header.addLayout(title_col, 1)
+        header.addWidget(
+            self.pos_badge,
+            0,
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight,
+        )
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("QFrame { background-color: #2A2A2A; margin: 4px 0; }")
+        sep.setStyleSheet("QFrame { background-color: #262626; margin: 2px 0 4px 0; }")
 
-        # Scroll area to prevent layout compression
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll.setStyleSheet("QScrollArea { background: transparent; }")
+        self.scroll.setStyleSheet(
+            """
+            QScrollArea { background: transparent; }
+            QScrollBar:vertical {
+                background: #111111;
+                width: 10px;
+                margin: 0;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #2E2E2E;
+                min-height: 24px;
+                border-radius: 5px;
+            }
+            """
+        )
 
         self.content = QWidget()
         self.scroll.setWidget(self.content)
 
         content_layout = QVBoxLayout(self.content)
-        content_layout.setSpacing(10)
+        content_layout.setSpacing(12)
         content_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Example + Translation + Gender Tip
-        example_frame = QFrame()
-        example_frame.setStyleSheet("""
-            QFrame {
-                background-color: #101010;
-                border: 1px solid #2A2A2A;
-                border-radius: 10px;
-                padding: 10px;
-            }
-        """)
-        example_grid = QGridLayout(example_frame)
-        example_grid.setContentsMargins(10, 10, 10, 10)
-        example_grid.setHorizontalSpacing(10)
-        example_grid.setVerticalSpacing(8)
+        info_frame = self._section_frame()
+        info_grid = QGridLayout(info_frame)
+        info_grid.setContentsMargins(14, 14, 14, 14)
+        info_grid.setHorizontalSpacing(10)
+        info_grid.setVerticalSpacing(10)
 
-        label_style = "QLabel { font-weight: 800; color: #B0B0B0; min-width: 90px; font-size: 12px; }"
-        box_style = """
-            QLabel {
-                font-size: 13px;
-                color: #FFFFFF;
-                padding: 8px;
-                background-color: #1D1D1D;
-                border: 1px solid #2E2E2E;
-                border-radius: 8px;
-                line-height: 1.35;
-            }
-        """
-        box_style_dim = """
-            QLabel {
-                font-size: 13px;
-                color: #D0D0D0;
-                padding: 8px;
-                background-color: #1D1D1D;
-                border: 1px solid #2E2E2E;
-                border-radius: 8px;
-                line-height: 1.35;
-            }
-        """
+        self.lab_de = self._section_label("Example")
+        self.example_de = self._value_box(bright=True)
 
-        self.lab_de = QLabel("Example")
-        self.lab_de.setStyleSheet(label_style)
-        self.example_de = QLabel("")
-        self.example_de.setWordWrap(True)
-        self.example_de.setStyleSheet(box_style)
-        self.example_de.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-
-        self.lab_en = QLabel("Translation")
-        self.lab_en.setStyleSheet(label_style)
-        self.example_en = QLabel("")
-        self.example_en.setWordWrap(True)
-        self.example_en.setStyleSheet(box_style_dim)
-        self.example_en.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-
-        self.reveal_en_btn = QPushButton("Reveal")
+        self.lab_en = self._section_label("Translation")
+        self.example_en = self._value_box(bright=False)
+        self.reveal_en_btn = self._secondary_btn("Reveal")
         self.reveal_en_btn.setFixedWidth(100)
-        self.reveal_en_btn.setStyleSheet(self._btn_secondary_style())
 
-        self.lab_gt = QLabel("Gender tip")
-        self.lab_gt.setStyleSheet(label_style)
-        self.gender_tip_label = QLabel("")
-        self.gender_tip_label.setWordWrap(True)
-        self.gender_tip_label.setStyleSheet(box_style_dim)
-        self.gender_tip_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-
-        self.reveal_gender_tip_btn = QPushButton("Show")
+        self.lab_gt = self._section_label("Gender tip")
+        self.gender_tip_label = self._value_box(bright=False)
+        self.reveal_gender_tip_btn = self._secondary_btn("Show")
         self.reveal_gender_tip_btn.setFixedWidth(100)
-        self.reveal_gender_tip_btn.setStyleSheet(self._btn_secondary_style())
 
-        example_grid.addWidget(self.lab_de, 0, 0)
-        example_grid.addWidget(self.example_de, 0, 1, 1, 2)
+        info_grid.addWidget(self.lab_de, 0, 0)
+        info_grid.addWidget(self.example_de, 0, 1, 1, 2)
 
-        example_grid.addWidget(self.lab_en, 1, 0)
-        example_grid.addWidget(self.example_en, 1, 1)
-        example_grid.addWidget(self.reveal_en_btn, 1, 2)
+        info_grid.addWidget(self.lab_en, 1, 0)
+        info_grid.addWidget(self.example_en, 1, 1)
+        info_grid.addWidget(self.reveal_en_btn, 1, 2)
 
-        example_grid.addWidget(self.lab_gt, 2, 0)
-        example_grid.addWidget(self.gender_tip_label, 2, 1)
-        example_grid.addWidget(self.reveal_gender_tip_btn, 2, 2)
+        info_grid.addWidget(self.lab_gt, 2, 0)
+        info_grid.addWidget(self.gender_tip_label, 2, 1)
+        info_grid.addWidget(self.reveal_gender_tip_btn, 2, 2)
 
-        # Inputs
-        form_frame = QFrame()
-        form_frame.setStyleSheet("""
-            QFrame {
-                background-color: #101010;
-                border: 1px solid #2A2A2A;
-                border-radius: 10px;
-                padding: 10px;
-            }
-        """)
+        form_frame = self._section_frame()
         form = QFormLayout(form_frame)
-        form.setSpacing(8)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(14, 14, 14, 14)
+        form.setSpacing(10)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.in_meaning = QLineEdit()
         self.in_gender = QLineEdit()
         self.in_plural = QLineEdit()
 
         self.in_meaning.setPlaceholderText("Type the answer...")
-        self.in_gender.setPlaceholderText("m / f / n (or der/die/das)")
+        self.in_gender.setPlaceholderText("m / f / n or der / die / das")
         self.in_plural.setPlaceholderText("Plural form...")
 
         for w in (self.in_meaning, self.in_gender, self.in_plural):
+            w.setMinimumHeight(40)
             w.setStyleSheet(self._input_style())
-            w.setMinimumHeight(36)
 
-        def lab(text: str) -> QLabel:
-            l = QLabel(text)
-            l.setStyleSheet("QLabel { font-weight: 800; color: #C8C8C8; font-size: 12px; min-width: 80px; }")
-            return l
+        self._meaning_label_widget = self._form_label("Meaning")
+        self._gender_label_widget = self._form_label("Gender")
+        self._plural_label_widget = self._form_label("Plural")
 
-        self._meaning_label_widget = lab("Meaning")
         form.addRow(self._meaning_label_widget, self.in_meaning)
-        form.addRow(lab("Gender"), self.in_gender)
-        form.addRow(lab("Plural"), self.in_plural)
+        form.addRow(self._gender_label_widget, self.in_gender)
+        form.addRow(self._plural_label_widget, self.in_plural)
 
-        # Buttons: Check / Skip
-        action_layout = QHBoxLayout()
-        action_layout.setSpacing(8)
+        action_row = QHBoxLayout()
+        action_row.setSpacing(8)
 
-        self.check_btn = QPushButton("Check")
-        self.check_btn.setMinimumHeight(38)
-        self.check_btn.setStyleSheet(self._btn_primary_style())
+        self.check_btn = self._primary_btn("Check")
+        self.skip_btn = self._skip_btn("Skip")
 
-        self.skip_btn = QPushButton("Skip")
-        self.skip_btn.setMinimumHeight(38)
-        self.skip_btn.setStyleSheet(self._btn_skip_style())
+        self.check_btn.setMinimumHeight(40)
+        self.skip_btn.setMinimumHeight(40)
 
-        action_layout.addWidget(self.check_btn)
-        action_layout.addWidget(self.skip_btn)
+        action_row.addWidget(self.check_btn)
+        action_row.addWidget(self.skip_btn)
 
-        # Rating buttons
-        rating_layout = QHBoxLayout()
-        rating_layout.setSpacing(6)
+        self.results_frame = self._section_frame()
+        self.results_frame.setVisible(False)
+
+        self.results_layout = QGridLayout(self.results_frame)
+        self.results_layout.setContentsMargins(14, 14, 14, 14)
+        self.results_layout.setHorizontalSpacing(10)
+        self.results_layout.setVerticalSpacing(10)
+
+        hdr = QLabel("Check results")
+        hdr.setStyleSheet(
+            "QLabel { font-size: 13px; font-weight: 950; color: #FFFFFF; }"
+        )
+        self.results_layout.addWidget(hdr, 0, 0, 1, 3)
+
+        self._res_rows = {}
+        self._add_result_row("Meaning", 1)
+        self._add_result_row("Gender", 2)
+        self._add_result_row("Plural", 3)
+
+        self.helper = QLabel("")
+        self.helper.setWordWrap(True)
+        self.helper.setStyleSheet(self._helper_style())
+
+        rating_frame = self._section_frame()
+        rating_layout = QHBoxLayout(rating_frame)
+        rating_layout.setContentsMargins(14, 14, 14, 14)
+        rating_layout.setSpacing(8)
 
         self.btn_again = QPushButton("Again")
         self.btn_hard = QPushButton("Hard")
@@ -332,155 +319,201 @@ class CardWidget(QWidget):
             (2, self.btn_good),
             (3, self.btn_easy),
         ]
+
         for r, b in self._rating_buttons:
             b.setEnabled(False)
-            b.setMinimumHeight(36)
+            b.setMinimumHeight(38)
             b.setStyleSheet(self._rating_style(r, recommended=False))
             rating_layout.addWidget(b)
 
-        # Results panel
-        self.results_frame = QFrame()
-        self.results_frame.setVisible(False)
-        self.results_frame.setStyleSheet("""
-            QFrame {
-                background-color: #0E0E0E;
-                border: 1px solid #2E2E2E;
-                border-radius: 10px;
-                padding: 10px;
-            }
-        """)
-        self.results_layout = QGridLayout(self.results_frame)
-        self.results_layout.setContentsMargins(10, 10, 10, 10)
-        self.results_layout.setHorizontalSpacing(10)
-        self.results_layout.setVerticalSpacing(8)
-
-        hdr = QLabel("Results")
-        hdr.setStyleSheet("QLabel { font-size: 13px; font-weight: 900; color: #FFFFFF; }")
-        self.results_layout.addWidget(hdr, 0, 0, 1, 3)
-
-        self._res_rows = {}
-        self._add_result_row("Meaning", 1)
-        self._add_result_row("Gender", 2)
-        self._add_result_row("Plural", 3)
-
-        # Helper text
-        self.helper = QLabel("")
-        self.helper.setWordWrap(True)
-        self.helper.setStyleSheet("""
-            QLabel {
-                font-size: 12px;
-                color: #B8B8B8;
-                padding: 10px 12px;
-                background-color: #101010;
-                border-radius: 10px;
-                border: 1px solid #2A2A2A;
-            }
-        """)
-
-        # Assemble content
-        content_layout.addWidget(example_frame)
+        content_layout.addWidget(info_frame)
         content_layout.addWidget(form_frame)
-        content_layout.addLayout(action_layout)
-        content_layout.addLayout(rating_layout)
+        content_layout.addLayout(action_row)
         content_layout.addWidget(self.results_frame)
         content_layout.addWidget(self.helper)
+        content_layout.addWidget(rating_frame)
         content_layout.addStretch(1)
 
-        # Assemble root
-        root.addLayout(header_layout)
+        root.addLayout(header)
         root.addWidget(sep)
         root.addWidget(self.scroll, 1)
 
-    # ---------------- Styling helpers ----------------
-    @staticmethod
-    def _input_style() -> str:
-        return """
-            QLineEdit {
-                background-color: #1B1B1B;
-                color: #FFFFFF;
-                border: 1px solid #2E2E2E;
-                border-radius: 8px;
-                padding: 8px 10px;
-                font-size: 13px;
-                font-family: 'Segoe UI', Arial, sans-serif;
+    def _section_frame(self) -> QFrame:
+        f = QFrame()
+        f.setStyleSheet(
+            """
+            QFrame {
+                background-color: #101010;
+                border: 1px solid #252525;
+                border-radius: 14px;
             }
-            QLineEdit:focus {
-                border-color: #4A9EFF;
-                background-color: #202020;
-            }
-            QLineEdit:disabled {
-                background-color: #151515;
-                color: #8C8C8C;
-                border-color: #252525;
-            }
-        """
+            """
+        )
+        return f
 
-    @staticmethod
-    def _btn_primary_style() -> str:
-        return """
+    def _section_label(self, text: str) -> QLabel:
+        l = QLabel(text)
+        l.setStyleSheet(
+            """
+            QLabel {
+                font-size: 12px;
+                font-weight: 900;
+                color: #9D9D9D;
+                min-width: 92px;
+            }
+            """
+        )
+        return l
+
+    def _form_label(self, text: str) -> QLabel:
+        l = QLabel(text)
+        l.setStyleSheet(
+            """
+            QLabel {
+                font-size: 12px;
+                font-weight: 900;
+                color: #C9C9C9;
+                min-width: 84px;
+            }
+            """
+        )
+        return l
+
+    def _value_box(self, bright: bool) -> QLabel:
+        lab = QLabel("")
+        lab.setWordWrap(True)
+        lab.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        fg = "#FFFFFF" if bright else "#D5D5D5"
+        lab.setStyleSheet(
+            f"""
+            QLabel {{
+                font-size: 13px;
+                color: {fg};
+                padding: 10px 12px;
+                background-color: #1A1A1A;
+                border: 1px solid #2D2D2D;
+                border-radius: 10px;
+                line-height: 1.35;
+            }}
+            """
+        )
+        return lab
+
+    def _primary_btn(self, text: str) -> QPushButton:
+        b = QPushButton(text)
+        b.setStyleSheet(
+            """
             QPushButton {
                 background-color: #1F5F3A;
                 color: #FFFFFF;
-                border: 1px solid #2E2E2E;
-                border-radius: 8px;
-                padding: 8px 16px;
+                border: 1px solid #2C6E47;
+                border-radius: 12px;
+                padding: 9px 18px;
                 font-weight: 900;
                 font-size: 13px;
             }
-            QPushButton:hover { background-color: #247248; }
+            QPushButton:hover {
+                background-color: #247248;
+                border: 1px solid #FFFFFF;
+            }
             QPushButton:disabled {
                 background-color: #1A1A1A;
                 color: #6B6B6B;
-                border: 1px solid #2A2A2A;
+                border: 1px solid #252525;
             }
-        """
+            """
+        )
+        return b
 
-    @staticmethod
-    def _btn_skip_style() -> str:
-        # Blue skip button (skipping is not "bad")
-        return """
+    def _skip_btn(self, text: str) -> QPushButton:
+        b = QPushButton(text)
+        b.setStyleSheet(
+            """
             QPushButton {
                 background-color: #163A5C;
                 color: #FFFFFF;
-                border: 1px solid #2E2E2E;
-                border-radius: 8px;
-                padding: 8px 16px;
+                border: 1px solid #24537D;
+                border-radius: 12px;
+                padding: 9px 18px;
                 font-weight: 900;
                 font-size: 13px;
             }
-            QPushButton:hover { background-color: #1B4B78; }
+            QPushButton:hover {
+                background-color: #1B4B78;
+                border: 1px solid #FFFFFF;
+            }
             QPushButton:disabled {
                 background-color: #1A1A1A;
                 color: #6B6B6B;
-                border: 1px solid #2A2A2A;
+                border: 1px solid #252525;
             }
-        """
+            """
+        )
+        return b
 
-    @staticmethod
-    def _btn_secondary_style() -> str:
-        return """
+    def _secondary_btn(self, text: str) -> QPushButton:
+        b = QPushButton(text)
+        b.setStyleSheet(
+            """
             QPushButton {
                 background-color: #1B1B1B;
                 color: #E6E6E6;
                 border: 1px solid #2E2E2E;
-                border-radius: 8px;
-                padding: 6px 10px;
-                font-weight: 800;
+                border-radius: 10px;
+                padding: 8px 12px;
+                font-weight: 850;
                 font-size: 11px;
             }
             QPushButton:hover {
                 background-color: #232323;
-                border: 1px solid #3A3A3A;
+                border: 1px solid #FFFFFF;
             }
             QPushButton:disabled {
                 background-color: #151515;
                 color: #6B6B6B;
                 border: 1px solid #252525;
             }
+            """
+        )
+        return b
+
+    @staticmethod
+    def _input_style() -> str:
+        return """
+        QLineEdit {
+            background-color: #1B1B1B;
+            color: #FFFFFF;
+            border: 1px solid #2E2E2E;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 13px;
+        }
+        QLineEdit:focus {
+            border: 1px solid #4A9EFF;
+            background-color: #202020;
+        }
+        QLineEdit:disabled {
+            background-color: #151515;
+            color: #8C8C8C;
+            border: 1px solid #252525;
+        }
+        """
+
+    @staticmethod
+    def _helper_style() -> str:
+        return """
+        QLabel {
+            font-size: 12px;
+            color: #B8B8B8;
+            padding: 10px 12px;
+            background-color: #101010;
+            border-radius: 12px;
+            border: 1px solid #252525;
+            line-height: 1.4;
+        }
         """
 
     def _rating_style(self, rating: int, recommended: bool) -> str:
-        # Again(0)=Yellow, Hard(1)=Red, Good(2)=Blue, Easy(3)=Green
         palette = {
             0: ("#2B2B14", "#FFD700"),
             1: ("#2B1414", "#FF6B6B"),
@@ -490,14 +523,13 @@ class CardWidget(QWidget):
         bg, accent = palette.get(rating, ("#1B1B1B", "#C8C8C8"))
 
         if recommended:
-            # strong highlight
             return f"""
                 QPushButton {{
                     background-color: {QColor(bg).lighter(150).name()};
                     color: #FFFFFF;
                     border: 3px solid {accent};
-                    border-radius: 9px;
-                    padding: 6px 10px;
+                    border-radius: 12px;
+                    padding: 8px 12px;
                     font-weight: 950;
                     font-size: 12px;
                 }}
@@ -508,7 +540,7 @@ class CardWidget(QWidget):
                 QPushButton:disabled {{
                     background-color: {bg};
                     color: #6B6B6B;
-                    border: 1px solid #2A2A2A;
+                    border: 1px solid #252525;
                 }}
             """
 
@@ -517,8 +549,8 @@ class CardWidget(QWidget):
                 background-color: {bg};
                 color: {accent};
                 border: 1px solid {QColor(accent).darker(170).name()};
-                border-radius: 9px;
-                padding: 6px 10px;
+                border-radius: 12px;
+                padding: 8px 12px;
                 font-weight: 900;
                 font-size: 12px;
             }}
@@ -533,10 +565,11 @@ class CardWidget(QWidget):
             }}
         """
 
-    # ---------------- Results helpers ----------------
     def _add_result_row(self, field: str, row: int) -> None:
         name = QLabel(field)
-        name.setStyleSheet("QLabel { font-size: 12px; font-weight: 900; color: #FFFFFF; }")
+        name.setStyleSheet(
+            "QLabel { font-size: 12px; font-weight: 900; color: #FFFFFF; }"
+        )
 
         status = QLabel("")
         status.setStyleSheet("QLabel { font-size: 12px; font-weight: 950; }")
@@ -556,47 +589,51 @@ class CardWidget(QWidget):
 
         if ok is None:
             status.setText("N/A")
-            status.setStyleSheet("QLabel { font-size: 11px; font-weight: 900; color: #9A9A9A; }")
+            status.setStyleSheet(
+                "QLabel { font-size: 11px; font-weight: 900; color: #8E8E93; }"
+            )
             detail.setText("Not required.")
             return
 
         if ok:
             status.setText("OK")
-            status.setStyleSheet("QLabel { font-size: 12px; font-weight: 950; color: #66E39A; }")
+            status.setStyleSheet(
+                "QLabel { font-size: 12px; font-weight: 950; color: #66E39A; }"
+            )
         else:
             status.setText("NO")
-            status.setStyleSheet("QLabel { font-size: 12px; font-weight: 950; color: #FF6B6B; }")
+            status.setStyleSheet(
+                "QLabel { font-size: 12px; font-weight: 950; color: #FF6B6B; }"
+            )
 
         typed_show = (typed or "").strip()
         expected_show = (expected or "").strip()
 
         detail.setText(
             "<div style='line-height:1.35;'>"
-            f"<div style='color:#B8B8B8; font-size:11px;'>Your answer: <b>{typed_show if typed_show else '—'}</b></div>"
+            f"<div style='color:#AFAFAF; font-size:11px;'>Your answer: <b>{typed_show if typed_show else '—'}</b></div>"
             f"<div style='color:#FFFFFF; font-size:13px; font-weight:950;'>Expected: {expected_show if expected_show else '—'}</div>"
             "</div>"
         )
 
-    # ---------------- Recommendation logic (inside widget) ----------------
     @staticmethod
     def _recommend_from_checks(meaning_ok: bool | None, gender_ok: bool | None, plural_ok: bool | None) -> int:
         vals = [meaning_ok, gender_ok, plural_ok]
         applicable = [v for v in vals if v is not None]
         if not applicable:
-            return 2  # default to Good if nothing is applicable
+            return 2
 
         correct = sum(1 for v in applicable if v is True)
         ratio = correct / max(1, len(applicable))
 
         if ratio >= 1.0:
-            return 3  # Easy
+            return 3
         if ratio >= 0.67:
-            return 2  # Good
+            return 2
         if ratio >= 0.34:
-            return 1  # Hard
-        return 0      # Again
+            return 1
+        return 0
 
-    # ---------------- Public API used by pages ----------------
     def set_prompt(self, text: str) -> None:
         self.prompt_label.setText(text or "")
 
@@ -607,6 +644,7 @@ class CardWidget(QWidget):
             self.pos_badge.setVisible(False)
             return
         self.pos_badge.setText(pos)
+        self.pos_badge.update_color_based_on_text(pos)
         self.pos_badge.setVisible(True)
 
     def set_example_de_visible_en_blurred(self, de_text: str, en_text: str | None) -> None:
@@ -624,7 +662,6 @@ class CardWidget(QWidget):
         self._blur_en = QGraphicsBlurEffect()
         self._blur_en.setBlurRadius(6.0)
         self.example_en.setGraphicsEffect(self._blur_en)
-
         self.reveal_en_btn.setEnabled(True)
         self.reveal_en_btn.setVisible(True)
 
@@ -644,46 +681,48 @@ class CardWidget(QWidget):
         self._blur_gt = QGraphicsBlurEffect()
         self._blur_gt.setBlurRadius(6.0)
         self.gender_tip_label.setGraphicsEffect(self._blur_gt)
-
         self.reveal_gender_tip_btn.setEnabled(True)
         self.reveal_gender_tip_btn.setVisible(True)
 
     def configure_fields(self, ask_gender: bool, ask_plural: bool) -> None:
         self.in_gender.setEnabled(ask_gender)
         self.in_plural.setEnabled(ask_plural)
+
+        self._gender_label_widget.setVisible(True)
+        self._plural_label_widget.setVisible(True)
+        self.in_gender.setVisible(True)
+        self.in_plural.setVisible(True)
+
         if not ask_gender:
             self.in_gender.clear()
         if not ask_plural:
             self.in_plural.clear()
 
     def set_meaning_label(self, label: str) -> None:
-        self._meaning_label_widget.setText(label)
+        self._meaning_label_widget.setText(label or "Meaning")
 
     def set_helper(self, text: str) -> None:
         self.helper.setText(text or "")
+        self.helper.setVisible(bool((text or "").strip()))
 
     def apply_check_results(self, payload: VocabCheckPayload) -> int:
-        """
-        Called by VocabReviewPage after session.check_fields().
-        Returns recommended rating 0..3, and highlights it.
-        """
         self.results_frame.setVisible(True)
 
-        # allow custom "meaning label"
         self.set_meaning_label(payload.meaning_label)
 
         self._set_result_row("meaning", payload.meaning_ok, payload.typed_meaning, payload.expected_meaning)
         self._set_result_row("gender", payload.gender_ok, payload.typed_gender, payload.expected_gender)
         self._set_result_row("plural", payload.plural_ok, payload.typed_plural, payload.expected_plural)
 
-        rec = self._recommend_from_checks(payload.meaning_ok, payload.gender_ok, payload.plural_ok)
+        rec = self._recommend_from_checks(
+            payload.meaning_ok,
+            payload.gender_ok,
+            payload.plural_ok,
+        )
         self.set_recommended_rating(rec)
 
-        # clearer instruction
         self.set_helper("Choose a rating. The highlighted button is the recommended one.")
-        # scroll to results so user always sees them
         self.scroll.ensureWidgetVisible(self.results_frame)
-
         return rec
 
     def set_recommended_rating(self, rating: int | None) -> None:
@@ -696,11 +735,18 @@ class CardWidget(QWidget):
         self.results_frame.setVisible(False)
 
         self.set_prompt("")
+        self.set_pos(None)
         self._active_input = self.in_meaning
 
         self.in_meaning.setEnabled(True)
         self.in_gender.setEnabled(True)
         self.in_plural.setEnabled(True)
+
+        self.in_meaning.setVisible(True)
+        self.in_gender.setVisible(True)
+        self.in_plural.setVisible(True)
+        self._gender_label_widget.setVisible(True)
+        self._plural_label_widget.setVisible(True)
 
         self.check_btn.setEnabled(True)
         self.skip_btn.setEnabled(True)
@@ -714,21 +760,21 @@ class CardWidget(QWidget):
         self.in_plural.clear()
         self.in_meaning.setFocus()
 
-        self.set_helper("")
-
-        self.set_pos(None)
-
         self.example_de.setText("")
         self.example_en.setText("")
         self.example_en.setGraphicsEffect(None)
         self._blur_en = None
         self.reveal_en_btn.setEnabled(False)
+        self.reveal_en_btn.setVisible(True)
 
         self.gender_tip_label.setText("")
         self.gender_tip_label.setGraphicsEffect(None)
         self._blur_gt = None
         self._gender_tip_text = None
         self.reveal_gender_tip_btn.setEnabled(False)
+        self.reveal_gender_tip_btn.setVisible(True)
+
+        self.set_helper("")
 
     def lock_after_check(self) -> None:
         self.in_meaning.setEnabled(False)
@@ -741,27 +787,20 @@ class CardWidget(QWidget):
         for r, b in self._rating_buttons:
             b.setEnabled(True)
 
-        # re-apply highlight after enabling
         if self._recommended_rating is not None:
             self.set_recommended_rating(self._recommended_rating)
 
-
     def insert_special_char(self, ch: str) -> None:
-        """Insert into the last focused input field."""
         target = self._active_input
-
         if target and target.isEnabled():
             target.insert(ch)
             target.setFocus()
             return
 
-        # fallback
         if self.in_meaning.isEnabled():
             self.in_meaning.insert(ch)
             self.in_meaning.setFocus()
 
-
-    # ---------------- Signals ----------------
     def _connect_signals(self):
         self.check_btn.clicked.connect(self._emit_check)
         self.in_meaning.returnPressed.connect(self._emit_check)

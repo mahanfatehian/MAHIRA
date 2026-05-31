@@ -4,14 +4,16 @@ import random
 import time
 from typing import Any
 
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, QThread, Qt, Signal, Slot
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QPushButton,
+    QFrame,
     QHBoxLayout,
+    QLabel,
     QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 from core.session import SessionService
@@ -52,9 +54,10 @@ class PronunciationWorker(QObject):
 class VocabReviewPage(QWidget):
     go_progress = Signal()
 
-    def __init__(self, session: SessionService):
+    def __init__(self, session: SessionService, nav=None) -> None:
         super().__init__()
         self.session = session
+        self.nav = nav
 
         self.current_item: Any | None = None
 
@@ -72,7 +75,6 @@ class VocabReviewPage(QWidget):
         self.example_en = None
 
         self.card_started_at: float | None = None
-
         self._fallback_ids: list[int] = []
 
         self.model_manager = PiperModelManager()
@@ -81,9 +83,8 @@ class VocabReviewPage(QWidget):
             self.pronunciation_service.clear_all_cached_audio()
         except Exception:
             pass
+
         self.playback_service = PlaybackService(self)
-
-
         self.playback_service.started.connect(self._on_playback_started)
         self.playback_service.finished.connect(self._on_playback_finished)
         self.playback_service.failed.connect(self._on_playback_failed)
@@ -94,47 +95,148 @@ class VocabReviewPage(QWidget):
         self._current_audio_text: str = ""
         self._current_audio_path: str = ""
 
-        layout = QVBoxLayout(self)
+        self.setObjectName("SentenceReviewPage")
+        self.setStyleSheet(
+            """
+            QWidget#SentenceReviewPage {
+                background-color: #0F0F10;
+            }
 
-        top = QHBoxLayout()
-        self.title = QLabel("Vocab Review")
-        self.title.setStyleSheet("font-size:16px; font-weight:700;")
+            QLabel {
+                color: #E6E6E6;
+            }
 
-        self.counter = QLabel("")
-        self.counter.setStyleSheet("opacity:0.8;")
+            QFrame#TopBarCard, QFrame#MainShell, QFrame#EmptyCard, QFrame#AudioCard {
+                background-color: #141414;
+                border: 1px solid #2A2A2A;
+                border-radius: 14px;
+            }
 
-        btn_start = QPushButton("Start New Session")
-        btn_start.clicked.connect(self._start_session)
+            QPushButton {
+                background-color: #1B1B1B;
+                color: #FFFFFF;
+                border: 1px solid #2E2E2E;
+                border-radius: 10px;
+                padding: 8px 14px;
+                font-weight: 800;
+            }
 
-        btn_progress = QPushButton("Progress")
-        btn_progress.clicked.connect(self.go_progress.emit)
+            QPushButton:hover {
+                border: 1px solid #FFFFFF;
+                background-color: #232323;
+            }
 
-        top.addWidget(self.title)
-        top.addWidget(self.counter)
-        top.addStretch(1)
-        top.addWidget(btn_start)
-        top.addWidget(btn_progress)
+            QPushButton:pressed {
+                background-color: #2B2B2B;
+            }
+            """
+        )
 
-        audio_row = QHBoxLayout()
+        self._build_ui()
+        self.audio_button.setEnabled(False)
+
+    def _build_ui(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(20, 18, 20, 18)
+        outer.setSpacing(14)
+
+        top_bar = QFrame()
+        top_bar.setObjectName("TopBarCard")
+        top_bar_layout = QHBoxLayout(top_bar)
+        top_bar_layout.setContentsMargins(18, 14, 18, 14)
+        top_bar_layout.setSpacing(12)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
+
+        self.page_title = QLabel("Vocab Review")
+        self.page_title.setStyleSheet(
+            "color:#FFFFFF; font-size:24px; font-weight:950; border:none;"
+        )
+
+        self.page_subtitle = QLabel("Interactive vocabulary practice")
+        self.page_subtitle.setStyleSheet(
+            "color:#9A9A9A; font-size:12px; font-weight:700; border:none;"
+        )
+
+        title_col.addWidget(self.page_title)
+        title_col.addWidget(self.page_subtitle)
+
+        top_bar_layout.addLayout(title_col)
+        top_bar_layout.addStretch(1)
+
+        self.counter_lbl = QLabel("0 / 0")
+        self.counter_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.counter_lbl.setMinimumWidth(70)
+        self.counter_lbl.setStyleSheet(
+            """
+            color:#FFFFFF;
+            font-size:13px;
+            font-weight:900;
+            border:none;
+            background-color:#101010;
+            border:1px solid #2A2A2A;
+            border-radius:10px;
+            padding:8px 12px;
+            """
+        )
+
+        self.start_btn = QPushButton("Start")
+        self.stats_btn = QPushButton("Stats")
+
+        self.start_btn.clicked.connect(self._start_session)
+        self.stats_btn.clicked.connect(self.go_progress.emit)
+
+        top_bar_layout.addWidget(self.counter_lbl)
+        top_bar_layout.addWidget(self.start_btn)
+        top_bar_layout.addWidget(self.stats_btn)
+
+        outer.addWidget(top_bar)
+
+        self.main_shell = QFrame()
+        self.main_shell.setObjectName("MainShell")
+        self.main_shell.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+
+        shell_layout = QVBoxLayout(self.main_shell)
+        shell_layout.setContentsMargins(18, 18, 18, 18)
+        shell_layout.setSpacing(12)
+
+        self.audio_card = QFrame()
+        self.audio_card.setObjectName("AudioCard")
+        audio_layout = QHBoxLayout(self.audio_card)
+        audio_layout.setContentsMargins(14, 12, 14, 12)
+        audio_layout.setSpacing(10)
 
         self.word_preview = QLabel("")
-        self.word_preview.setStyleSheet("font-size:15px; font-weight:600;")
+        self.word_preview.setStyleSheet(
+            "color:#FFFFFF; font-size:15px; font-weight:800; border:none;"
+        )
 
         self.audio_button = AudioButton()
         self.audio_button.clicked.connect(self._play_current_word_pronunciation)
 
         self.audio_status = QLabel("")
-        self.audio_status.setStyleSheet("color:#666;")
+        self.audio_status.setStyleSheet(
+            "color:#9A9A9A; font-size:12px; font-weight:700; border:none;"
+        )
 
-        audio_row.addWidget(self.word_preview)
-        audio_row.addWidget(self.audio_button)
-        audio_row.addWidget(self.audio_status)
-        audio_row.addStretch(1)
+        audio_layout.addWidget(self.word_preview)
+        audio_layout.addStretch(1)
+        audio_layout.addWidget(self.audio_button)
+        audio_layout.addWidget(self.audio_status)
 
         self.special_kbd = SpecialCharKeyboard()
         self.special_kbd.setVisible(False)
 
         self.card = CardWidget()
+        self.card.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+
         self.special_kbd.char_clicked.connect(self.card.insert_special_char)
         self.card.check_clicked.connect(self._on_check)
         self.card.rated.connect(self._on_rated)
@@ -142,24 +244,57 @@ class VocabReviewPage(QWidget):
         self.card.gender_tip_clicked.connect(self._on_gender_tip)
         self.card.skipped.connect(self._on_skipped)
 
-        layout.addLayout(top)
-        layout.addLayout(audio_row)
-        layout.addWidget(self.special_kbd, 0)
-        layout.addWidget(self.card, 1)
+        shell_layout.addWidget(self.audio_card, 0)
+        shell_layout.addWidget(self.special_kbd, 0)
+        shell_layout.addWidget(self.card, 1)
 
-        self.audio_button.setEnabled(False)
+        outer.addWidget(self.main_shell, 1)
+
+        self.empty_card = QFrame()
+        self.empty_card.setObjectName("EmptyCard")
+        empty_layout = QVBoxLayout(self.empty_card)
+        empty_layout.setContentsMargins(30, 28, 30, 28)
+        empty_layout.setSpacing(8)
+
+        self.empty_title = QLabel("No vocabulary reviews available.")
+        self.empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_title.setStyleSheet(
+            "color:#FFFFFF; font-size:22px; font-weight:950; border:none;"
+        )
+
+        self.empty_desc = QLabel("Choose a level and start a vocab session.")
+        self.empty_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_desc.setStyleSheet(
+            "color:#9A9A9A; font-size:13px; font-weight:700; border:none;"
+        )
+
+        empty_layout.addStretch(1)
+        empty_layout.addWidget(self.empty_title)
+        empty_layout.addWidget(self.empty_desc)
+        empty_layout.addStretch(1)
+
+        self.empty_card.hide()
+        outer.addWidget(self.empty_card, 1)
+
+        self._update_counter()
 
     def cleanup_audio_cache_on_startup(self) -> None:
-        """
-        Call this once when app/page starts to remove stale WAV files from previous crashes
-        or unclean shutdowns.
-        """
         try:
             self.pronunciation_service.clear_all_cached_audio()
         except Exception:
             pass
 
-    def _on_tip(self):
+    def _show_main(self) -> None:
+        self.main_shell.show()
+        self.empty_card.hide()
+
+    def _show_empty(self, title: str, desc: str) -> None:
+        self.empty_title.setText(title)
+        self.empty_desc.setText(desc)
+        self.main_shell.hide()
+        self.empty_card.show()
+
+    def _on_tip(self) -> None:
         self.tip_used = True
 
     def _on_gender_tip(self) -> None:
@@ -188,7 +323,7 @@ class VocabReviewPage(QWidget):
             return self.session.repo.get_deck_id(lang, level, obj)
         return None
 
-    def on_show(self):
+    def on_show(self) -> None:
         lang = getattr(self.session.state, "language_code", "de") or "de"
         self.special_kbd.set_language(lang)
 
@@ -204,7 +339,15 @@ class VocabReviewPage(QWidget):
             self.word_preview.setText("")
             self.audio_status.setText("")
             self.audio_button.setEnabled(False)
+
+            self._show_empty(
+                "No vocabulary reviews available.",
+                "Choose language, level, and objective first.",
+            )
+            self._update_counter()
             return
+
+        self._show_main()
 
         if hasattr(self.session, "remaining") and callable(self.session.remaining):
             try:
@@ -217,7 +360,7 @@ class VocabReviewPage(QWidget):
 
         self._load_next()
 
-    def _start_session(self):
+    def _start_session(self) -> None:
         deck_id = self._active_deck_id()
         if not deck_id:
             self.card.reset_for_next()
@@ -229,7 +372,15 @@ class VocabReviewPage(QWidget):
             self.word_preview.setText("")
             self.audio_status.setText("")
             self.audio_button.setEnabled(False)
+
+            self._show_empty(
+                "No vocabulary reviews available.",
+                "Choose language, level, and objective first.",
+            )
+            self._update_counter()
             return
+
+        self._show_main()
 
         if hasattr(self.session, "start_new_session"):
             ok = self.session.start_new_session()
@@ -262,17 +413,24 @@ class VocabReviewPage(QWidget):
             random.shuffle(all_ids)
             self._fallback_ids = all_ids[:limit]
 
-    def _update_counter(self):
+    def _update_counter(self) -> None:
         if hasattr(self.session, "remaining") and callable(self.session.remaining):
             try:
-                lim = getattr(getattr(self.session, "plan", None), "limit", None)
-                lim_txt = str(lim) if lim is not None else "?"
-                self.counter.setText(f"Remaining: {self.session.remaining()}/{lim_txt}")
+                remaining = int(self.session.remaining())
+                limit = int(getattr(getattr(self.session, "plan", None), "limit", 0) or 0)
+                completed = max(0, limit - remaining) if limit > 0 else 0
+
+                if limit > 0:
+                    shown = min(limit, completed + 1) if remaining > 0 else completed
+                    self.counter_lbl.setText(f"{shown} / {limit}")
+                else:
+                    self.counter_lbl.setText(f"{completed} / ?")
                 return
             except Exception:
                 pass
 
-        self.counter.setText(f"Remaining: {len(self._fallback_ids)}")
+        fallback_total = len(self._fallback_ids)
+        self.counter_lbl.setText(f"{fallback_total} / {fallback_total if fallback_total else '?'}")
 
     def _next_item_any_api(self):
         for name in ("next_item", "next_vocab", "next"):
@@ -298,10 +456,6 @@ class VocabReviewPage(QWidget):
         return word.strip()
 
     def _clear_current_audio_cache(self) -> None:
-        """
-        Delete cached audio for the current card/word so cache does not grow indefinitely.
-        Safe to call multiple times.
-        """
         self.playback_service.stop()
 
         deleted = False
@@ -315,7 +469,7 @@ class VocabReviewPage(QWidget):
         self._current_audio_text = ""
         self._current_audio_path = ""
 
-    def _load_next(self):
+    def _load_next(self) -> None:
         self.playback_service.stop()
         self.audio_status.setText("")
         self.audio_button.set_busy(False)
@@ -350,15 +504,21 @@ class VocabReviewPage(QWidget):
             self.card.set_example_de_visible_en_blurred("", None)
             self.card.set_gender_tip(None)
             self.card.configure_fields(ask_gender=False, ask_plural=False)
-            self.card.set_helper("Click Start New Session to practice another set.")
+            self.card.set_helper("Click Start to practice another set.")
             self.card.lock_after_check()
-            self._update_counter()
 
             self.word_preview.setText("")
             self.audio_status.setText("")
             self.audio_button.setEnabled(False)
+
+            self._show_empty(
+                "No vocabulary reviews available.",
+                "Start a new session to practice another set.",
+            )
+            self._update_counter()
             return
 
+        self._show_main()
         self.card_started_at = time.time()
 
         item = self.current_item
@@ -417,7 +577,7 @@ class VocabReviewPage(QWidget):
             "expected_plural": expected_plural or None,
         }
 
-    def _on_check(self, typed_meaning: str, typed_gender: str, typed_plural: str):
+    def _on_check(self, typed_meaning: str, typed_gender: str, typed_plural: str) -> None:
         if not self.current_item:
             return
 
@@ -451,8 +611,6 @@ class VocabReviewPage(QWidget):
                 self.typed_plural,
             )
 
-        meaning_label = "Meaning"
-
         payload = VocabCheckPayload(
             meaning_ok=res.get("meaning_ok"),
             expected_meaning=res.get("expected_meaning"),
@@ -463,13 +621,13 @@ class VocabReviewPage(QWidget):
             plural_ok=res.get("plural_ok"),
             expected_plural=res.get("expected_plural"),
             typed_plural=self.typed_plural,
-            meaning_label=meaning_label,
+            meaning_label="Meaning",
         )
 
         self.card.apply_check_results(payload)
         self.card.lock_after_check()
 
-    def _on_rated(self, rating: int):
+    def _on_rated(self, rating: int) -> None:
         if not self.current_item:
             return
 
@@ -557,10 +715,6 @@ class VocabReviewPage(QWidget):
         QMessageBox.warning(self, "Playback Error", message)
 
     def closeEvent(self, event) -> None:
-        """
-        Extra safety: if page/widget is closed while a temp audio file exists,
-        try to clean it up.
-        """
         try:
             self._clear_current_audio_cache()
         except Exception:
