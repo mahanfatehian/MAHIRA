@@ -27,78 +27,45 @@ class GrammarReviewPage(QWidget):
         self.nav = nav
 
         self.current_item = None
-
         self.was_checked = False
         self.was_skipped = False
-
         self.meaning_tip_used = False
         self.hint_used = False
         self.grammar_tip_used = False
-
         self.typed_blank = ""
         self.card_started_at: float | None = None
 
-        self.setObjectName("SentenceReviewPage")
-        self.setStyleSheet(
-            """
-            QWidget#SentenceReviewPage {
-                background-color: #0F0F10;
-            }
-
-            QLabel {
-                color: #E6E6E6;
-            }
-
-            QFrame#TopBarCard, QFrame#MainShell, QFrame#EmptyCard {
-                background-color: #141414;
-                border: 1px solid #2A2A2A;
-                border-radius: 14px;
-            }
-
-            QPushButton {
-                background-color: #1B1B1B;
-                color: #FFFFFF;
-                border: 1px solid #2E2E2E;
-                border-radius: 10px;
-                padding: 8px 14px;
-                font-weight: 800;
-            }
-
-            QPushButton:hover {
-                border: 1px solid #FFFFFF;
-                background-color: #232323;
-            }
-
-            QPushButton:pressed {
-                background-color: #2B2B2B;
-            }
-            """
-        )
+        self.setObjectName("GrammarReviewPage")
+        self.setStyleSheet("GrammarReviewPage { background-color: #0E0E0E; }")
 
         self._build_ui()
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(20, 18, 20, 18)
-        outer.setSpacing(14)
+        outer.setContentsMargins(16, 14, 16, 14)
+        outer.setSpacing(10)
 
+        # Top bar - compact
         top_bar = QFrame()
         top_bar.setObjectName("TopBarCard")
+        top_bar.setStyleSheet(
+            "QFrame#TopBarCard { background-color: #141414; border: 1px solid #2A2A2A; border-radius: 14px; }"
+        )
         top_bar_layout = QHBoxLayout(top_bar)
-        top_bar_layout.setContentsMargins(18, 14, 18, 14)
+        top_bar_layout.setContentsMargins(16, 12, 16, 12)
         top_bar_layout.setSpacing(12)
 
         title_col = QVBoxLayout()
-        title_col.setSpacing(2)
+        title_col.setSpacing(1)
 
         self.page_title = QLabel("Grammar Review")
         self.page_title.setStyleSheet(
-            "color:#FFFFFF; font-size:24px; font-weight:950; border:none;"
+            "QLabel { color:#FFFFFF; font-size:20px; font-weight:950; border:none; background:transparent; }"
         )
 
         self.page_subtitle = QLabel("Targeted grammar recall")
         self.page_subtitle.setStyleSheet(
-            "color:#9A9A9A; font-size:12px; font-weight:700; border:none;"
+            "QLabel { color:#9A9A9A; font-size:11px; font-weight:700; border:none; background:transparent; }"
         )
 
         title_col.addWidget(self.page_title)
@@ -109,22 +76,24 @@ class GrammarReviewPage(QWidget):
 
         self.counter_lbl = QLabel("0 / 0")
         self.counter_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.counter_lbl.setMinimumWidth(70)
+        self.counter_lbl.setMinimumWidth(60)
         self.counter_lbl.setStyleSheet(
-            """
-            color:#FFFFFF;
-            font-size:13px;
-            font-weight:900;
-            border:none;
-            background-color:#101010;
-            border:1px solid #2A2A2A;
-            border-radius:10px;
-            padding:8px 12px;
-            """
+            "QLabel { color:#FFFFFF; font-size:12px; font-weight:800; background:#1A1A1A; border:1px solid #2E2E2E; border-radius:8px; padding:6px 10px; }"
         )
 
         self.start_btn = QPushButton("Start")
+        self.start_btn.setFixedWidth(60)
+        self.start_btn.setStyleSheet(
+            "QPushButton { background-color: #244B36; color: #F4FFF7; border: 1px solid #4CAF50; border-radius: 10px; padding: 8px; font-weight: 900; font-size: 12px; }"
+            "QPushButton:hover { background-color: #2B5B41; border: 1px solid #7AE582; }"
+        )
+
         self.stats_btn = QPushButton("Stats")
+        self.stats_btn.setFixedWidth(60)
+        self.stats_btn.setStyleSheet(
+            "QPushButton { background-color: #163A5C; color: #FFFFFF; border: 1px solid #24537D; border-radius: 10px; padding: 8px; font-weight: 900; font-size: 12px; }"
+            "QPushButton:hover { background-color: #1B4B78; border: 1px solid #FFFFFF; }"
+        )
 
         self.start_btn.clicked.connect(self._start_session)
         self.stats_btn.clicked.connect(self.go_progress.emit)
@@ -135,56 +104,59 @@ class GrammarReviewPage(QWidget):
 
         outer.addWidget(top_bar)
 
+        # Special char keyboard - compact
+        self.special_kbd = SpecialCharKeyboard()
+        self.special_kbd.setVisible(False)
+        outer.addWidget(self.special_kbd)
+
+        # Main card - compact
         self.main_shell = QFrame()
         self.main_shell.setObjectName("MainShell")
         self.main_shell.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
         shell_layout = QVBoxLayout(self.main_shell)
-        shell_layout.setContentsMargins(18, 18, 18, 18)
-        shell_layout.setSpacing(12)
-
-        self.special_kbd = SpecialCharKeyboard()
-        self.special_kbd.setVisible(False)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
 
         self.card = GrammarCardWidget()
         self.card.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
         self.special_kbd.char_clicked.connect(self.card.insert_special_char)
         self.card.check_clicked.connect(self._on_check)
         self.card.rated.connect(self._on_rated)
         self.card.skipped.connect(self._on_skipped)
-
         self.card.meaning_tip_clicked.connect(self._on_meaning_tip)
         self.card.hint_clicked.connect(self._on_hint)
         self.card.grammar_tip_clicked.connect(self._on_grammar_tip)
 
-        shell_layout.addWidget(self.special_kbd, 0)
-        shell_layout.addWidget(self.card, 1)
+        shell_layout.addWidget(self.card)
 
         outer.addWidget(self.main_shell, 1)
 
+        # Empty state
         self.empty_card = QFrame()
         self.empty_card.setObjectName("EmptyCard")
+        self.empty_card.setStyleSheet(
+            "QFrame#EmptyCard { background-color: #141414; border: 1px solid #2A2A2A; border-radius: 14px; }"
+        )
         empty_layout = QVBoxLayout(self.empty_card)
-        empty_layout.setContentsMargins(30, 28, 30, 28)
+        empty_layout.setContentsMargins(24, 24, 24, 24)
         empty_layout.setSpacing(8)
 
         self.empty_title = QLabel("No grammar reviews available.")
         self.empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_title.setStyleSheet(
-            "color:#FFFFFF; font-size:22px; font-weight:950; border:none;"
+            "QLabel { color:#FFFFFF; font-size:18px; font-weight:950; border:none; background:transparent; }"
         )
 
         self.empty_desc = QLabel("Choose a level and start a grammar session.")
         self.empty_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_desc.setStyleSheet(
-            "color:#9A9A9A; font-size:13px; font-weight:700; border:none;"
+            "QLabel { color:#9A9A9A; font-size:12px; font-weight:700; border:none; background:transparent; }"
         )
 
         empty_layout.addStretch(1)
