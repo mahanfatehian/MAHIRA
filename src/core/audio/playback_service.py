@@ -23,6 +23,7 @@ class PlaybackService(QObject):
 
         self._current_path: str | None = None
         self._was_playing = False
+        self._pending_play = False
 
     def set_volume(self, volume: float) -> None:
         volume = max(0.0, min(1.0, float(volume)))
@@ -36,28 +37,45 @@ class PlaybackService(QObject):
             return
 
         self.stop()
-
         self._current_path = str(path)
+        self._pending_play = True
 
-        url = QUrl.fromLocalFile(str(path))
-        self.effect.setSource(url)
+        self.effect.setSource(QUrl.fromLocalFile(str(path)))
 
-        # Small delayed play helps ensure source is loaded on some systems
-        QTimer.singleShot(50, self._play_loaded)
+        # Some Windows/Qt builds need a tiny delay before QSoundEffect reports Ready.
+        QTimer.singleShot(40, self._play_if_ready)
 
-    def _play_loaded(self) -> None:
-        if not self._current_path:
+    def _play_if_ready(self) -> None:
+        if not self._current_path or not self._pending_play:
             return
 
+        status = self.effect.status()
+        ready_status = getattr(QSoundEffect.Status, "Ready", None)
+        loading_status = getattr(QSoundEffect.Status, "Loading", None)
+
+        if ready_status is not None and status == ready_status:
+            self._pending_play = False
+            self.effect.play()
+            return
+
+        if loading_status is not None and status == loading_status:
+            QTimer.singleShot(40, self._play_if_ready)
+            return
+
+        # Fallback for Qt builds where status timing is inconsistent.
+        self._pending_play = False
         self.effect.play()
-        self.started.emit(self._current_path)
 
     def stop(self) -> None:
+        self._pending_play = False
         if self.effect.isPlaying():
             self.effect.stop()
 
     def _on_playing_changed(self) -> None:
         is_playing = self.effect.isPlaying()
+
+        if is_playing and self._current_path:
+            self.started.emit(self._current_path)
 
         if self._was_playing and not is_playing:
             self.finished.emit()
@@ -66,6 +84,8 @@ class PlaybackService(QObject):
 
     def _on_status_changed(self) -> None:
         status = self.effect.status()
+        error_status = getattr(QSoundEffect.Status, "Error", None)
 
-        if status == QSoundEffect.Error:
+        if error_status is not None and status == error_status:
+            self._pending_play = False
             self.failed.emit("QSoundEffect failed to play audio.")
