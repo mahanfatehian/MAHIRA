@@ -6,9 +6,7 @@ from piper import PiperVoice
 
 
 class PiperModelManager:
-    """
-    German-only Piper model manager.
-    """
+    """German-only Piper model manager."""
 
     def __init__(self) -> None:
         self._voice: PiperVoice | None = None
@@ -42,7 +40,17 @@ class PiperModelManager:
             raise FileNotFoundError(f"German Piper model not found:\n{path}")
         return path
 
+    @property
+    def german_config_path(self) -> Path:
+        path = self.german_model_path.with_suffix(".onnx.json")
+        if not path.exists():
+            raise FileNotFoundError(f"German Piper config not found:\n{path}")
+        return path
+
     def get_german_voice(self) -> PiperVoice:
         if self._voice is None:
-            self._voice = PiperVoice.load(str(self.german_model_path))
+            self._voice = PiperVoice.load(
+                str(self.german_model_path),
+                config_path=str(self.german_config_path),
+            )
         return self._voice

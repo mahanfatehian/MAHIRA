@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -26,7 +27,7 @@ class GrammarReviewPage(QWidget):
         self.session = session
         self.nav = nav
 
-        self.current_item = None
+        self.current_item: Any | None = None
         self.was_checked = False
         self.was_skipped = False
         self.meaning_tip_used = False
@@ -42,15 +43,19 @@ class GrammarReviewPage(QWidget):
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(16, 14, 16, 14)
-        outer.setSpacing(10)
+        outer.setContentsMargins(16, 14, 16, 16)
+        outer.setSpacing(12)
 
-        # Top bar - compact
         top_bar = QFrame()
         top_bar.setObjectName("TopBarCard")
         top_bar.setStyleSheet(
-            "QFrame#TopBarCard { background-color: #141414; border: 1px solid #2A2A2A; border-radius: 14px; }"
+            "QFrame#TopBarCard { "
+            "background-color: #141414; "
+            "border: 1px solid #2A2A2A; "
+            "border-radius: 14px; "
+            "}"
         )
+
         top_bar_layout = QHBoxLayout(top_bar)
         top_bar_layout.setContentsMargins(16, 12, 16, 12)
         top_bar_layout.setSpacing(12)
@@ -60,12 +65,24 @@ class GrammarReviewPage(QWidget):
 
         self.page_title = QLabel("Grammar Review")
         self.page_title.setStyleSheet(
-            "QLabel { color:#FFFFFF; font-size:20px; font-weight:950; border:none; background:transparent; }"
+            "QLabel { "
+            "color:#FFFFFF; "
+            "font-size:20px; "
+            "font-weight:950; "
+            "border:none; "
+            "background:transparent; "
+            "}"
         )
 
-        self.page_subtitle = QLabel("Targeted grammar recall")
+        self.page_subtitle = QLabel("Focused fill-the-blank practice")
         self.page_subtitle.setStyleSheet(
-            "QLabel { color:#9A9A9A; font-size:11px; font-weight:700; border:none; background:transparent; }"
+            "QLabel { "
+            "color:#9A9A9A; "
+            "font-size:11px; "
+            "font-weight:700; "
+            "border:none; "
+            "background:transparent; "
+            "}"
         )
 
         title_col.addWidget(self.page_title)
@@ -78,20 +95,44 @@ class GrammarReviewPage(QWidget):
         self.counter_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.counter_lbl.setMinimumWidth(60)
         self.counter_lbl.setStyleSheet(
-            "QLabel { color:#FFFFFF; font-size:12px; font-weight:800; background:#1A1A1A; border:1px solid #2E2E2E; border-radius:8px; padding:6px 10px; }"
+            "QLabel { "
+            "color:#FFFFFF; "
+            "font-size:12px; "
+            "font-weight:800; "
+            "background:#1A1A1A; "
+            "border:1px solid #2E2E2E; "
+            "border-radius:8px; "
+            "padding:6px 10px; "
+            "}"
         )
 
         self.start_btn = QPushButton("Start")
         self.start_btn.setFixedWidth(60)
         self.start_btn.setStyleSheet(
-            "QPushButton { background-color: #244B36; color: #F4FFF7; border: 1px solid #4CAF50; border-radius: 10px; padding: 8px; font-weight: 900; font-size: 12px; }"
+            "QPushButton { "
+            "background-color: #244B36; "
+            "color: #F4FFF7; "
+            "border: 1px solid #4CAF50; "
+            "border-radius: 10px; "
+            "padding: 8px; "
+            "font-weight: 900; "
+            "font-size: 12px; "
+            "}"
             "QPushButton:hover { background-color: #2B5B41; border: 1px solid #7AE582; }"
         )
 
         self.stats_btn = QPushButton("Stats")
         self.stats_btn.setFixedWidth(60)
         self.stats_btn.setStyleSheet(
-            "QPushButton { background-color: #163A5C; color: #FFFFFF; border: 1px solid #24537D; border-radius: 10px; padding: 8px; font-weight: 900; font-size: 12px; }"
+            "QPushButton { "
+            "background-color: #163A5C; "
+            "color: #FFFFFF; "
+            "border: 1px solid #24537D; "
+            "border-radius: 10px; "
+            "padding: 8px; "
+            "font-weight: 900; "
+            "font-size: 12px; "
+            "}"
             "QPushButton:hover { background-color: #1B4B78; border: 1px solid #FFFFFF; }"
         )
 
@@ -104,25 +145,28 @@ class GrammarReviewPage(QWidget):
 
         outer.addWidget(top_bar)
 
-        # Special char keyboard - compact
         self.special_kbd = SpecialCharKeyboard()
         self.special_kbd.setVisible(False)
         outer.addWidget(self.special_kbd)
 
-        # Main card - compact
         self.main_shell = QFrame()
         self.main_shell.setObjectName("MainShell")
+        self.main_shell.setStyleSheet(
+            "QFrame#MainShell { background: transparent; border: none; }"
+        )
         self.main_shell.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
         )
 
         shell_layout = QVBoxLayout(self.main_shell)
         shell_layout.setContentsMargins(0, 0, 0, 0)
-        shell_layout.setSpacing(0)
+        shell_layout.setSpacing(10)
 
         self.card = GrammarCardWidget()
         self.card.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
         )
 
         self.special_kbd.char_clicked.connect(self.card.insert_special_char)
@@ -134,15 +178,19 @@ class GrammarReviewPage(QWidget):
         self.card.grammar_tip_clicked.connect(self._on_grammar_tip)
 
         shell_layout.addWidget(self.card)
+        outer.addWidget(self.main_shell)
 
-        outer.addWidget(self.main_shell, 1)
-
-        # Empty state
         self.empty_card = QFrame()
         self.empty_card.setObjectName("EmptyCard")
+        self.empty_card.setMinimumHeight(420)
         self.empty_card.setStyleSheet(
-            "QFrame#EmptyCard { background-color: #141414; border: 1px solid #2A2A2A; border-radius: 14px; }"
+            "QFrame#EmptyCard { "
+            "background-color: #141414; "
+            "border: 1px solid #2A2A2A; "
+            "border-radius: 14px; "
+            "}"
         )
+
         empty_layout = QVBoxLayout(self.empty_card)
         empty_layout.setContentsMargins(24, 24, 24, 24)
         empty_layout.setSpacing(8)
@@ -150,13 +198,25 @@ class GrammarReviewPage(QWidget):
         self.empty_title = QLabel("No grammar reviews available.")
         self.empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_title.setStyleSheet(
-            "QLabel { color:#FFFFFF; font-size:18px; font-weight:950; border:none; background:transparent; }"
+            "QLabel { "
+            "color:#FFFFFF; "
+            "font-size:18px; "
+            "font-weight:950; "
+            "border:none; "
+            "background:transparent; "
+            "}"
         )
 
         self.empty_desc = QLabel("Choose a level and start a grammar session.")
         self.empty_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_desc.setStyleSheet(
-            "QLabel { color:#9A9A9A; font-size:12px; font-weight:700; border:none; background:transparent; }"
+            "QLabel { "
+            "color:#9A9A9A; "
+            "font-size:12px; "
+            "font-weight:700; "
+            "border:none; "
+            "background:transparent; "
+            "}"
         )
 
         empty_layout.addStretch(1)
@@ -165,8 +225,9 @@ class GrammarReviewPage(QWidget):
         empty_layout.addStretch(1)
 
         self.empty_card.hide()
-        outer.addWidget(self.empty_card, 1)
+        outer.addWidget(self.empty_card)
 
+        outer.addStretch(1)
         self._update_counter()
 
     def _show_main(self) -> None:
@@ -178,6 +239,14 @@ class GrammarReviewPage(QWidget):
         self.empty_desc.setText(desc)
         self.main_shell.hide()
         self.empty_card.show()
+
+    def _reset_tracking(self) -> None:
+        self.was_checked = False
+        self.was_skipped = False
+        self.meaning_tip_used = False
+        self.hint_used = False
+        self.grammar_tip_used = False
+        self.typed_blank = ""
 
     def _on_meaning_tip(self) -> None:
         self.meaning_tip_used = True
@@ -208,7 +277,7 @@ class GrammarReviewPage(QWidget):
             self.card.set_meaning_blurred(None)
             self.card.set_hint_blurred(None, None)
             self.card.set_grammar_tip_blurred(None)
-            self.card.lock_after_check()
+            self.card.lock_for_empty_state()
 
             self._show_empty(
                 "No grammar reviews available.",
@@ -232,7 +301,7 @@ class GrammarReviewPage(QWidget):
             self.card.set_meaning_blurred(None)
             self.card.set_hint_blurred(None, None)
             self.card.set_grammar_tip_blurred(None)
-            self.card.lock_after_check()
+            self.card.lock_for_empty_state()
 
             self._show_empty(
                 "No grammar reviews available.",
@@ -260,16 +329,9 @@ class GrammarReviewPage(QWidget):
 
     def _load_next(self) -> None:
         self._update_counter()
-
         self.current_item = self.session.next_grammar_item()
 
-        self.was_checked = False
-        self.was_skipped = False
-        self.meaning_tip_used = False
-        self.hint_used = False
-        self.grammar_tip_used = False
-        self.typed_blank = ""
-
+        self._reset_tracking()
         self.card.reset_for_next()
 
         if not self.current_item:
@@ -277,7 +339,7 @@ class GrammarReviewPage(QWidget):
             self.card.set_meaning_blurred(None)
             self.card.set_hint_blurred(None, None)
             self.card.set_grammar_tip_blurred(None)
-            self.card.lock_after_check()
+            self.card.lock_for_empty_state()
 
             self._show_empty(
                 "No grammar reviews available.",
@@ -291,9 +353,9 @@ class GrammarReviewPage(QWidget):
 
         item = self.current_item
         self.card.set_prompt(self.session.grammar_prompt_text(item))
-        self.card.set_meaning_blurred(item.meaning)
-        self.card.set_hint_blurred(item.test_verb, item.tip)
-        self.card.set_grammar_tip_blurred(item.grammar_tip)
+        self.card.set_meaning_blurred(getattr(item, "meaning", None))
+        self.card.set_hint_blurred(getattr(item, "test_verb", None), getattr(item, "tip", None))
+        self.card.set_grammar_tip_blurred(getattr(item, "grammar_tip", None))
 
         self._update_counter()
 
@@ -303,7 +365,6 @@ class GrammarReviewPage(QWidget):
 
         self.was_checked = True
         self.was_skipped = False
-
         self.typed_blank = typed_blank or ""
 
         res = self.session.check_grammar(self.current_item, self.typed_blank)
@@ -314,7 +375,11 @@ class GrammarReviewPage(QWidget):
         if not self.current_item:
             return
 
-        response_ms = None if self.card_started_at is None else int((time.time() - self.card_started_at) * 1000)
+        response_ms = (
+            None
+            if self.card_started_at is None
+            else int((time.time() - self.card_started_at) * 1000)
+        )
 
         self.session.submit_grammar(
             item=self.current_item,
