@@ -13,6 +13,7 @@ Everything the app generates at runtime (SQLite DB, ML models, logs) is written
 to a `.mahira` folder NEXT TO THE EXECUTABLE — see src/mahira/config.py:data_root.
 Nothing is written to %APPDATA% / ~/Library / any per-user OS location.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -24,6 +25,12 @@ ROOT = Path(SPECPATH).resolve().parent
 APP_NAME = "MAHIRA"
 IS_WIN = sys.platform.startswith("win")
 IS_MAC = sys.platform == "darwin"
+
+# Version comes from the CI tag (MAHIRA_VERSION); falls back for local builds.
+# A leading "v" and any pre-release suffix are stripped for the macOS plist,
+# which requires a numeric dotted version (e.g. "1.2.3").
+_raw_version = os.environ.get("MAHIRA_VERSION", "0.1.0").lstrip("vV")
+APP_VERSION = _raw_version.split("-")[0] or "0.1.0"
 
 # ---------------------------------------------------------------------------
 # Bundled (read-only) resources — resolved at runtime via config.resource_root()
@@ -115,8 +122,8 @@ if IS_MAC:
         info_plist={
             "CFBundleName": APP_NAME,
             "CFBundleDisplayName": APP_NAME,
-            "CFBundleShortVersionString": "0.1.0",
-            "CFBundleVersion": "0.1.0",
+            "CFBundleShortVersionString": APP_VERSION,
+            "CFBundleVersion": APP_VERSION,
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "11.0",
         },

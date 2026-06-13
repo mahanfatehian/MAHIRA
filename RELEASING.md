@@ -50,9 +50,22 @@ writable without admin rights.
 | `.github/workflows/release.yml` | CI: builds Win + macOS, publishes Release |
 | `requirements-build.txt` | Runtime deps + PyInstaller |
 
+## Git LFS (required)
+
+The Piper voice model (`assets/audio/models/*.onnx`, ~100 MB) is stored in
+**Git LFS**. The build bundles it, so LFS objects must be present:
+
+```bash
+git lfs install
+git lfs pull
+```
+
+CI handles this automatically — both build jobs check out with `lfs: true` and
+verify the model is a real file (not a pointer stub) before building.
+
 ## Build locally (optional)
 
-From the repository root, in your virtualenv:
+From the repository root, in your virtualenv (after `git lfs pull`):
 
 ```bash
 pip install -r requirements-build.txt
@@ -90,8 +103,8 @@ You do **not** need to create a release manually — the workflow does it. Steps
 
    - `MAHIRA-Setup-<ver>-win64.exe` (Windows installer)
    - `MAHIRA-<ver>-win64-portable.zip` (Windows portable, unzip & run)
-   - `MAHIRA-<ver>-macos.dmg` (macOS disk image)
-   - `MAHIRA-<ver>-macos.zip`
+   - `MAHIRA-<ver>-macos-arm64.dmg` (macOS disk image, Apple Silicon)
+   - `MAHIRA-<ver>-macos-arm64.zip`
 
 3. **Review & publish:** GitHub → **Releases** → open the draft → edit notes →
    **Publish release**. (It's created as a draft so nothing goes public until you
@@ -116,8 +129,15 @@ and notarizing in the macOS job.
 
 ## Known caveats
 
-- **macOS architecture:** `macos-latest` runners are Apple Silicon (arm64), so
-  the `.app`/`.dmg` are arm64. Add a `macos-13` job for an Intel build if needed.
-- **Audio (Piper TTS):** the voice models are bundled, but PyInstaller may need
-  extra hooks for `piper`/`onnxruntime` data on some setups. If pronunciation
-  audio fails in a packaged build, that's the first place to look.
+- **macOS architecture:** `macos-latest` is Apple Silicon (arm64), so the
+  `.app`/`.dmg` are **arm64‑only** and do not run on Intel Macs. GitHub is
+  retiring Intel runners; if you still need an x86_64 build, add a `macos-13`
+  entry while it remains available (artifacts are already arch‑tagged).
+- **macOS signing:** builds are unsigned but **ad‑hoc signed** in CI
+  (`codesign --sign -`) so the app launches without a "damaged" error.
+  Gatekeeper still requires right‑click → **Open** on first launch (or
+  `xattr -dr com.apple.quarantine /Applications/MAHIRA.app`).
+- **Audio (Piper TTS):** voice models live in Git LFS and are bundled by the
+  spec. The CI jobs fail fast if the model wasn't pulled (an LFS pointer stub).
+  If pronunciation audio fails in a packaged build, check `piper`/`onnxruntime`
+  data collection in `packaging/mahira.spec` first.
