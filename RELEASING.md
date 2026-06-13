@@ -1,7 +1,12 @@
 # Releasing MAHIRA
 
-MAHIRA ships as a desktop app for **Windows 10/11** and **macOS**. Installers are
-built automatically by GitHub Actions and published as GitHub Releases.
+MAHIRA is a **German‑only** learning app and ships as a desktop app for
+**Windows 10/11** and **macOS**. Installers are built automatically by GitHub
+Actions and published as GitHub Releases.
+
+German content is bundled under `data/seeds/<book>/<level>/…` and is fully
+folder‑driven — adding a book/level/Lektion is just files on disk (see the
+project README), so no packaging change is needed when content grows.
 
 ## Self-contained by design
 
@@ -12,7 +17,7 @@ executable** (the installation folder):
 ```
 <install folder>/
 ├─ MAHIRA(.exe)            # or MAHIRA.app on macOS
-├─ data/                   # bundled seeds + lesson pages (read-only)
+├─ data/                   # bundled German seeds (data/seeds/<book>/<level>/) + pages (read-only)
 ├─ assets/                 # bundled logo + Piper voice models (read-only)
 └─ .mahira/                # created on first run (writable)
    ├─ mahira.db            # SQLite database
