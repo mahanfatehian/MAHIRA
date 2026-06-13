@@ -93,6 +93,9 @@ CREATE TABLE IF NOT EXISTS vocab_states (
   lapses INTEGER NOT NULL DEFAULT 0,
   due_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   last_review_at INTEGER,
+  -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
+  stability REAL,
+  difficulty REAL,
   UNIQUE(vocab_id),
   FOREIGN KEY(vocab_id) REFERENCES vocab(id) ON DELETE CASCADE
 );
@@ -150,6 +153,9 @@ CREATE TABLE IF NOT EXISTS grammar_states (
   lapses INTEGER NOT NULL DEFAULT 0,
   due_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   last_review_at INTEGER,
+  -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
+  stability REAL,
+  difficulty REAL,
   UNIQUE(grammar_id),
   FOREIGN KEY(grammar_id) REFERENCES grammar(id) ON DELETE CASCADE
 );
@@ -202,6 +208,9 @@ CREATE TABLE IF NOT EXISTS sentence_states (
   lapses INTEGER NOT NULL DEFAULT 0,
   due_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   last_review_at INTEGER,
+  -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
+  stability REAL,
+  difficulty REAL,
   UNIQUE(sentence_id),
   FOREIGN KEY(sentence_id) REFERENCES sentences(id) ON DELETE CASCADE
 );
