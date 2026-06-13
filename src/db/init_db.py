@@ -73,13 +73,19 @@ def _repair_sentences(conn) -> None:
 
 
 def _needs_full_reset(conn) -> bool:
-    """Return True if DB is pre-books-lektion schema and must be recreated."""
+    """Return True if DB is an older schema and must be recreated."""
     if not _has_table(conn, "books"):
         return True
     if not _has_table(conn, "lektions"):
         return True
     # If decks exists but has no lektion_id column it's the old schema
     if _has_table(conn, "decks") and not _has_column(conn, "decks", "lektion_id"):
+        return True
+    # German-only migration: old multi-language schema carried a language_code
+    # column on decks/books and a languages table. Rebuild from seeds when seen.
+    if _has_table(conn, "decks") and _has_column(conn, "decks", "language_code"):
+        return True
+    if _has_table(conn, "languages"):
         return True
     return False
 

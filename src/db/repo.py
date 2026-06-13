@@ -15,7 +15,6 @@ from db.connection import connect
 @dataclass(frozen=True)
 class BookInfo:
     id: int
-    language_code: str
     slug: str
     title: str
     description: Optional[str]
@@ -115,81 +114,52 @@ class Repo:
         finally:
             conn.close()
 
-    # ---------- Languages ----------
-    @staticmethod
-    def _language_name(code: str) -> str:
-        code = (code or "").lower().strip()
-        mapping = {
-            "de": "German",
-            "en": "English",
-            "es": "Spanish",
-            "fr": "French",
-            "it": "Italian",
-            "pt": "Portuguese",
-            "nl": "Dutch",
-            "tr": "Turkish",
-            "ar": "Arabic",
-        }
-        return mapping.get(code, code.upper() or "Unknown")
-
-    def ensure_language(self, code: str, name: str | None = None) -> None:
-        code = (code or "").lower().strip()
-        if not code:
-            return
-        lang_name = (name or self._language_name(code)).strip() or code.upper()
-        with self._conn() as conn:
-            conn.execute("INSERT OR IGNORE INTO languages(code, name) VALUES (?,?)", (code, lang_name))
-
     # ---------- Books ----------
-    def ensure_book(self, language_code: str, slug: str, title: str, description: str | None = None) -> int:
-        language_code = (language_code or "").lower().strip()
+    def ensure_book(self, slug: str, title: str, description: str | None = None) -> int:
         slug = (slug or "").lower().strip()
         title = (title or slug).strip()
         now = int(time.time())
         with self._conn() as conn:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO books(language_code, slug, title, description, created_at)
-                VALUES (?,?,?,?,?)
+                INSERT OR IGNORE INTO books(slug, title, description, created_at)
+                VALUES (?,?,?,?)
                 """,
-                (language_code, slug, title, description, now),
+                (slug, title, description, now),
             )
             row = conn.execute(
-                "SELECT id FROM books WHERE language_code=? AND slug=?",
-                (language_code, slug),
+                "SELECT id FROM books WHERE slug=?",
+                (slug,),
             ).fetchone()
             return int(row["id"])
 
-    def get_book_id(self, language_code: str, slug: str) -> int | None:
-        language_code = (language_code or "").lower().strip()
+    def get_book_id(self, slug: str) -> int | None:
         slug = (slug or "").lower().strip()
         with self._conn() as conn:
             row = conn.execute(
-                "SELECT id FROM books WHERE language_code=? AND slug=?",
-                (language_code, slug),
+                "SELECT id FROM books WHERE slug=?",
+                (slug,),
             ).fetchone()
             return int(row["id"]) if row else None
 
-    def get_books_for_level(self, language_code: str, level: str) -> list[BookInfo]:
-        """Return books that have at least one deck for the given language and level."""
-        language_code = (language_code or "").lower().strip()
+    def get_books_for_level(self, level: str) -> list[BookInfo]:
+        """Return books that have at least one deck for the given level."""
         level = (level or "").upper().strip()
         with self._conn() as conn:
             rows = conn.execute(
                 """
-                SELECT DISTINCT b.id, b.language_code, b.slug, b.title, b.description
+                SELECT DISTINCT b.id, b.slug, b.title, b.description
                 FROM books b
                 JOIN lektions l ON l.book_id = b.id
                 JOIN decks d ON d.lektion_id = l.id
-                WHERE b.language_code = ? AND d.level = ?
+                WHERE d.level = ?
                 ORDER BY b.title
                 """,
-                (language_code, level),
+                (level,),
             ).fetchall()
         return [
             BookInfo(
                 id=int(r["id"]),
-                language_code=str(r["language_code"]),
                 slug=str(r["slug"]),
                 title=str(r["title"]),
                 description=str(r["description"]) if r["description"] else None,
@@ -251,7 +221,6 @@ class Repo:
     # ---------- Decks / seeds ----------
     def upsert_deck(
         self,
-        language_code: str,
         level: str,
         objective: str,
         seed_file: str | None,
@@ -261,22 +230,19 @@ class Repo:
         now = int(time.time())
         objective = (objective or "").lower().strip()
         level = (level or "").upper().strip()
-        language_code = (language_code or "").lower().strip()
-
-        self.ensure_language(language_code)
 
         if lektion_id is not None:
-            deck_name = f"{language_code.upper()} {level} L{lektion_id} {objective}"
+            deck_name = f"{level} L{lektion_id} {objective}"
         else:
-            deck_name = f"{language_code.upper()} {level} {objective}"
+            deck_name = f"{level} {objective}"
 
         with self._conn() as conn:
             row = conn.execute(
                 """
                 SELECT id, seed_sha1 FROM decks
-                WHERE language_code=? AND level=? AND COALESCE(lektion_id,0)=COALESCE(?,0) AND objective=?
+                WHERE level=? AND COALESCE(lektion_id,0)=COALESCE(?,0) AND objective=?
                 """,
-                (language_code, level, lektion_id, objective),
+                (level, lektion_id, objective),
             ).fetchone()
 
             if row:
@@ -299,36 +265,34 @@ class Repo:
 
             cur = conn.execute(
                 """
-                INSERT INTO decks(language_code, level, lektion_id, objective, name, seed_file, seed_sha1, created_at, updated_at)
-                VALUES(?,?,?,?,?,?,?,?,?)
+                INSERT INTO decks(level, lektion_id, objective, name, seed_file, seed_sha1, created_at, updated_at)
+                VALUES(?,?,?,?,?,?,?,?)
                 """,
-                (language_code, level, lektion_id, objective, deck_name, seed_file, seed_sha1, now, now),
+                (level, lektion_id, objective, deck_name, seed_file, seed_sha1, now, now),
             )
             return int(cur.lastrowid), True
 
-    def get_deck_id(self, language_code: str, level: str, objective: str, lektion_id: int | None = None) -> int | None:
+    def get_deck_id(self, level: str, objective: str, lektion_id: int | None = None) -> int | None:
         objective = (objective or "").lower().strip()
         level = (level or "").upper().strip()
-        language_code = (language_code or "").lower().strip()
 
         with self._conn() as conn:
             row = conn.execute(
                 """
                 SELECT id FROM decks
-                WHERE language_code=? AND level=? AND COALESCE(lektion_id,0)=COALESCE(?,0) AND objective=?
+                WHERE level=? AND COALESCE(lektion_id,0)=COALESCE(?,0) AND objective=?
                 """,
-                (language_code, level, lektion_id, objective),
+                (level, lektion_id, objective),
             ).fetchone()
             return int(row["id"]) if row else None
 
-    def has_decks_for_level(self, language_code: str, level: str) -> bool:
-        """Return True if any deck exists for this language+level (any lektion, any objective)."""
-        language_code = (language_code or "").lower().strip()
+    def has_decks_for_level(self, level: str) -> bool:
+        """Return True if any deck exists for this level (any lektion, any objective)."""
         level = (level or "").upper().strip()
         with self._conn() as conn:
             row = conn.execute(
-                "SELECT 1 FROM decks WHERE language_code=? AND level=? LIMIT 1",
-                (language_code, level),
+                "SELECT 1 FROM decks WHERE level=? LIMIT 1",
+                (level,),
             ).fetchone()
             return row is not None
 

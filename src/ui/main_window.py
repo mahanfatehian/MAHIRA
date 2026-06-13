@@ -112,7 +112,6 @@ class MainWindow(QMainWindow):
 
         alias = {
             "practice_select": "setup",
-            "language_select": "setup",
             "level_select": "setup",
             "objective_select": "setup",
         }
@@ -172,7 +171,7 @@ class MainWindow(QMainWindow):
         elif page_key == "progress":
             page_key = "progress"
 
-        if page_key in ("practice_select", "language_select", "level_select", "objective_select"):
+        if page_key in ("practice_select", "level_select", "objective_select"):
             page_key = "setup"
 
         if page_key not in self.pages:
@@ -184,7 +183,7 @@ class MainWindow(QMainWindow):
             return
 
         if page_key in ("vocab_review", "grammar_review", "sentence_review"):
-            if not getattr(self.session.state, "language_code", None) or not getattr(self.session.state, "level", None):
+            if not getattr(self.session.state, "level", None):
                 self._show("setup")
                 return
             if not getattr(self.session.state, "objective", None):

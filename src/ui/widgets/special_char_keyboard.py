@@ -15,17 +15,12 @@ from PySide6.QtWidgets import (
 )
 
 
-def chars_for_language(lang_code: str) -> List[str]:
-    lang = (lang_code or "").strip().lower()
+# German-only app: the special-character set is fixed to German umlauts/ß.
+GERMAN_CHARS: List[str] = ["ä", "ö", "ü", "ß", "Ä", "Ö", "Ü"]
 
-    if lang == "de":
-        return ["ä", "ö", "ü", "ß", "Ä", "Ö", "Ü"]
 
-    # If later you add more languages, extend here:
-    # if lang == "fr": return ["é","è","ê","ë","à","â","î","ï","ô","ù","û","ç","É","È","Ê","Ë","À","Â","Î","Ï","Ô","Ù","Û","Ç"]
-    # if lang == "es": return ["á","é","í","ó","ú","ü","ñ","¿","¡","Á","É","Í","Ó","Ú","Ü","Ñ"]
-
-    return []
+def german_chars() -> List[str]:
+    return list(GERMAN_CHARS)
 
 
 class SpecialCharKeyboard(QWidget):
@@ -64,8 +59,9 @@ class SpecialCharKeyboard(QWidget):
 
         self._rebuild()
 
-    def set_language(self, lang_code: str) -> None:
-        self.set_chars(chars_for_language(lang_code))
+    def set_language(self, lang_code: str | None = None) -> None:
+        # German-only app: always load the German character set.
+        self.set_chars(german_chars())
 
     def set_chars(self, chars: List[str]) -> None:
         self._chars = list(chars or [])

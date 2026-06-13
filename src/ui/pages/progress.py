@@ -128,11 +128,11 @@ class ProgressPage(QWidget):
         session_layout.setSpacing(12)
         session_layout.setContentsMargins(12, 16, 12, 12)
 
-        self.language_label = QLabel("Language: --")
         self.level_label = QLabel("Level: --")
+        self.book_label = QLabel("Book: --")
         self.objective_label = QLabel("Objective: --")
 
-        for label in (self.language_label, self.level_label, self.objective_label):
+        for label in (self.level_label, self.book_label, self.objective_label):
             label.setStyleSheet("""
                 QLabel {
                     font-size: 12px;
@@ -144,8 +144,8 @@ class ProgressPage(QWidget):
                 }
             """)
 
-        session_layout.addWidget(self.language_label, 0, 0)
-        session_layout.addWidget(self.level_label, 0, 1)
+        session_layout.addWidget(self.level_label, 0, 0)
+        session_layout.addWidget(self.book_label, 0, 1)
         session_layout.addWidget(self.objective_label, 1, 0)
 
         stats_group = QGroupBox("Statistics")
@@ -512,14 +512,18 @@ class ProgressPage(QWidget):
         if hasattr(self.session, "active_deck_id"):
             deck_id = self.session.active_deck_id()
 
-        self.language_label.setText(
-            f"Language: {(getattr(self.session.state, 'language_code', None) or '--').upper()}"
-        )
+        book_slug = getattr(self.session.state, "book_slug", None) or ""
+        book_text = " ".join(w.capitalize() for w in book_slug.split("_")) if book_slug else "--"
+        lektion_n = getattr(self.session.state, "lektion_number", 0) or 0
+        if book_slug and lektion_n:
+            book_text = f"{book_text} • Lektion {lektion_n}"
+
         self.level_label.setText(f"Level: {getattr(self.session.state, 'level', None) or '--'}")
+        self.book_label.setText(f"Book: {book_text}")
         self.objective_label.setText(f"Objective: {getattr(self.session.state, 'objective', None) or '--'}")
 
         if not deck_id:
-            self._set_empty("No active deck. Select language, level, and objective.")
+            self._set_empty("No active deck. Select a level, book, and objective.")
             return
 
         obj = self._normalized_objective()

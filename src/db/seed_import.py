@@ -124,7 +124,6 @@ def _slug_to_title(slug: str) -> str:
 
 def import_seed_csv(
     repo,
-    language_code: str,
     csv_path: Path,
     book_slug: str | None = None,
     lektion_number: int | None = None,
@@ -151,7 +150,6 @@ def import_seed_csv(
     lektion_id: int | None = None
     if book_slug and effective_lektion is not None:
         book_id = repo.ensure_book(
-            language_code,
             book_slug,
             _slug_to_title(book_slug),
         )
@@ -159,7 +157,7 @@ def import_seed_csv(
         lektion_id = repo.ensure_lektion(book_id, effective_lektion, lektion_title)
 
     deck_id, changed = repo.upsert_deck(
-        language_code, level, objective, csv_path.name, seed_sha1, lektion_id=lektion_id
+        level, objective, csv_path.name, seed_sha1, lektion_id=lektion_id
     )
 
     # ---------- VOCAB ----------

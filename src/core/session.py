@@ -71,10 +71,6 @@ def _norm_level(level: str) -> str:
     return (level or "").strip().upper()
 
 
-def _norm_lang(lang: str) -> str:
-    return (lang or "").strip().lower()
-
-
 def _unique_preserve_order(ids: Iterable[int]) -> list[int]:
     seen: set[int] = set()
     out: list[int] = []
@@ -213,7 +209,6 @@ def _as_required_list(value: Any) -> list[str]:
 
 @dataclass
 class AppState:
-    language_code: str = "de"
     level: str = "A1"
     objective: str = "vocab"  # vocab | grammar | sentences
     book_slug: str = ""
@@ -232,7 +227,6 @@ class SessionService:
         self.repo = repo
         self.state = state
 
-        self.state.language_code = _norm_lang(getattr(self.state, "language_code", "de"))
         self.state.level = _norm_level(getattr(self.state, "level", "A1"))
         self.state.objective = _norm_objective(getattr(self.state, "objective", "vocab"))
 
@@ -273,9 +267,8 @@ class SessionService:
         lektion_number = int(getattr(self.state, "lektion_number", 0) or 0)
         if not book_slug or lektion_number <= 0:
             return None
-        lang = _norm_lang(getattr(self.state, "language_code", "de"))
         try:
-            book_id = self.repo.get_book_id(lang, book_slug)
+            book_id = self.repo.get_book_id(book_slug)
             if book_id is None:
                 return None
             return self.repo.get_lektion_id(book_id, lektion_number)
@@ -284,39 +277,35 @@ class SessionService:
 
     def set_context(
         self,
-        language_code: str,
         level: str,
         objective: str,
         book_slug: str = "",
         lektion_number: int = 0,
     ) -> None:
-        lang = _norm_lang(language_code)
         lvl = _norm_level(level)
         obj = _norm_objective(objective)
         book_slug = (book_slug or "").strip()
         lektion_number = int(lektion_number or 0)
 
         # Reset study tracker when the lektion context changes (not just objective)
-        old_lang = _norm_lang(getattr(self.state, "language_code", ""))
         old_lvl = _norm_level(getattr(self.state, "level", ""))
         old_book = (getattr(self.state, "book_slug", "") or "").strip()
         old_lektion = int(getattr(self.state, "lektion_number", 0) or 0)
-        if lang != old_lang or lvl != old_lvl or book_slug != old_book or lektion_number != old_lektion:
+        if lvl != old_lvl or book_slug != old_book or lektion_number != old_lektion:
             self.study_answered = 0
             self.study_next_milestone = 30
 
         # Temporarily write book/lektion to state so _resolve_lektion_id works
-        self.state.language_code = lang
         self.state.book_slug = book_slug
         self.state.lektion_number = lektion_number
         lektion_id = self._resolve_lektion_id()
 
-        deck_id = self.repo.get_deck_id(lang, lvl, obj, lektion_id=lektion_id)
+        deck_id = self.repo.get_deck_id(lvl, obj, lektion_id=lektion_id)
         if deck_id is None:
             self._active_deck_id = None
             self._queue = []
             raise RuntimeError(
-                f"No deck found for {lang}/{lvl}/{obj} "
+                f"No deck found for {lvl}/{obj} "
                 f"(book={book_slug or 'none'}, lektion={lektion_number or 'none'}). "
                 "Did you import seeds?"
             )
@@ -329,18 +318,16 @@ class SessionService:
         self._active_deck_id = deck_id
 
     def active_deck_id(self) -> int | None:
-        lang = _norm_lang(getattr(self.state, "language_code", "de"))
         lvl = _norm_level(getattr(self.state, "level", "A1"))
         obj = _norm_objective(getattr(self.state, "objective", "vocab"))
         lektion_id = self._resolve_lektion_id()
 
-        deck_id = self.repo.get_deck_id(lang, lvl, obj, lektion_id=lektion_id)
+        deck_id = self.repo.get_deck_id(lvl, obj, lektion_id=lektion_id)
 
         if deck_id != self._active_deck_id:
             self._queue = []
             self._active_deck_id = deck_id
 
-        self.state.language_code = lang
         self.state.level = lvl
         self.state.objective = obj
 
@@ -557,7 +544,6 @@ class SessionService:
             try:
                 return bool(
                     self.ml.is_ready(
-                        lang=getattr(self.state, "language_code", None),
                         level=getattr(self.state, "level", None),
                         objective=obj,
                         min_seen=getattr(self, "ml_min_seen_before_ranking", 80),
@@ -666,7 +652,6 @@ class SessionService:
                     ids = self.ml.rank_vocab_ids(
                         ids,
                         level=getattr(self.state, "level", None),
-                        lang=getattr(self.state, "language_code", None),
                     )
                     return _finalize_queue(ids, ranked=True)
                 except Exception:
@@ -698,7 +683,6 @@ class SessionService:
                     ids = self.ml.rank_grammar_ids(
                         ids,
                         level=getattr(self.state, "level", None),
-                        lang=getattr(self.state, "language_code", None),
                     )
                     return _finalize_queue(ids, ranked=True)
                 except Exception:
@@ -737,7 +721,6 @@ class SessionService:
                     ids = self.ml.rank_sentence_ids(
                         ids,
                         level=getattr(self.state, "level", None),
-                        lang=getattr(self.state, "language_code", None),
                     )
                     return _finalize_queue(ids, ranked=True)
                 except Exception:
@@ -890,7 +873,6 @@ class SessionService:
                     was_checked=was_checked,
                     was_skipped=was_skipped,
                     response_ms=response_ms,
-                    lang=getattr(self.state, "language_code", None),
                     level=getattr(self.state, "level", None),
                 )
             except Exception:
@@ -977,7 +959,6 @@ class SessionService:
                     was_checked=was_checked,
                     was_skipped=was_skipped,
                     response_ms=response_ms,
-                    lang=getattr(self.state, "language_code", None),
                     level=getattr(self.state, "level", None),
                 )
             except Exception:
@@ -1117,7 +1098,6 @@ class SessionService:
                     was_checked=was_checked,
                     was_skipped=was_skipped,
                     response_ms=response_ms,
-                    lang=getattr(self.state, "language_code", None),
                     level=getattr(self.state, "level", None),
                 )
             except Exception:
