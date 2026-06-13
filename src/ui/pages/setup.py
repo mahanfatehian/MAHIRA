@@ -249,13 +249,31 @@ class ObjectiveSelectCard(QFrame):
 
 
 class _ClickCard(QFrame):
-    """A QFrame that behaves like a button: whole surface is clickable."""
+    """
+    A QFrame that behaves like a button: the whole surface is clickable and
+    hover state is driven in code (enter/leave) so child accents — the left
+    bar, chevron, badge — can all react together, not just the outer border.
+    """
 
     def __init__(self, on_click):
         super().__init__()
         self._on_click = on_click
+        self._hover = False
         self.setCursor(Qt.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def enterEvent(self, event):
+        self._hover = True
+        self._apply_style()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hover = False
+        self._apply_style()
+        super().leaveEvent(event)
+
+    def _apply_style(self):  # overridden by subclasses
+        pass
 
     def mouseReleaseEvent(self, event):
         try:
@@ -270,30 +288,21 @@ class _ClickCard(QFrame):
 class BookCard(_ClickCard):
     def __init__(self, *, title, lektion_count, item_count, accent, selected, on_click):
         super().__init__(on_click)
+        self._accent = accent
+        self._selected = selected
         self.setObjectName("BookCard")
-        self.setMinimumHeight(96)
-
-        border = f"border: 2px solid {accent};" if selected else "border: 1px solid #2B2B2B;"
-        self.setStyleSheet(f"""
-            #BookCard {{ background-color: #141414; {border} border-radius: 16px; }}
-            #BookCard:hover {{ border: 2px solid #FFFFFF; background-color: #181818; }}
-            #BookCard QLabel {{ background: transparent; border: none; }}
-            #BookCard QWidget {{ background: transparent; }}
-        """)
+        self.setMinimumHeight(92)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        bar = QFrame()
-        bar.setFixedWidth(7)
-        bar.setStyleSheet(
-            f"QFrame {{ background-color: {accent}; "
-            f"border-top-left-radius: 16px; border-bottom-left-radius: 16px; }}"
-        )
-        outer.addWidget(bar)
+        self._bar = QFrame()
+        self._bar.setFixedWidth(6)
+        outer.addWidget(self._bar)
 
         body = QWidget()
+        body.setStyleSheet("background: transparent;")
         outer.addWidget(body, 1)
 
         lay = QHBoxLayout(body)
@@ -301,21 +310,17 @@ class BookCard(_ClickCard):
         lay.setSpacing(12)
 
         # Icon badge
-        icon = QLabel("📚")
-        icon.setAlignment(Qt.AlignCenter)
-        icon.setFixedSize(44, 44)
-        icon.setStyleSheet(
-            f"QLabel {{ background-color: rgba(255,255,255,0.04); "
-            f"border: 1px solid {accent}; border-radius: 12px; font-size: 20px; }}"
-        )
-        lay.addWidget(icon, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._icon = QLabel("📚")
+        self._icon.setAlignment(Qt.AlignCenter)
+        self._icon.setFixedSize(44, 44)
+        lay.addWidget(self._icon, 0, Qt.AlignmentFlag.AlignVCenter)
 
         text_col = QVBoxLayout()
         text_col.setSpacing(8)
 
         title_lbl = QLabel(title)
         title_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Black))
-        title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; }")
+        title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; background: transparent; border: none; }")
         text_col.addWidget(title_lbl)
 
         chips = QHBoxLayout()
@@ -328,55 +333,63 @@ class BookCard(_ClickCard):
 
         lay.addLayout(text_col, 1)
 
-        chevron = QLabel("›")
-        chevron.setFont(QFont("Segoe UI", 20, QFont.Weight.Black))
-        chevron.setStyleSheet("QLabel { color: #6B6B6B; }")
-        lay.addWidget(chevron, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._chevron = QLabel("›")
+        self._chevron.setFont(QFont("Segoe UI", 22, QFont.Weight.Black))
+        lay.addWidget(self._chevron, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._apply_style()
+
+    def _apply_style(self):
+        accent = self._accent
+        if self._hover:
+            border, bg, bar, chev = f"2px solid {accent}", "#1C1C1C", "#FFFFFF", "#FFFFFF"
+        elif self._selected:
+            border, bg, bar, chev = f"2px solid {accent}", "#181818", accent, "#FFFFFF"
+        else:
+            border, bg, bar, chev = "1px solid #2B2B2B", "#141414", accent, "#6B6B6B"
+
+        self.setStyleSheet(
+            f"#BookCard {{ background-color: {bg}; border: {border}; border-radius: 16px; }}"
+        )
+        self._bar.setStyleSheet(
+            f"QFrame {{ background-color: {bar}; "
+            f"border-top-left-radius: 15px; border-bottom-left-radius: 15px; }}"
+        )
+        self._icon.setStyleSheet(
+            f"QLabel {{ background-color: rgba(255,255,255,0.04); "
+            f"border: 1px solid {accent}; border-radius: 12px; font-size: 20px; }}"
+        )
+        self._chevron.setStyleSheet(f"QLabel {{ color: {chev}; background: transparent; border: none; }}")
 
 
 class LektionCard(_ClickCard):
+    _ACCENT = "#6B9FFF"
+
     def __init__(self, *, number, title, vocab_n, grammar_n, sentences_n, selected, on_click):
         super().__init__(on_click)
+        self._selected = selected
         self.setObjectName("LektionCard")
-        self.setMinimumHeight(92)
-
-        accent = "#6B9FFF"
-        border = f"border: 2px solid {accent};" if selected else "border: 1px solid #2B2B2B;"
-        bg = "#1A1F2E" if selected else "#141414"
-        self.setStyleSheet(f"""
-            #LektionCard {{ background-color: {bg}; {border} border-radius: 16px; }}
-            #LektionCard:hover {{ border: 2px solid #FFFFFF; background-color: #181D29; }}
-            #LektionCard QLabel {{ background: transparent; border: none; }}
-            #LektionCard QWidget {{ background: transparent; }}
-        """)
+        # Compact so a full book of Lektionen fits a 2-column grid without scrolling
+        self.setMinimumHeight(72)
+        self.setMaximumHeight(78)
 
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(14, 12, 16, 12)
-        lay.setSpacing(14)
+        lay.setContentsMargins(12, 8, 12, 8)
+        lay.setSpacing(12)
 
-        # Big round number badge
-        badge = QLabel(str(number))
-        badge.setAlignment(Qt.AlignCenter)
-        badge.setFixedSize(46, 46)
-        badge.setFont(QFont("Segoe UI", 15, QFont.Weight.Black))
-        badge.setStyleSheet(
-            f"QLabel {{ background-color: {accent}; color: #0B0B0B; "
-            f"border-radius: 23px; font-weight: 900; }}"
-        )
-        lay.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
+        # Round number badge
+        self._badge = QLabel(str(number))
+        self._badge.setAlignment(Qt.AlignCenter)
+        self._badge.setFixedSize(40, 40)
+        self._badge.setFont(QFont("Segoe UI", 14, QFont.Weight.Black))
+        lay.addWidget(self._badge, 0, Qt.AlignmentFlag.AlignVCenter)
 
         text_col = QVBoxLayout()
-        text_col.setSpacing(8)
-
-        head = QLabel(f"Lektion {number}")
-        head.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
-        head.setStyleSheet("QLabel { color: #8A8A8A; letter-spacing: 1px; }")
-        text_col.addWidget(head)
+        text_col.setSpacing(6)
 
         title_lbl = QLabel(title)
         title_lbl.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-        title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; }")
-        title_lbl.setWordWrap(True)
+        title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; background: transparent; border: none; }")
         text_col.addWidget(title_lbl)
 
         chips = QHBoxLayout()
@@ -391,6 +404,26 @@ class LektionCard(_ClickCard):
         text_col.addLayout(chips)
 
         lay.addLayout(text_col, 1)
+
+        self._apply_style()
+
+    def _apply_style(self):
+        accent = self._ACCENT
+        if self._hover:
+            border, bg = f"2px solid {accent}", "#1C2230"
+        elif self._selected:
+            border, bg = f"2px solid {accent}", "#1A1F2E"
+        else:
+            border, bg = "1px solid #2B2B2B", "#141414"
+
+        self.setStyleSheet(
+            f"#LektionCard {{ background-color: {bg}; border: {border}; border-radius: 14px; }}"
+        )
+        badge_bg = "#FFFFFF" if self._hover else accent
+        self._badge.setStyleSheet(
+            f"QLabel {{ background-color: {badge_bg}; color: #0B0B0B; "
+            f"border-radius: 20px; font-weight: 900; }}"
+        )
 
 
 class SetupPage(QWidget):
@@ -832,9 +865,9 @@ class SetupPage(QWidget):
         inner = QWidget()
         inner.setStyleSheet("background: transparent;")
         self.lektion_grid = QGridLayout(inner)
-        self.lektion_grid.setContentsMargins(16, 16, 16, 16)
-        self.lektion_grid.setHorizontalSpacing(12)
-        self.lektion_grid.setVerticalSpacing(12)
+        self.lektion_grid.setContentsMargins(14, 14, 14, 14)
+        self.lektion_grid.setHorizontalSpacing(10)
+        self.lektion_grid.setVerticalSpacing(10)
         self.lektion_grid.setColumnStretch(0, 1)
         self.lektion_grid.setColumnStretch(1, 1)
         scroll.setWidget(inner)
