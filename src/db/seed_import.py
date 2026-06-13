@@ -52,24 +52,32 @@ def _split_words_bank(raw: str, fallback_sentence: str) -> list[str]:
 
 def parse_seed_filename(
     name: str,
-) -> Optional[tuple[str, Optional[int], str, Optional[str], Optional[str]]]:
+) -> Optional[tuple[Optional[str], Optional[int], str, Optional[str], Optional[str]]]:
     """
     Parse a seed CSV filename and return
         (level, lektion_number, objective, title, topic).
 
-    Core formats:
-      - "{level}_{lektion_number}_{objective}.csv"  e.g. "a1_1_vocab.csv"
-      - "{level}_{objective}.csv"                   e.g. "a1_vocab.csv"  (no lektion)
+    The CEFR level is OPTIONAL in the filename. In the folder-based layout the
+    level comes from the directory (data/seeds/<book>/<level>/...), so the
+    filename only needs "<lektion_number>_<objective>":
+
+        "1_vocab.csv", "1_grammar.csv", "3_sentences.csv"
+
+    The legacy flat layout, where the level is encoded in the filename, is also
+    still accepted for backward compatibility:
+
+        "a1_1_vocab.csv", "a1_vocab.csv"
 
     Optional Lektion metadata may be appended after a double-underscore so the
     Lektion's display name and topic live IN THE FILENAME (not in CSV content):
 
-        "{level}_{lektion}_{objective}__{Title}__{Topic}.csv"
-        e.g. "a1_1_vocab__Super!__Greetings, names, numbers 0-20, alphabet.csv"
+        "<n>_<objective>__<Title>__<Topic>.csv"
+        e.g. "1_vocab__Super!__Greetings, names, numbers 0-20, alphabet.csv"
 
     Only ONE file per Lektion needs the metadata (the vocab file is the
-    convention). title/topic are returned with their original casing; the core
-    level/objective part is matched case-insensitively.
+    convention). title/topic keep their original casing; the core part is
+    matched case-insensitively. `level` is returned upper-cased or None when the
+    filename carries no level (the caller then supplies it from the folder).
 
     Returns None if the filename doesn't match a valid pattern.
     """
@@ -85,30 +93,31 @@ def parse_seed_filename(
     title = meta[1].strip() if len(meta) >= 2 and meta[1].strip() else None
     topic = meta[2].strip() if len(meta) >= 3 and meta[2].strip() else None
 
-    parts = core.lower().split("_")
-    if len(parts) < 2:
+    parts = [p for p in core.lower().split("_") if p != ""]
+    if not parts:
         return None
 
-    level = parts[0]
-    if level not in CEFR_LEVELS:
+    # Optional leading CEFR level (legacy flat layout).
+    level: Optional[str] = None
+    if parts[0] in CEFR_LEVELS:
+        level = parts[0].upper()
+        parts = parts[1:]
+
+    if not parts:
         return None
 
-    # New format: level_number_objective
-    if len(parts) >= 3:
-        try:
-            lektion_number = int(parts[1])
-            objective = "_".join(parts[2:])
-            if objective in ALLOWED_OBJECTIVES:
-                return level.upper(), lektion_number, objective, title, topic
-        except ValueError:
-            pass
+    # Optional leading Lektion number.
+    lektion_number: Optional[int] = None
+    if parts[0].isdigit():
+        lektion_number = int(parts[0])
+        objective = "_".join(parts[1:])
+    else:
+        objective = "_".join(parts)
 
-    # Old format: level_objective (no lektion)
-    objective = "_".join(parts[1:])
-    if objective in ALLOWED_OBJECTIVES:
-        return level.upper(), None, objective, title, topic
+    if objective not in ALLOWED_OBJECTIVES:
+        return None
 
-    return None
+    return level, lektion_number, objective, title, topic
 
 
 def _norm_key(*parts: str) -> tuple[str, ...]:
@@ -146,12 +155,21 @@ def import_seed_csv(
     csv_path: Path,
     book_slug: str | None = None,
     lektion_number: int | None = None,
+    level: str | None = None,
 ) -> None:
     parsed = parse_seed_filename(csv_path.name)
     if not parsed:
         return
 
-    level, file_lektion_number, objective, file_title, file_topic = parsed
+    file_level, file_lektion_number, objective, file_title, file_topic = parsed
+
+    # Level from the caller (i.e. the folder data/seeds/<book>/<level>/) takes
+    # priority over any level encoded in the filename. This is what makes the
+    # CEFR structure fully folder-driven and dynamic.
+    effective_level = (level or file_level)
+    if not effective_level:
+        return
+    effective_level = effective_level.upper().strip()
 
     # lektion_number from caller takes priority (e.g. if parsed from dir structure),
     # otherwise use the one embedded in the filename.
@@ -177,11 +195,11 @@ def import_seed_csv(
         )
         lektion_title = file_title or f"Lektion {effective_lektion}"
         lektion_id = repo.ensure_lektion(
-            book_id, level, effective_lektion, lektion_title, description=file_topic
+            book_id, effective_level, effective_lektion, lektion_title, description=file_topic
         )
 
     deck_id, changed = repo.upsert_deck(
-        level, objective, csv_path.name, seed_sha1, lektion_id=lektion_id
+        effective_level, objective, csv_path.name, seed_sha1, lektion_id=lektion_id
     )
 
     # ---------- VOCAB ----------

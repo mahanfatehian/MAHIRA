@@ -45,6 +45,15 @@ pip-wheel-metadata/
 dist/
 build/
 
+# -----------------------------
+# Testing / coverage caches
+# -----------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
 # Packaging artifacts (generated in CI / local builds)
 assets/logo.icns
 *.iconset/

@@ -1,86 +1,142 @@
-# 🧠 Mahira — Intelligent Language Learning App
+# 🧠 MAHIRA — Intelligent German Learning App
 
 <p align="center">
-  <img src="assets/logo.ico" width="180" alt="Mahira Log">
+  <img src="assets/logo.ico" width="180" alt="MAHIRA logo">
 </p>
 
 <p align="center">
-  <b>A smart spaced‑repetition vocabulary trainer built with PySide6.</b><br>
-  Learn faster with adaptive review scheduling and machine‑assisted ranking.
+  <b>A smart, adaptive spaced‑repetition trainer for learning German, built with PySide6.</b><br>
+  Learn faster with an FSRS‑based recall engine and machine‑assisted ranking that
+  surface the words, grammar, and sentences you're most likely to forget.
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Language-German%20(CEFR)-black">
   <img src="https://img.shields.io/badge/Python-3.11%2B-blue">
   <img src="https://img.shields.io/badge/GUI-PySide6-green">
   <img src="https://img.shields.io/badge/Database-SQLite-orange">
-  <img src="https://img.shields.io/badge/ML-scikit--learn-purple">
+  <img src="https://img.shields.io/badge/Scheduler-FSRS%204.5-purple">
 </p>
 
 ---
 
-# 🌍 Supported Languages
+# 🇩🇪 German, by design
 
-Mahira is designed to support multiple languages as the platform grows.  
-Currently, the following language is fully implemented:
+MAHIRA is a **German‑only** learning app — there is no language‑selection layer.
+Content is organised the way real coursebooks are:
 
-<img src="https://flagcdn.com/de.svg" width="26"> **German**  A1 (CEFR)
+```
+CEFR Level  →  Book  →  Lektion  →  Objective (vocab · grammar · sentences)
+```
 
+You pick a level (A1, A2, …), choose a book, then a Lektion, and practise its
+vocabulary, grammar gap‑fills, and sentence building.
 
-You can add German vocabulary, practice with flashcard‑style review sessions, and progressively strengthen your memory through adaptive learning.
+### Content is fully folder‑driven (no hardcoding)
 
+Which books exist — and at which levels — is determined **entirely by the
+folders on disk**, never by code:
 
-# ✨ Features
+```
+data/seeds/
+├─ starten_wir/
+│  ├─ a1/   1_vocab__Super!__Greetings… .csv, 1_grammar.csv, 1_sentences.csv, …
+│  └─ a2/   1_vocab__Damals und heute__Past tense… .csv, …
+└─ sicher/
+   └─ b1/   1_vocab__… .csv, …
+```
 
-### 📚 Vocabulary Management  
-- Add words with meaning, gender, and plural  
-- Smooth input experience with a built‑in special‑character keyboard  
-- Clean interface for organizing your language learning  
+- A book shows up under a level **only if it has a folder for that level**. Drop
+  in `data/seeds/sicher/b1/…` and *Sicher* appears under B1; *Starten Wir* never
+  appears under B1 because it has no `b1/` folder.
+- The Lektion's **name and topic live in the filename**
+  (`<n>_vocab__<Title>__<Topic>.csv`), so the UI shows real Lektion titles
+  without hardcoding them in the database or CSV content.
+- Add a new book, level, or Lektion by adding files/folders — **no code change
+  required**.
 
-### 🔁 Smart Review Sessions  
-- Guided, flashcard‑style practice  
-- Adaptive scheduling that shows the right words at the right time  
-- Difficulty‑rating system to help tailor your learning pace  
-
-### 🧠 Machine‑Assisted Learning  
-- A lightweight AI model prioritizes which words you need most  
-- Adapts to your strengths and weaknesses over time  
-
-### 📈 Simple Progress Overview  
-- Clear review flow  
-- Encouragement through visible learning activity  
+Currently shipped: **Starten Wir A1** (Lektionen 1–12, complete) and **A2**
+(in progress); the engine handles any additional books/levels automatically.
 
 ---
 
+# ✨ Features
 
-# ⚙️ Installation
+### 📚 Structured German content
+- Vocabulary with article, gender, plural, and meaning
+- Grammar gap‑fill drills and sentence‑construction exercises
+- Built‑in special‑character keyboard (ä, ö, ü, ß)
+- Optional pronunciation audio (Piper TTS)
 
+### 🔁 FSRS adaptive recall engine
+- Each item is modelled with **stability + difficulty**, and the engine computes
+  **retrievability** — the probability you'd recall it right now — to schedule
+  reviews exactly when you're about to forget.
+- Failed items re‑enter a short relearning step; correct ones are pushed out to
+  the optimal interval for long‑term retention.
+
+### 🧠 Machine‑assisted prioritisation
+- An always‑on recall priority surfaces your weakest items from review #1.
+- A lightweight online scikit‑learn model **augments** that ranking as it learns
+  your personal strengths and weaknesses (it never gates selection).
+- Sessions never randomly drop a due/weak item, and guarantee a steady trickle
+  of new material.
+
+### 📈 Progress overview
+- Clear, focused review flow with a global session tracker and milestones.
+
+---
+
+# ⚙️ Installation (from source)
 
 ```bash
-## 1️⃣ Clone the Repository
-git clone project_url
-cd mahira
+# 1) Clone
+git clone <repo-url>
+cd MAHIRA
 
-## 2️⃣ Create Virtual Environment
+# 2) Virtual environment
 python -m venv venv
-
-### Activate:
-
-#### Windows
+# Windows:
 venv\Scripts\activate
-
-#### Linux / macOS
+# Linux / macOS:
 source venv/bin/activate
 
-## 3️⃣ Install Dependencies
+# 3) Dependencies
 pip install -r requirements.txt
+```
 
-### Example dependencies:
-PySide6
-SQLAlchemy
-numpy
-scikit-learn
-joblib
+Core stack: **PySide6** (GUI), **SQLite** (storage), **numpy / scikit‑learn /
+joblib** (ranking model), and **piper / onnxruntime** (optional TTS). See
+[`requirements.txt`](requirements.txt) for the full list.
 
-## 🚀 Running the Application
-cd .\src\
+## 🚀 Running
+
+```bash
+cd src
 python -m mahira
+```
+
+All runtime state (database, ML models, logs) is written to a `.mahira/` folder
+next to the app — never to `%APPDATA%` or `~/Library`. See
+[RELEASING.md](RELEASING.md) for packaging and the self‑contained layout.
+
+---
+
+# 🧪 Tests
+
+```bash
+pip install pytest
+pytest
+```
+
+The suite covers the FSRS scheduler, the recall‑priority ordering, session
+selection (highest‑priority items are never dropped + new‑material coverage),
+and the folder‑driven seed structure.
+
+---
+
+# 📦 Packaging & releases
+
+MAHIRA ships as a self‑contained desktop app for **Windows 10/11** and
+**macOS**, built and published by GitHub Actions. See
+[RELEASING.md](RELEASING.md) for the full build and release process.
