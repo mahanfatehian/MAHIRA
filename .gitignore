@@ -45,6 +45,10 @@ pip-wheel-metadata/
 dist/
 build/
 
+# Packaging artifacts (generated in CI / local builds)
+assets/logo.icns
+*.iconset/
+
 # -----------------------------
 # OS junk
 # -----------------------------

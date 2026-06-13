@@ -1,0 +1,5 @@
+# Build-time dependencies for packaging MAHIRA installers.
+# Install with:  pip install -r requirements-build.txt
+-r requirements.txt
+
+pyinstaller==6.11.1

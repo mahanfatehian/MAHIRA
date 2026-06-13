@@ -8,6 +8,7 @@ import faulthandler
 from pathlib import Path
 
 from mahira.app import run
+from mahira.config import data_root, resource_root, STATE_DIRNAME
 
 
 def main() -> None:
@@ -15,8 +16,10 @@ def main() -> None:
     parser.add_argument("--page", default=None)
     args = parser.parse_args()
 
-    project_root = Path(__file__).resolve().parents[2]
-    state_dir = project_root / ".mahira"
+    # Resources are read from the bundle; all writable state stays inside the
+    # installation folder (data_root) so nothing lands in user/OS locations.
+    project_root = resource_root()
+    state_dir = data_root() / STATE_DIRNAME
     state_dir.mkdir(parents=True, exist_ok=True)
 
     log_path = state_dir / "crash.log"

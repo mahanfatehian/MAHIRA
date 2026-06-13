@@ -87,6 +87,10 @@ def _needs_full_reset(conn) -> bool:
         return True
     if _has_table(conn, "languages"):
         return True
+    # Per-level Lektion identity: lektions gained a `level` column. Rebuild older
+    # DBs that key Lektionen only by (book, number).
+    if _has_table(conn, "lektions") and not _has_column(conn, "lektions", "level"):
+        return True
     return False
 
 

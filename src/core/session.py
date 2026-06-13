@@ -262,16 +262,17 @@ class SessionService:
     # Context / deck selection
     # -----------------------------------------------------------------
     def _resolve_lektion_id(self) -> int | None:
-        """Look up lektion_id from state.book_slug + state.lektion_number."""
+        """Look up lektion_id from state.book_slug + level + lektion_number."""
         book_slug = (getattr(self.state, "book_slug", "") or "").strip()
         lektion_number = int(getattr(self.state, "lektion_number", 0) or 0)
+        level = _norm_level(getattr(self.state, "level", "") or "")
         if not book_slug or lektion_number <= 0:
             return None
         try:
             book_id = self.repo.get_book_id(book_slug)
             if book_id is None:
                 return None
-            return self.repo.get_lektion_id(book_id, lektion_number)
+            return self.repo.get_lektion_id(book_id, level, lektion_number)
         except Exception:
             return None
 
@@ -295,7 +296,9 @@ class SessionService:
             self.study_answered = 0
             self.study_next_milestone = 30
 
-        # Temporarily write book/lektion to state so _resolve_lektion_id works
+        # Write level/book/lektion to state so _resolve_lektion_id (which is
+        # level-aware) resolves against the NEW context, not the previous one.
+        self.state.level = lvl
         self.state.book_slug = book_slug
         self.state.lektion_number = lektion_number
         lektion_id = self._resolve_lektion_id()
