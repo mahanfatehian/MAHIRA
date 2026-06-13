@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -20,6 +20,8 @@ from PySide6.QtWidgets import (
     QFrame,
     QStackedWidget,
     QTextBrowser,
+    QSizePolicy,
+    QGraphicsDropShadowEffect,
 )
 
 CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
@@ -276,6 +278,26 @@ def _accent_for_key(key: str) -> str:
     return _ACCENTS[h % len(_ACCENTS)]
 
 
+def _accent_for_level(level: str) -> str:
+    """Stable accent per CEFR level, matching the order on the level page."""
+    try:
+        return _ACCENTS[CEFR_LEVELS.index(_norm_level(level)) % len(_ACCENTS)]
+    except Exception:
+        return _ACCENTS[0]
+
+
+def _level_blurb(level: str) -> str:
+    """Short, level-appropriate one-liner (mirrors the Practice/setup tab)."""
+    return {
+        "A1": "Beginner German — articles, present tense, and core sentence structure.",
+        "A2": "Elementary German — past tense, cases, and connected sentences.",
+        "B1": "Intermediate German — opinions, connected text, and broader grammar.",
+        "B2": "Upper-intermediate German — nuanced expression and complex grammar.",
+        "C1": "Advanced German — fluent, flexible language for demanding topics.",
+        "C2": "Mastery German — precise, idiomatic command of the language.",
+    }.get(_norm_level(level), "Structured German grammar lessons.")
+
+
 def _objective_group_number(lessons: List[LessonRef]) -> int:
     """
     Determines objective ordering number from lessons.
@@ -297,128 +319,273 @@ def _sort_lessons_in_objective(lessons: List[LessonRef]) -> List[LessonRef]:
 
 
 # -------------------------
-# Objective card widget (Curriculum map; no dictionaries)
+# Cards (match the Practice tab's vibe: dark cards, accent bar, hover engine)
 # -------------------------
 
-class CurriculumMapCard(QFrame):
-    def __init__(self, objective_key: str, lessons: List[LessonRef], on_open):
+class _ClickableCard(QFrame):
+    """A QFrame whose whole surface is clickable, with code-driven hover so the
+    border/accents react together (same pattern as the book/Lektion cards)."""
+
+    def __init__(self, on_click=None):
         super().__init__()
-        self._lessons = lessons
-        self._on_open = on_open
+        self._on_click = on_click
+        self._hover = False
+        if callable(on_click):
+            self.setCursor(Qt.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        accent = _accent_for_key(objective_key)
-        obj_num = _objective_group_number(lessons)
+    def enterEvent(self, event):
+        self._hover = True
+        self._apply_style()
+        super().enterEvent(event)
 
-        self.setObjectName("CurriculumMapCard")
-        self.setStyleSheet("""
-            #CurriculumMapCard {
-                background-color: #141414;
-                border: 1px solid #2B2B2B;
-                border-radius: 16px;
-            }
-            #CurriculumMapCard QLabel {
-                background: transparent;
-                border: none;
-                padding: 0;
-                margin: 0;
-            }
-            #CurriculumMapCard QWidget { background: transparent; }
+    def leaveEvent(self, event):
+        self._hover = False
+        self._apply_style()
+        super().leaveEvent(event)
+
+    def _apply_style(self):  # overridden by subclasses
+        pass
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and callable(self._on_click):
+            try:
+                inside = self.rect().contains(event.position().toPoint())
+            except Exception:
+                inside = True
+            if inside:
+                self._on_click()
+        super().mouseReleaseEvent(event)
+
+
+class LessonRow(_ClickableCard):
+    """A single lesson: order token + title, with an Open affordance. The whole
+    row is clickable; hover brightens it (Open button keeps the accent)."""
+
+    def __init__(self, ref: LessonRef, accent: str, fallback_index: int, on_open):
+        super().__init__(on_click=lambda: on_open(ref))
+        self._accent = accent
+        self.setObjectName("LessonRow")
+        self.setMinimumHeight(56)
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(14, 9, 12, 9)
+        lay.setSpacing(14)
+
+        token = ref.order_token if ref.order_token else str(fallback_index)
+        num = QLabel(token)
+        num.setFixedWidth(44)
+        num.setAlignment(Qt.AlignCenter)
+        num.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
+        num.setStyleSheet(f"QLabel {{ color: {accent}; background: transparent; border: none; }}")
+
+        title = QLabel(ref.lesson_title)
+        title.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        title.setWordWrap(True)
+        title.setStyleSheet("QLabel { color: #FFFFFF; background: transparent; border: none; }")
+
+        open_btn = QPushButton("Open")
+        open_btn.setCursor(Qt.PointingHandCursor)
+        open_btn.setFixedHeight(32)
+        open_btn.setMinimumWidth(78)
+        open_btn.setFont(QFont("Segoe UI", 9, QFont.Weight.Black))
+        open_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {accent};
+                color: #0B0B0B;
+                border: 1px solid #2E2E2E;
+                border-radius: 10px;
+                padding: 5px 14px;
+                font-weight: 900;
+            }}
+            QPushButton:hover {{ border: 1px solid #FFFFFF; }}
         """)
+        open_btn.clicked.connect(lambda: on_open(ref))
+
+        lay.addWidget(num, 0)
+        lay.addWidget(title, 1)
+        lay.addWidget(open_btn, 0, Qt.AlignVCenter)
+
+        self._apply_style()
+
+    def _apply_style(self):
+        bg = "rgba(255,255,255,0.065)" if self._hover else "rgba(255,255,255,0.035)"
+        border = self._accent if self._hover else "rgba(255,255,255,0.08)"
+        self.setStyleSheet(
+            f"QFrame#LessonRow {{ background: {bg}; border: 1px solid {border}; border-radius: 14px; }}"
+        )
+
+
+class ObjectiveCard(QFrame):
+    """An objective group: accent bar + number badge + title + its lesson rows.
+    Static surface (interactivity lives in the rows) to avoid hover flicker."""
+
+    def __init__(self, objective_key: str, lessons: List[LessonRef], accent: str, obj_no: int, on_open):
+        super().__init__()
+        self.setObjectName("ObjectiveCard")
+        self.setStyleSheet(
+            "QFrame#ObjectiveCard { background-color:#141414; border:1px solid #2B2B2B; border-radius:18px; }"
+        )
+
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(24)
+        shadow.setOffset(0, 8)
+        shadow.setColor(QColor(0, 0, 0, 150))
+        self.setGraphicsEffect(shadow)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
         bar = QFrame()
-        bar.setFixedWidth(7)
+        bar.setFixedWidth(6)
         bar.setStyleSheet(
-            f"QFrame {{ background-color: {accent}; border-top-left-radius: 16px; border-bottom-left-radius: 16px; }}"
+            f"QFrame {{ background-color:{accent}; border-top-left-radius:18px; border-bottom-left-radius:18px; }}"
         )
         outer.addWidget(bar)
 
         body = QWidget()
+        body.setStyleSheet("QWidget { background: transparent; }")
         outer.addWidget(body, 1)
 
         lay = QVBoxLayout(body)
-        lay.setContentsMargins(16, 14, 16, 14)
-        lay.setSpacing(10)
+        lay.setContentsMargins(18, 16, 18, 16)
+        lay.setSpacing(14)
 
-        if obj_num != 999:
-            title_text = f"📘 Objective {obj_num}: {_pretty(objective_key)}"
+        header = QHBoxLayout()
+        header.setSpacing(14)
+
+        badge = QLabel(str(obj_no) if obj_no != 999 else "•")
+        badge.setFixedSize(42, 42)
+        badge.setAlignment(Qt.AlignCenter)
+        badge.setFont(QFont("Segoe UI", 14, QFont.Weight.Black))
+        badge.setStyleSheet(f"QLabel {{ color:#0B0B0B; background-color:{accent}; border-radius:14px; }}")
+
+        title_box = QVBoxLayout()
+        title_box.setSpacing(2)
+
+        if obj_no != 999:
+            title_text = f"Objective {obj_no}: {_pretty(objective_key)}"
         else:
-            title_text = f"📘 Objective: {_pretty(objective_key)}"
-
+            title_text = f"Objective: {_pretty(objective_key)}"
         title = QLabel(title_text)
-        title.setFont(QFont("Segoe UI", 12, QFont.Weight.Black))
-        title.setStyleSheet(f"QLabel {{ color: {accent}; font-weight: 900; }}")
-        lay.addWidget(title)
+        title.setFont(QFont("Segoe UI", 13, QFont.Weight.Black))
+        title.setStyleSheet("QLabel { color:#FFFFFF; background: transparent; }")
 
-        meta = QLabel(f"{len(lessons)} lesson(s)")
-        meta.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
-        meta.setStyleSheet("QLabel { color: #CFCFCF; }")
-        lay.addWidget(meta)
+        sub = QLabel(f"{len(lessons)} lesson(s)")
+        sub.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
+        sub.setStyleSheet("QLabel { color:#A1A1AA; background: transparent; }")
 
-        # Header row
-        hdr = QWidget()
-        hdr_lay = QGridLayout(hdr)
-        hdr_lay.setContentsMargins(0, 0, 0, 0)
-        hdr_lay.setHorizontalSpacing(10)
-        hdr_lay.setVerticalSpacing(6)
+        title_box.addWidget(title)
+        title_box.addWidget(sub)
 
-        def _hdr(text: str) -> QLabel:
-            lb = QLabel(text)
-            lb.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
-            lb.setStyleSheet("QLabel { color:#CFCFCF; }")
-            return lb
+        chip = QLabel(str(len(lessons)))
+        chip.setAlignment(Qt.AlignCenter)
+        chip.setFont(QFont("Segoe UI", 10, QFont.Weight.Black))
+        chip.setStyleSheet(
+            "QLabel { color:#D7DAE0; background-color:#101010; border:1px solid #2E2E2E; "
+            "border-radius:10px; padding:5px 12px; }"
+        )
 
-        hdr_lay.addWidget(_hdr("Lesson"), 0, 0)
-        hdr_lay.addWidget(_hdr("Topic"), 0, 1)
-        hdr_lay.setColumnStretch(0, 0)
-        hdr_lay.setColumnStretch(1, 2)
-        lay.addWidget(hdr)
-
-        # Rows
-        rows = QWidget()
-        grid = QGridLayout(rows)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(8)
-
-        grid.setColumnStretch(0, 0)
-        grid.setColumnStretch(1, 2)
-        grid.setColumnStretch(2, 0)
+        header.addWidget(badge, 0)
+        header.addLayout(title_box, 1)
+        header.addWidget(chip, 0, Qt.AlignTop)
+        lay.addLayout(header)
 
         for i, ref in enumerate(_sort_lessons_in_objective(lessons), start=1):
-            lesson_no = QLabel(ref.lesson_label if ref.order_token else f"Lesson {i}")
-            lesson_no.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
-            lesson_no.setStyleSheet("QLabel { color:#CFCFCF; }")
+            lay.addWidget(LessonRow(ref, accent, i, on_open))
 
-            topic = QLabel(ref.lesson_title)
-            topic.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
-            topic.setStyleSheet("QLabel { color:#FFFFFF; }")
 
-            btn = QPushButton("Open")
-            btn.setFixedHeight(34)
-            btn.setMinimumWidth(84)
-            btn.setFont(QFont("Segoe UI", 9, QFont.Weight.Black))
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {accent};
-                    color: #0B0B0B;
-                    border: 1px solid #2E2E2E;
-                    border-radius: 10px;
-                    padding: 6px 12px;
-                    font-weight: 900;
-                }}
-                QPushButton:hover {{ border: 1px solid #FFFFFF; }}
-            """)
-            btn.clicked.connect(lambda checked=False, r=ref: self._on_open(r))
+class LevelCard(_ClickableCard):
+    """A CEFR level on the Learn landing page — gradient level tile, blurb, and
+    a live lesson count. Disabled (dimmed) when the level has no lessons yet."""
 
-            grid.addWidget(lesson_no, i - 1, 0, Qt.AlignTop)
-            grid.addWidget(topic, i - 1, 1, Qt.AlignTop)
-            grid.addWidget(btn, i - 1, 2, Qt.AlignTop)
+    def __init__(self, level: str, accent: str, on_click):
+        super().__init__(on_click=lambda: on_click(level))
+        self._accent = accent
+        self._level = level
+        self._available = True
+        self.setObjectName("LevelCard")
+        self.setMinimumHeight(108)
 
-        lay.addWidget(rows)
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(22)
+        shadow.setOffset(0, 6)
+        shadow.setColor(QColor(0, 0, 0, 140))
+        self.setGraphicsEffect(shadow)
+
+        root = QHBoxLayout(self)
+        root.setContentsMargins(16, 14, 18, 14)
+        root.setSpacing(16)
+
+        tile = QFrame()
+        tile.setFixedSize(68, 80)
+        tile.setStyleSheet(
+            f"QFrame {{ border-radius:16px; border:1px solid rgba(255,255,255,0.22); "
+            f"background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {accent}, stop:1 #111827); }}"
+        )
+        tlay = QVBoxLayout(tile)
+        tlay.setContentsMargins(4, 4, 4, 4)
+        lvl_lbl = QLabel(level)
+        lvl_lbl.setAlignment(Qt.AlignCenter)
+        lvl_lbl.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
+        lvl_lbl.setStyleSheet("QLabel { color:#FFFFFF; background:transparent; border:none; }")
+        tlay.addWidget(lvl_lbl)
+
+        mid = QVBoxLayout()
+        mid.setSpacing(5)
+
+        self.title = QLabel(f"{level} · German")
+        self.title.setFont(QFont("Segoe UI", 13, QFont.Weight.Black))
+        self.title.setStyleSheet("QLabel { color:#FFFFFF; background:transparent; }")
+
+        self.blurb = QLabel(_level_blurb(level))
+        self.blurb.setWordWrap(True)
+        self.blurb.setFont(QFont("Segoe UI", 9))
+        self.blurb.setStyleSheet("QLabel { color:#A1A1AA; background:transparent; }")
+
+        self.count = QLabel("")
+        self.count.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
+        self.count.setStyleSheet(
+            "QLabel { color:#D7DAE0; background-color:#101010; border:1px solid #2E2E2E; "
+            "border-radius:10px; padding:3px 10px; }"
+        )
+        count_row = QHBoxLayout()
+        count_row.addWidget(self.count, 0)
+        count_row.addStretch(1)
+
+        mid.addWidget(self.title)
+        mid.addWidget(self.blurb)
+        mid.addLayout(count_row)
+
+        self.chevron = QLabel("→")
+        self.chevron.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
+        self.chevron.setStyleSheet(f"QLabel {{ color:{accent}; background:transparent; }}")
+
+        root.addWidget(tile, 0)
+        root.addLayout(mid, 1)
+        root.addWidget(self.chevron, 0, Qt.AlignVCenter)
+
+        self._apply_style()
+
+    def set_available(self, available: bool, lesson_count: int):
+        self._available = bool(available)
+        self.setEnabled(self._available)  # disabled -> no clicks/hover + dimmed
+        self.count.setText(f"{lesson_count} lesson(s)" if available else "Coming soon")
+        self.chevron.setVisible(self._available)
+        self._apply_style()
+
+    def _apply_style(self):
+        if not self._available:
+            self.setStyleSheet(
+                "QFrame#LevelCard { background-color:#0E0E0E; border:1px solid #232323; border-radius:18px; }"
+            )
+            return
+        bg = "#161616" if self._hover else "#141414"
+        border = "#FFFFFF" if self._hover else "#2B2B2B"
+        self.setStyleSheet(
+            f"QFrame#LevelCard {{ background-color:{bg}; border:1px solid {border}; border-radius:18px; }}"
+        )
 
 
 # -------------------------
@@ -556,82 +723,59 @@ class LearnPage(QWidget):
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(12)
+        lay.setSpacing(10)
 
-        title = QLabel("Select CEFR Level")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
-        title.setAlignment(Qt.AlignCenter)
+        title = QLabel("Choose your level")
+        title.setFont(QFont("Segoe UI", 18, QFont.Weight.Black))
         title.setStyleSheet("QLabel { color:#FFFFFF; }")
         lay.addWidget(title)
 
-        group = QGroupBox("Levels")
-        group.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        group.setStyleSheet("""
-            QGroupBox {
-                color: #FFFFFF;
-                border: 1px solid #2E2E2E;
-                border-radius: 12px;
-                margin-top: 10px;
-                padding-top: 12px;
-                background-color: #151515;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 16px;
-                padding: 0 10px 0 10px;
-            }
-        """)
+        subtitle = QLabel("Pick a CEFR level to open its grammar curriculum, objective by objective.")
+        subtitle.setFont(QFont("Segoe UI", 10))
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet("QLabel { color:#A1A1AA; }")
+        lay.addWidget(subtitle)
 
-        grid = QGridLayout(group)
-        grid.setContentsMargins(16, 16, 16, 16)
-        grid.setSpacing(10)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollArea { border:none; background:transparent; }")
 
-        self.level_buttons: Dict[str, QPushButton] = {}
+        inner = QWidget()
+        inner.setStyleSheet("background:transparent;")
+        col = QVBoxLayout(inner)
+        col.setContentsMargins(2, 6, 12, 8)
+        col.setSpacing(14)
+
+        self.level_cards: Dict[str, LevelCard] = {}
         for i, lvl in enumerate(CEFR_LEVELS):
-            b = QPushButton(lvl)
-            b.setMinimumSize(110, 58)
-            b.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-            b.setStyleSheet("""
-                QPushButton {
-                    background-color: #151515;
-                    color: #FFFFFF;
-                    border: 2px solid #2E2E2E;
-                    border-radius: 12px;
-                    padding: 10px;
-                    font-weight: 900;
-                }
-                QPushButton:hover {
-                    border: 2px solid #FFFFFF;
-                    background-color: #1B1B1B;
-                }
-                QPushButton:disabled {
-                    background-color: #101010;
-                    color: #6B6B6B;
-                    border: 1px solid #252525;
-                }
-            """)
-            b.clicked.connect(lambda checked=False, l=lvl: self._choose_level(l))
-            self.level_buttons[lvl] = b
-            grid.addWidget(b, i // 3, i % 3)
+            card = LevelCard(lvl, _accent_for_level(lvl), self._choose_level)
+            self.level_cards[lvl] = card
+            col.addWidget(card)
+        col.addStretch(1)
+
+        scroll.setWidget(inner)
+        lay.addWidget(scroll, 1)
 
         self.level_hint = QLabel("")
         self.level_hint.setFont(QFont("Segoe UI", 9))
         self.level_hint.setAlignment(Qt.AlignCenter)
         self.level_hint.setStyleSheet("QLabel { color:#B0B0B0; }")
-
-        lay.addWidget(group, 1)
         lay.addWidget(self.level_hint)
         return w
 
     def _refresh_levels_enabled(self):
         available = set(self.index.levels())
-        for lvl, btn in self.level_buttons.items():
-            btn.setEnabled(lvl in available)
+        for lvl, card in self.level_cards.items():
+            objs = self.index.objectives_for(lvl)
+            n_lessons = sum(len(v) for v in objs.values())
+            card.set_available(lvl in available, n_lessons)
 
         self.level_hint.setText(
-            "No lessons found. Add .md files into data/pages/"
+            "No lessons found yet. Add .md files under data/pages/<level>/"
             if not available else
-            "Good Luck Leanrning"
+            "Tip: open a level, then pick a lesson to read the concept before you practice."
         )
 
     def _choose_level(self, lvl: str):
@@ -649,50 +793,32 @@ class LearnPage(QWidget):
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(12)
+        lay.setSpacing(10)
 
-        self.obj_title = QLabel("Objectives")
-        self.obj_title.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
-        self.obj_title.setAlignment(Qt.AlignCenter)
+        self.obj_title = QLabel("Curriculum Map")
+        self.obj_title.setFont(QFont("Segoe UI", 18, QFont.Weight.Black))
         self.obj_title.setStyleSheet("QLabel { color:#FFFFFF; }")
         lay.addWidget(self.obj_title)
 
-        group = QGroupBox("Objectives & Lessons")
-        group.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        group.setStyleSheet("""
-            QGroupBox {
-                color: #FFFFFF;
-                border: 1px solid #2E2E2E;
-                border-radius: 12px;
-                margin-top: 10px;
-                padding-top: 12px;
-                background-color: #151515;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 16px;
-                padding: 0 10px 0 10px;
-            }
-        """)
+        self.obj_subtitle = QLabel("")
+        self.obj_subtitle.setFont(QFont("Segoe UI", 10))
+        self.obj_subtitle.setStyleSheet("QLabel { color:#A1A1AA; }")
+        lay.addWidget(self.obj_subtitle)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         self.obj_inner = QWidget()
+        self.obj_inner.setStyleSheet("background:transparent;")
         self.obj_layout = QVBoxLayout(self.obj_inner)
-        self.obj_layout.setContentsMargins(14, 14, 14, 14)
-        self.obj_layout.setSpacing(14)
+        self.obj_layout.setContentsMargins(2, 6, 12, 8)
+        self.obj_layout.setSpacing(16)
         scroll.setWidget(self.obj_inner)
 
-        g_lay = QVBoxLayout(group)
-        g_lay.setContentsMargins(0, 0, 0, 0)
-        g_lay.addWidget(scroll)
-
-        self.obj_hint = QLabel("")
-        self.obj_hint.setText("")
-        lay.addWidget(group, 1)
-        lay.addWidget(self.obj_hint)
+        lay.addWidget(scroll, 1)
         return w
 
     def _render_objectives(self):
@@ -702,9 +828,19 @@ class LearnPage(QWidget):
             return
 
         obj_map = self.index.objectives_for(self.level)
-        self.obj_title.setText(f"{self.level} • Complete Curriculum Map")
+        total_lessons = sum(len(v) for v in obj_map.values())
+
+        self.obj_title.setText(f"{self.level} • Curriculum Map")
+        self.obj_subtitle.setText(
+            f"{len(obj_map)} objective(s) • {total_lessons} lesson(s) — open a lesson to read the concept."
+        )
 
         if not obj_map:
+            empty = QLabel("No lessons for this level yet.")
+            empty.setFont(QFont("Segoe UI", 10))
+            empty.setStyleSheet("QLabel { color:#A1A1AA; }")
+            self.obj_layout.addWidget(empty)
+            self.obj_layout.addStretch(1)
             return
 
         # Sort objectives purely by numeric group number from filenames (min obj_no)
@@ -712,10 +848,12 @@ class LearnPage(QWidget):
         items.sort(key=lambda kv: (_objective_group_number(kv[1]), _pretty(kv[0])))
 
         for obj_key, lessons in items:
-            card = CurriculumMapCard(
-                objective_key=obj_key,
-                lessons=lessons,
-                on_open=self._open_lesson,
+            card = ObjectiveCard(
+                obj_key,
+                lessons,
+                _accent_for_key(obj_key),
+                _objective_group_number(lessons),
+                self._open_lesson,
             )
             self.obj_layout.addWidget(card)
 
