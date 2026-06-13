@@ -110,42 +110,53 @@ def _parse_number_token(tok: str) -> tuple[int, int, str] | None:
         return None
 
 
-def _parse_md_filename(md_path: Path) -> Tuple[str, str, str, int, int, str] | None:
+def _parse_md_filename(
+    md_path: Path, level_hint: str | None = None
+) -> Tuple[str, str, str, int, int, str] | None:
     """
-    Supported formats:
+    The CEFR level is taken from the FOLDER (data/pages/<level>/...) via
+    `level_hint`; it is optional in the filename. Supported forms:
 
-    NEW (recommended):
-      a1_5.2_objective_lesson_name_here.md
-      => level="A1", objective_key="objective", lesson_key="lesson_name_here", obj_no=5, lesson_no=2
+    FOLDER-BASED (recommended):
+      data/pages/a1/5.2_objective_lesson_name_here.md
+      => level="A1" (from folder), objective_key="objective",
+         lesson_key="lesson_name_here", obj_no=5, lesson_no=2
 
-    OLD (fallback):
-      a1_objective_lesson_name_here.md
+      data/pages/a1/objective_lesson_name_here.md  (no number)
       => obj_no=999, lesson_no=999 (sorted after numbered ones)
+
+    LEGACY (level encoded in filename, still accepted):
+      a1_5.2_objective_lesson_name_here.md
+      a1_objective_lesson_name_here.md
     """
     stem = md_path.stem.strip()
     parts = stem.split("_")
-
-    if len(parts) < 3:
+    if not parts or not parts[0]:
         return None
 
-    level_raw = parts[0]
-    level = _norm_level(level_raw)
-    if level not in CEFR_LEVELS:
+    # Optional leading CEFR level in the filename (legacy flat layout).
+    level: Optional[str] = None
+    if _norm_level(parts[0]) in CEFR_LEVELS:
+        level = _norm_level(parts[0])
+        parts = parts[1:]
+    elif level_hint and _norm_level(level_hint) in CEFR_LEVELS:
+        level = _norm_level(level_hint)
+
+    if level is None or len(parts) < 2:
         return None
 
-    # Try NEW format: level + number + objective + lesson...
-    if len(parts) >= 4:
-        maybe_num = _parse_number_token(parts[1])
-        if maybe_num is not None:
-            obj_no, lesson_no, token = maybe_num
-            objective_key = parts[2].strip().lower()
-            lesson_key = "_".join(parts[3:]).strip().lower()
-            if objective_key and lesson_key:
-                return level, objective_key, lesson_key, obj_no, lesson_no, token
+    # NEW format: <number>_<objective>_<lesson...>
+    maybe_num = _parse_number_token(parts[0])
+    if maybe_num is not None and len(parts) >= 3:
+        obj_no, lesson_no, token = maybe_num
+        objective_key = parts[1].strip().lower()
+        lesson_key = "_".join(parts[2:]).strip().lower()
+        if objective_key and lesson_key:
+            return level, objective_key, lesson_key, obj_no, lesson_no, token
 
-    # OLD format fallback: level + objective + lesson...
-    objective_key = parts[1].strip().lower()
-    lesson_key = "_".join(parts[2:]).strip().lower()
+    # OLD fallback: <objective>_<lesson...> (no number)
+    objective_key = parts[0].strip().lower()
+    lesson_key = "_".join(parts[1:]).strip().lower()
     if not objective_key or not lesson_key:
         return None
 
@@ -156,8 +167,15 @@ class CurriculumIndex:
     """
     Scans data/pages for German .md lessons (German-only app).
 
-    Lessons may live directly under data/pages/ or in any nested subfolder:
-      data/pages/<level>_<num>_<objective>_<lesson>.md
+    Folder-driven, like the seed library: the CEFR level comes from the folder,
+    so lessons live at
+
+      data/pages/<level>/<num>_<objective>_<lesson>.md
+      e.g. data/pages/a1/1.1_nouns_articles_(der, die, das).md
+
+    The level is read from the immediate parent folder. Legacy flat files with
+    the level encoded in the filename (data/pages/a1_1.1_..._.md) are still
+    picked up.
     """
 
     def __init__(self):
@@ -174,7 +192,10 @@ class CurriculumIndex:
             self._add_md(md)
 
     def _add_md(self, md_path: Path) -> None:
-        parsed = _parse_md_filename(md_path)
+        # The parent folder name (e.g. "a1") supplies the level when the
+        # filename omits it.
+        level_hint = md_path.parent.name
+        parsed = _parse_md_filename(md_path, level_hint=level_hint)
         if not parsed:
             return
 
