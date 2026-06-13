@@ -1,13 +1,14 @@
 # src/ui/pages/learn.py
 from __future__ import annotations
 
+import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QPixmap
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -298,6 +299,29 @@ def _level_blurb(level: str) -> str:
     }.get(_norm_level(level), "Structured German grammar lessons.")
 
 
+def _level_icon_path(level: str) -> Optional[str]:
+    """Pick a book cover icon for this CEFR level from assets/books/.
+
+    Reuses the book-cover naming convention <camelBook>_<level>.ico
+    (e.g. startenWir_a1.ico, menschen_a1.ico). A level can have several books,
+    so one is chosen at random. Returns None when no icon exists for the level,
+    in which case the card falls back to the gradient level tile.
+    """
+    try:
+        from mahira.config import resource_root
+        books_dir = resource_root() / "assets" / "books"
+        if not books_dir.exists():
+            return None
+        lvl = _norm_level(level).lower()
+        matches = [
+            str(p) for p in books_dir.glob("*.ico")
+            if p.stem.lower().endswith(f"_{lvl}")
+        ]
+        return random.choice(matches) if matches else None
+    except Exception:
+        return None
+
+
 def _objective_group_number(lessons: List[LessonRef]) -> int:
     """
     Determines objective ordering number from lessons.
@@ -500,7 +524,7 @@ class LevelCard(_ClickableCard):
     """A CEFR level on the Learn landing page — gradient level tile, blurb, and
     a live lesson count. Disabled (dimmed) when the level has no lessons yet."""
 
-    def __init__(self, level: str, accent: str, on_click):
+    def __init__(self, level: str, accent: str, on_click, icon_path: Optional[str] = None):
         super().__init__(on_click=lambda: on_click(level))
         self._accent = accent
         self._level = level
@@ -518,6 +542,8 @@ class LevelCard(_ClickableCard):
         root.setContentsMargins(16, 14, 18, 14)
         root.setSpacing(16)
 
+        # Cover tile: a random book icon for this level (assets/books/<book>_<level>.ico)
+        # if one exists, otherwise the gradient level-code tile.
         tile = QFrame()
         tile.setFixedSize(68, 80)
         tile.setStyleSheet(
@@ -525,12 +551,31 @@ class LevelCard(_ClickableCard):
             f"background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {accent}, stop:1 #111827); }}"
         )
         tlay = QVBoxLayout(tile)
-        tlay.setContentsMargins(4, 4, 4, 4)
-        lvl_lbl = QLabel(level)
-        lvl_lbl.setAlignment(Qt.AlignCenter)
-        lvl_lbl.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
-        lvl_lbl.setStyleSheet("QLabel { color:#FFFFFF; background:transparent; border:none; }")
-        tlay.addWidget(lvl_lbl)
+        tlay.setContentsMargins(4, 6, 4, 6)
+        tlay.setSpacing(2)
+        tlay.addStretch(1)
+
+        pixmap = QPixmap(icon_path) if icon_path else QPixmap()
+        if not pixmap.isNull():
+            art = QLabel()
+            art.setAlignment(Qt.AlignCenter)
+            art.setStyleSheet("QLabel { background:transparent; border:none; }")
+            art.setPixmap(
+                pixmap.scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            )
+            tlay.addWidget(art)
+            cap = QLabel(level)
+            cap.setAlignment(Qt.AlignCenter)
+            cap.setStyleSheet("QLabel { color:rgba(255,255,255,0.85); font-size:10px; font-weight:800; background:transparent; border:none; }")
+            tlay.addWidget(cap)
+        else:
+            lvl_lbl = QLabel(level)
+            lvl_lbl.setAlignment(Qt.AlignCenter)
+            lvl_lbl.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
+            lvl_lbl.setStyleSheet("QLabel { color:#FFFFFF; background:transparent; border:none; }")
+            tlay.addWidget(lvl_lbl)
+
+        tlay.addStretch(1)
 
         mid = QVBoxLayout()
         mid.setSpacing(5)
@@ -750,7 +795,12 @@ class LearnPage(QWidget):
 
         self.level_cards: Dict[str, LevelCard] = {}
         for i, lvl in enumerate(CEFR_LEVELS):
-            card = LevelCard(lvl, _accent_for_level(lvl), self._choose_level)
+            card = LevelCard(
+                lvl,
+                _accent_for_level(lvl),
+                self._choose_level,
+                icon_path=_level_icon_path(lvl),
+            )
             self.level_cards[lvl] = card
             col.addWidget(card)
         col.addStretch(1)
