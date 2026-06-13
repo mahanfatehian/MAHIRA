@@ -2,9 +2,18 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import traceback
 from pathlib import Path
+
+# Quiet Qt Multimedia's informational FFmpeg banner (see __main__.py). Harmless
+# if already set there; this covers callers that invoke run() directly.
+_rules = os.environ.get("QT_LOGGING_RULES", "")
+if "qt.multimedia.ffmpeg" not in _rules:
+    os.environ["QT_LOGGING_RULES"] = (
+        _rules + ";qt.multimedia.ffmpeg.info=false;qt.multimedia.ffmpeg.debug=false"
+    ).strip(";")
 
 from PySide6.QtWidgets import QApplication
 
