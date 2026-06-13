@@ -30,7 +30,6 @@ CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 @dataclass(frozen=True)
 class LessonRef:
-    lang: str
     level: str
     objective_key: str
     lesson_key: str
@@ -62,10 +61,6 @@ def _pretty(s: str) -> str:
     s = s.replace("-", " ").replace("_", " ")
     s = re.sub(r"\s+", " ", s).strip()
     return s.title() if s else ""
-
-
-def _norm_lang(code: str) -> str:
-    return (code or "").strip().lower()
 
 
 def _norm_level(level: str) -> str:
@@ -153,48 +148,33 @@ def _parse_md_filename(md_path: Path) -> Tuple[str, str, str, int, int, str] | N
 
 class CurriculumIndex:
     """
-    Scans data/pages for .md lessons.
+    Scans data/pages for German .md lessons (German-only app).
 
-    Preferred:
-      data/pages/<lang>/<level>_<num>_<objective>_<lesson>.md
-
-    Fallback:
-      data/pages/<level>_<objective>_<lesson>.md (assumes 'de')
+    Lessons may live directly under data/pages/ or in any nested subfolder:
+      data/pages/<level>_<num>_<objective>_<lesson>.md
     """
 
     def __init__(self):
         self.root = _pages_root()
-        self._by_lang_level: Dict[str, Dict[str, Dict[str, List[LessonRef]]]] = {}
+        self._by_level: Dict[str, Dict[str, List[LessonRef]]] = {}
 
     def reload(self) -> None:
-        self._by_lang_level = {}
+        self._by_level = {}
         root = self.root
         if not root.exists():
             return
 
-        for p in root.iterdir():
-            if p.is_dir():
-                lang = _norm_lang(p.name)
-                self._scan_dir(p, lang)
+        for md in root.rglob("*.md"):
+            self._add_md(md)
 
-        # fallback files directly under pages/
-        for md in root.glob("*.md"):
-            self._add_md(md, "de")
-
-    def _scan_dir(self, folder: Path, lang: str) -> None:
-        for md in folder.rglob("*.md"):
-            self._add_md(md, lang)
-
-    def _add_md(self, md_path: Path, lang: str) -> None:
+    def _add_md(self, md_path: Path) -> None:
         parsed = _parse_md_filename(md_path)
         if not parsed:
             return
 
         level, objective_key, lesson_key, obj_no, lesson_no, token = parsed
-        lang = _norm_lang(lang)
 
         ref = LessonRef(
-            lang=lang,
             level=level,
             objective_key=objective_key,
             lesson_key=lesson_key,
@@ -204,19 +184,14 @@ class CurriculumIndex:
             order_token=token,
         )
 
-        self._by_lang_level.setdefault(lang, {}).setdefault(level, {}).setdefault(objective_key, []).append(ref)
+        self._by_level.setdefault(level, {}).setdefault(objective_key, []).append(ref)
 
-    def languages(self) -> List[str]:
-        return sorted(self._by_lang_level.keys())
+    def levels(self) -> List[str]:
+        return sorted(self._by_level.keys(), key=lambda x: CEFR_LEVELS.index(x))
 
-    def levels_for(self, lang: str) -> List[str]:
-        lang = _norm_lang(lang)
-        return sorted(self._by_lang_level.get(lang, {}).keys(), key=lambda x: CEFR_LEVELS.index(x))
-
-    def objectives_for(self, lang: str, level: str) -> Dict[str, List[LessonRef]]:
-        lang = _norm_lang(lang)
+    def objectives_for(self, level: str) -> Dict[str, List[LessonRef]]:
         level = _norm_level(level)
-        return self._by_lang_level.get(lang, {}).get(level, {})
+        return self._by_level.get(level, {})
 
 
 # -------------------------
@@ -441,7 +416,6 @@ class LearnPage(QWidget):
 
         self.index = CurriculumIndex()
 
-        self.lang: Optional[str] = None
         self.level: Optional[str] = None
         self.current_objective: Optional[str] = None
         self.current_lesson: Optional[LessonRef] = None
@@ -504,23 +478,20 @@ class LearnPage(QWidget):
         self.stack.setStyleSheet("background: transparent;")
         root.addWidget(self.stack, 1)
 
-        self.page_lang = self._make_language_page()
         self.page_level = self._make_level_page()
         self.page_obj = self._make_objectives_page()
         self.page_reader = self._make_reader_page()
 
-        self.stack.addWidget(self.page_lang)    # 0
-        self.stack.addWidget(self.page_level)   # 1
-        self.stack.addWidget(self.page_obj)     # 2
-        self.stack.addWidget(self.page_reader)  # 3
+        self.stack.addWidget(self.page_level)   # 0
+        self.stack.addWidget(self.page_obj)     # 1
+        self.stack.addWidget(self.page_reader)  # 2
 
         self._goto(0)
 
     def on_show(self):
         self.index.reload()
-        self._refresh_language_buttons()
         self._refresh_levels_enabled()
-        if self.stack.currentIndex() == 2:
+        if self.stack.currentIndex() == 1:
             self._render_objectives()
 
     def _goto(self, idx: int):
@@ -530,79 +501,18 @@ class LearnPage(QWidget):
 
     def _back(self):
         idx = self.stack.currentIndex()
-        if idx == 3:
-            self._goto(2)
-        elif idx == 2:
+        if idx == 2:
             self._goto(1)
         elif idx == 1:
             self._goto(0)
 
     def _update_breadcrumb(self):
         parts = []
-        if self.lang:
-            parts.append(self.lang.upper())
         if self.level:
             parts.append(self.level)
         if self.current_lesson:
             parts.append(self.current_lesson.lesson_title)
         self.breadcrumb.setText("  •  ".join(parts) if parts else " ")
-
-    # -------------------------
-    # Language page
-    # -------------------------
-
-    def _make_language_page(self) -> QWidget:
-        w = QWidget()
-        lay = QVBoxLayout(w)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(12)
-
-        title = QLabel("Select Language")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("QLabel { color:#FFFFFF; }")
-        lay.addWidget(title)
-
-        group = QGroupBox("Available Languages")
-        group.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        group.setStyleSheet("""
-            QGroupBox {
-                color: #FFFFFF;
-                border: 1px solid #2E2E2E;
-                border-radius: 12px;
-                margin-top: 10px;
-                padding-top: 12px;
-                background-color: #151515;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 16px;
-                padding: 0 10px 0 10px;
-            }
-        """)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-
-        inner = QWidget()
-        self.lang_layout = QVBoxLayout(inner)
-        self.lang_layout.setContentsMargins(16, 16, 16, 16)
-        self.lang_layout.setSpacing(10)
-        scroll.setWidget(inner)
-
-        g_lay = QVBoxLayout(group)
-        g_lay.setContentsMargins(0, 0, 0, 0)
-        g_lay.addWidget(scroll)
-
-        self.lang_hint = QLabel("")
-        self.lang_hint.setFont(QFont("Segoe UI", 9))
-        self.lang_hint.setAlignment(Qt.AlignCenter)
-        self.lang_hint.setStyleSheet("QLabel { color:#B0B0B0; }")
-
-        lay.addWidget(group, 1)
-        lay.addWidget(self.lang_hint)
-        return w
 
     def _clear_vbox(self, vbox: QVBoxLayout):
         while vbox.count():
@@ -610,89 +520,6 @@ class LearnPage(QWidget):
             ww = item.widget()
             if ww is not None:
                 ww.deleteLater()
-
-    def _db_language_names(self) -> Dict[str, str]:
-        names: Dict[str, str] = {}
-        try:
-            with self.session.repo._conn() as conn:
-                rows = conn.execute("SELECT code, name FROM languages").fetchall()
-                for r in rows:
-                    names[str(r["code"]).lower()] = str(r["name"])
-        except Exception:
-            pass
-        return names
-
-    def _available_languages(self) -> List[Tuple[str, str]]:
-        db_names = self._db_language_names()
-        langs = self.index.languages()
-        if not langs:
-            langs = sorted(db_names.keys())
-        if not langs:
-            langs = ["de"]
-
-        rows = []
-        for code in langs:
-            name = db_names.get(code, code.upper())
-            rows.append((code, name))
-        return rows
-
-    def _refresh_language_buttons(self):
-        self._clear_vbox(self.lang_layout)
-
-        for code, name in self._available_languages():
-            selected = (code == self.lang)
-            b = QPushButton(f"{name} ({code})")
-            b.setMinimumHeight(62)
-            b.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-
-            if selected:
-                b.setStyleSheet("""
-                    QPushButton {
-                        background-color: #1B4B78;
-                        color: #FFFFFF;
-                        border: 2px solid #FFFFFF;
-                        border-radius: 12px;
-                        padding: 12px;
-                        font-weight: 900;
-                        text-align: left;
-                        padding-left: 12px;
-                    }
-                """)
-            else:
-                b.setStyleSheet("""
-                    QPushButton {
-                        background-color: #163A5C;
-                        color: #FFFFFF;
-                        border: 2px solid #2E2E2E;
-                        border-radius: 12px;
-                        padding: 12px;
-                        font-weight: 900;
-                        text-align: left;
-                        padding-left: 12px;
-                    }
-                    QPushButton:hover { background-color: #1B4B78; border: 2px solid #FFFFFF; }
-                """)
-
-            b.clicked.connect(lambda checked=False, c=code: self._choose_language(c))
-            self.lang_layout.addWidget(b)
-
-        self.lang_layout.addStretch(1)
-
-        pr = _pages_root()
-        self.lang_hint.setText(
-            "Choose Your Learning Language"
-            if pr.exists()
-            else "Create data/pages/<lang>/ and add .md lessons."
-        )
-
-    def _choose_language(self, code: str):
-        self.lang = _norm_lang(code)
-        self.level = None
-        self.current_objective = None
-        self.current_lesson = None
-        self._goto(1)
-        self._refresh_language_buttons()
-        self._refresh_levels_enabled()
 
     # -------------------------
     # Level page
@@ -770,18 +597,12 @@ class LearnPage(QWidget):
         return w
 
     def _refresh_levels_enabled(self):
-        if not self.lang:
-            for btn in self.level_buttons.values():
-                btn.setEnabled(False)
-            self.level_hint.setText("Select a language first.")
-            return
-
-        available = set(self.index.levels_for(self.lang))
+        available = set(self.index.levels())
         for lvl, btn in self.level_buttons.items():
             btn.setEnabled(lvl in available)
 
         self.level_hint.setText(
-            "No lessons found for this language. Add .md files into data/pages/<lang>/"
+            "No lessons found. Add .md files into data/pages/"
             if not available else
             "Good Luck Leanrning"
         )
@@ -790,7 +611,7 @@ class LearnPage(QWidget):
         self.level = _norm_level(lvl)
         self.current_objective = None
         self.current_lesson = None
-        self._goto(2)
+        self._goto(1)
         self._render_objectives()
 
     # -------------------------
@@ -850,11 +671,11 @@ class LearnPage(QWidget):
     def _render_objectives(self):
         self._clear_vbox(self.obj_layout)
 
-        if not self.lang or not self.level:
+        if not self.level:
             return
 
-        obj_map = self.index.objectives_for(self.lang, self.level)
-        self.obj_title.setText(f"{self.lang.upper()} {self.level} • Complete Curriculum Map")
+        obj_map = self.index.objectives_for(self.level)
+        self.obj_title.setText(f"{self.level} • Complete Curriculum Map")
 
         if not obj_map:
             return
@@ -1078,4 +899,4 @@ class LearnPage(QWidget):
             else:
                 self.reader.setPlainText(body)
 
-        self._goto(3)
+        self._goto(2)

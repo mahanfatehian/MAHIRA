@@ -139,12 +139,11 @@ class SklearnRanker:
     def is_ready(
         self,
         *,
-        lang: str | None = None,
         level: str | None = None,
         objective: str = "vocab",
         min_seen: int = 8,
     ) -> bool:
-        count = self._review_count(objective=objective, lang=lang, level=level)
+        count = self._review_count(objective=objective, level=level)
         return count >= int(min_seen or 0)
 
     # ------------------------------------------------------------------
@@ -162,7 +161,6 @@ class SklearnRanker:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
-        lang: str | None = None,
         level: str | None = None,
     ) -> None:
         target = self._target_from_review(
@@ -191,7 +189,7 @@ class SklearnRanker:
             overdue_days=0.0,
         )
 
-        self._fit("vocab", lang, level, features, target)
+        self._fit("vocab", level, features, target)
 
     def update_grammar(
         self,
@@ -206,7 +204,6 @@ class SklearnRanker:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
-        lang: str | None = None,
         level: str | None = None,
     ) -> None:
         target = self._target_from_review(
@@ -235,7 +232,7 @@ class SklearnRanker:
             overdue_days=0.0,
         )
 
-        self._fit("grammar", lang, level, features, target)
+        self._fit("grammar", level, features, target)
 
     def update_sentence(
         self,
@@ -249,7 +246,6 @@ class SklearnRanker:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
-        lang: str | None = None,
         level: str | None = None,
     ) -> None:
         target = self._target_from_review(
@@ -278,7 +274,7 @@ class SklearnRanker:
             overdue_days=0.0,
         )
 
-        self._fit("sentences", lang, level, features, target)
+        self._fit("sentences", level, features, target)
 
     # ------------------------------------------------------------------
     # Public ranking
@@ -288,7 +284,6 @@ class SklearnRanker:
         ids: list[int],
         *,
         level: str | None = None,
-        lang: str | None = None,
         **_: Any,
     ) -> list[int]:
         if not ids:
@@ -300,7 +295,6 @@ class SklearnRanker:
                 ids=ids,
                 rows=rows,
                 objective="vocab",
-                lang=lang,
                 level=level,
                 score_fn=self._score_vocab_row,
                 vector_fn=self._vector_vocab_row,
@@ -313,7 +307,6 @@ class SklearnRanker:
         ids: list[int],
         *,
         level: str | None = None,
-        lang: str | None = None,
         **_: Any,
     ) -> list[int]:
         if not ids:
@@ -325,7 +318,6 @@ class SklearnRanker:
                 ids=ids,
                 rows=rows,
                 objective="grammar",
-                lang=lang,
                 level=level,
                 score_fn=self._score_grammar_row,
                 vector_fn=self._vector_grammar_row,
@@ -338,7 +330,6 @@ class SklearnRanker:
         ids: list[int],
         *,
         level: str | None = None,
-        lang: str | None = None,
         **_: Any,
     ) -> list[int]:
         if not ids:
@@ -350,7 +341,6 @@ class SklearnRanker:
                 ids=ids,
                 rows=rows,
                 objective="sentences",
-                lang=lang,
                 level=level,
                 score_fn=self._score_sentence_row,
                 vector_fn=self._vector_sentence_row,
@@ -470,7 +460,6 @@ class SklearnRanker:
         ids: list[int],
         rows: dict[int, Any],
         objective: str,
-        lang: str | None,
         level: str | None,
         score_fn,
         vector_fn,
@@ -487,7 +476,7 @@ class SklearnRanker:
             ordered_ids.append(int(item_id))
             vectors.append(vector_fn(row))
 
-        model = self._load_model(objective, lang, level)
+        model = self._load_model(objective, level)
         preds = model.predict_many(vectors)
 
         scored: list[tuple[float, int, int]] = []
@@ -753,19 +742,19 @@ class SklearnRanker:
     # ------------------------------------------------------------------
     # Model persistence
     # ------------------------------------------------------------------
-    def _model_name(self, objective: str, lang: str | None, level: str | None) -> str:
-        return f"{_safe_key(objective)}__{_safe_key(lang)}__{_safe_key(level)}"
+    def _model_name(self, objective: str, level: str | None) -> str:
+        return f"{_safe_key(objective)}__{_safe_key(level)}"
 
-    def _model_path(self, objective: str, lang: str | None, level: str | None) -> Path:
-        return self.model_dir / f"{self._model_name(objective, lang, level)}.joblib"
+    def _model_path(self, objective: str, level: str | None) -> Path:
+        return self.model_dir / f"{self._model_name(objective, level)}.joblib"
 
-    def _load_model(self, objective: str, lang: str | None, level: str | None) -> _OnlineDifficultyModel:
-        key = self._model_name(objective, lang, level)
+    def _load_model(self, objective: str, level: str | None) -> _OnlineDifficultyModel:
+        key = self._model_name(objective, level)
 
         if key in self._models:
             return self._models[key]
 
-        path = self._model_path(objective, lang, level)
+        path = self._model_path(objective, level)
 
         if _SKLEARN_OK and joblib is not None and path.exists():
             try:
@@ -779,26 +768,25 @@ class SklearnRanker:
         self._models[key] = model
         return model
 
-    def _save_model(self, objective: str, lang: str | None, level: str | None, model: _OnlineDifficultyModel) -> None:
+    def _save_model(self, objective: str, level: str | None, model: _OnlineDifficultyModel) -> None:
         if not _SKLEARN_OK or joblib is None:
             return
 
         try:
-            joblib.dump(model, self._model_path(objective, lang, level))
+            joblib.dump(model, self._model_path(objective, level))
         except Exception:
             pass
 
     def _fit(
         self,
         objective: str,
-        lang: str | None,
         level: str | None,
         features: list[float],
         target: float,
     ) -> None:
-        model = self._load_model(objective, lang, level)
+        model = self._load_model(objective, level)
         model.partial_fit(features, target)
-        self._save_model(objective, lang, level, model)
+        self._save_model(objective, level, model)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -843,15 +831,14 @@ class SklearnRanker:
         self,
         *,
         objective: str,
-        lang: str | None,
         level: str | None,
     ) -> int:
         objective = (objective or "vocab").strip().lower()
 
         deck_id = None
-        if lang and level and hasattr(self.repo, "get_deck_id"):
+        if level and hasattr(self.repo, "get_deck_id"):
             try:
-                deck_id = self.repo.get_deck_id(lang, level, objective)
+                deck_id = self.repo.get_deck_id(level, objective)
             except Exception:
                 deck_id = None
 

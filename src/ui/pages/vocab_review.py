@@ -303,21 +303,19 @@ class VocabReviewPage(QWidget):
             except Exception:
                 return None
 
-        lang = getattr(self.session.state, "language_code", None)
         level = getattr(self.session.state, "level", None)
         obj = getattr(self.session.state, "objective", None) or "vocab"
 
-        if not lang or not level:
+        if not level:
             return None
 
         if hasattr(self.session.repo, "get_deck_id"):
-            return self.session.repo.get_deck_id(lang, level, obj)
+            return self.session.repo.get_deck_id(level, obj)
 
         return None
 
     def on_show(self) -> None:
-        lang = getattr(self.session.state, "language_code", "de") or "de"
-        self.special_kbd.set_language(lang)
+        self.special_kbd.set_language("de")
 
         deck_id = self._active_deck_id()
 
@@ -331,7 +329,7 @@ class VocabReviewPage(QWidget):
             self.card.lock_after_check()
             self._show_empty(
                 "No vocabulary reviews available.",
-                "Choose language, level, and objective first.",
+                "Choose a level, book, and objective first.",
             )
             self._update_counter()
             return
@@ -365,7 +363,7 @@ class VocabReviewPage(QWidget):
             self.card.lock_after_check()
             self._show_empty(
                 "No vocabulary reviews available.",
-                "Choose language, level, and objective first.",
+                "Choose a level, book, and objective first.",
             )
             self._update_counter()
             return

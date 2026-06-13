@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
@@ -21,15 +21,10 @@ from PySide6.QtWidgets import (
 CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 # Page indices inside the stacked widget
-_PAGE_LANG    = 0
-_PAGE_LEVEL   = 1
-_PAGE_BOOK    = 2
-_PAGE_LEKTION = 3
-_PAGE_OBJ     = 4
-
-
-def _norm_lang(code: str) -> str:
-    return (code or "").strip().lower()
+_PAGE_LEVEL   = 0
+_PAGE_BOOK    = 1
+_PAGE_LEKTION = 2
+_PAGE_OBJ     = 3
 
 
 def _norm_level(level: str) -> str:
@@ -50,6 +45,24 @@ def _fmt_int(n: int) -> str:
 _ACCENT_VOCAB     = "#66E39A"
 _ACCENT_GRAMMAR   = "#B983FF"
 _ACCENT_SENTENCES = "#FFB020"
+
+# Stable accent palette for book cards (varied so books are visually distinct)
+_BOOK_ACCENTS = ["#6B9FFF", "#66E39A", "#FFD166", "#FF6B9A", "#B983FF", "#4DD0E1", "#FFA07A"]
+
+
+def _accent_for_index(i: int) -> str:
+    return _BOOK_ACCENTS[i % len(_BOOK_ACCENTS)]
+
+
+def _make_chip(text: str, color: str = "#D7DAE0") -> QLabel:
+    """Small rounded info pill used inside cards."""
+    lbl = QLabel(text)
+    lbl.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
+    lbl.setStyleSheet(
+        f"QLabel {{ color:{color}; border:1px solid #2E2E2E; "
+        f"background:#101010; border-radius:9px; padding:3px 9px; }}"
+    )
+    return lbl
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +248,151 @@ class ObjectiveSelectCard(QFrame):
         self.start_btn.setEnabled(enabled)
 
 
+class _ClickCard(QFrame):
+    """A QFrame that behaves like a button: whole surface is clickable."""
+
+    def __init__(self, on_click):
+        super().__init__()
+        self._on_click = on_click
+        self.setCursor(Qt.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def mouseReleaseEvent(self, event):
+        try:
+            inside = self.rect().contains(event.position().toPoint())
+        except Exception:
+            inside = True
+        if event.button() == Qt.LeftButton and inside and callable(self._on_click):
+            self._on_click()
+        super().mouseReleaseEvent(event)
+
+
+class BookCard(_ClickCard):
+    def __init__(self, *, title, lektion_count, item_count, accent, selected, on_click):
+        super().__init__(on_click)
+        self.setObjectName("BookCard")
+        self.setMinimumHeight(96)
+
+        border = f"border: 2px solid {accent};" if selected else "border: 1px solid #2B2B2B;"
+        self.setStyleSheet(f"""
+            #BookCard {{ background-color: #141414; {border} border-radius: 16px; }}
+            #BookCard:hover {{ border: 2px solid #FFFFFF; background-color: #181818; }}
+            #BookCard QLabel {{ background: transparent; border: none; }}
+            #BookCard QWidget {{ background: transparent; }}
+        """)
+
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        bar = QFrame()
+        bar.setFixedWidth(7)
+        bar.setStyleSheet(
+            f"QFrame {{ background-color: {accent}; "
+            f"border-top-left-radius: 16px; border-bottom-left-radius: 16px; }}"
+        )
+        outer.addWidget(bar)
+
+        body = QWidget()
+        outer.addWidget(body, 1)
+
+        lay = QHBoxLayout(body)
+        lay.setContentsMargins(16, 12, 16, 12)
+        lay.setSpacing(12)
+
+        # Icon badge
+        icon = QLabel("📚")
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setFixedSize(44, 44)
+        icon.setStyleSheet(
+            f"QLabel {{ background-color: rgba(255,255,255,0.04); "
+            f"border: 1px solid {accent}; border-radius: 12px; font-size: 20px; }}"
+        )
+        lay.addWidget(icon, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(8)
+
+        title_lbl = QLabel(title)
+        title_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Black))
+        title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; }")
+        text_col.addWidget(title_lbl)
+
+        chips = QHBoxLayout()
+        chips.setSpacing(8)
+        lek_word = "Lektion" if lektion_count == 1 else "Lektionen"
+        chips.addWidget(_make_chip(f"{lektion_count} {lek_word}", accent))
+        chips.addWidget(_make_chip(f"{_fmt_int(item_count)} items"))
+        chips.addStretch(1)
+        text_col.addLayout(chips)
+
+        lay.addLayout(text_col, 1)
+
+        chevron = QLabel("›")
+        chevron.setFont(QFont("Segoe UI", 20, QFont.Weight.Black))
+        chevron.setStyleSheet("QLabel { color: #6B6B6B; }")
+        lay.addWidget(chevron, 0, Qt.AlignmentFlag.AlignVCenter)
+
+
+class LektionCard(_ClickCard):
+    def __init__(self, *, number, title, vocab_n, grammar_n, sentences_n, selected, on_click):
+        super().__init__(on_click)
+        self.setObjectName("LektionCard")
+        self.setMinimumHeight(92)
+
+        accent = "#6B9FFF"
+        border = f"border: 2px solid {accent};" if selected else "border: 1px solid #2B2B2B;"
+        bg = "#1A1F2E" if selected else "#141414"
+        self.setStyleSheet(f"""
+            #LektionCard {{ background-color: {bg}; {border} border-radius: 16px; }}
+            #LektionCard:hover {{ border: 2px solid #FFFFFF; background-color: #181D29; }}
+            #LektionCard QLabel {{ background: transparent; border: none; }}
+            #LektionCard QWidget {{ background: transparent; }}
+        """)
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(14, 12, 16, 12)
+        lay.setSpacing(14)
+
+        # Big round number badge
+        badge = QLabel(str(number))
+        badge.setAlignment(Qt.AlignCenter)
+        badge.setFixedSize(46, 46)
+        badge.setFont(QFont("Segoe UI", 15, QFont.Weight.Black))
+        badge.setStyleSheet(
+            f"QLabel {{ background-color: {accent}; color: #0B0B0B; "
+            f"border-radius: 23px; font-weight: 900; }}"
+        )
+        lay.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(8)
+
+        head = QLabel(f"Lektion {number}")
+        head.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        head.setStyleSheet("QLabel { color: #8A8A8A; letter-spacing: 1px; }")
+        text_col.addWidget(head)
+
+        title_lbl = QLabel(title)
+        title_lbl.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
+        title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; }")
+        title_lbl.setWordWrap(True)
+        text_col.addWidget(title_lbl)
+
+        chips = QHBoxLayout()
+        chips.setSpacing(6)
+        if vocab_n:
+            chips.addWidget(_make_chip(f"{vocab_n} Vocab", _ACCENT_VOCAB))
+        if grammar_n:
+            chips.addWidget(_make_chip(f"{grammar_n} Grammar", _ACCENT_GRAMMAR))
+        if sentences_n:
+            chips.addWidget(_make_chip(f"{sentences_n} Sentences", _ACCENT_SENTENCES))
+        chips.addStretch(1)
+        text_col.addLayout(chips)
+
+        lay.addLayout(text_col, 1)
+
+
 class SetupPage(QWidget):
     start_practice = Signal()
 
@@ -253,7 +411,6 @@ class SetupPage(QWidget):
             #SetupPage QStackedWidget { background: transparent; }
         """)
 
-        self.lang: Optional[str] = None
         self.level: Optional[str] = None
         self.book_slug: Optional[str] = None
         self.lektion_number: Optional[int] = None
@@ -314,21 +471,18 @@ class SetupPage(QWidget):
         self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         root.addWidget(self.stack, 1)
 
-        self.page_lang    = self._make_language_page()
         self.page_level   = self._make_level_page()
         self.page_book    = self._make_book_page()
         self.page_lektion = self._make_lektion_page()
         self.page_obj     = self._make_objective_page()
 
-        self.stack.addWidget(self.page_lang)    # 0
-        self.stack.addWidget(self.page_level)   # 1
-        self.stack.addWidget(self.page_book)    # 2
-        self.stack.addWidget(self.page_lektion) # 3
-        self.stack.addWidget(self.page_obj)     # 4
+        self.stack.addWidget(self.page_level)   # 0
+        self.stack.addWidget(self.page_book)    # 1
+        self.stack.addWidget(self.page_lektion) # 2
+        self.stack.addWidget(self.page_obj)     # 3
 
         self._sync_from_state()
         self._goto(self.stack.currentIndex() or 0)
-        self._refresh_languages()
         self._refresh_levels_enabled()
         self._refresh_books()
         self._refresh_lektions()
@@ -338,7 +492,6 @@ class SetupPage(QWidget):
 
     def _post_init_refresh(self):
         self._sync_from_state()
-        self._refresh_languages()
         self._refresh_levels_enabled()
         self._refresh_books()
         self._refresh_lektions()
@@ -348,7 +501,6 @@ class SetupPage(QWidget):
 
     def on_show(self):
         self._sync_from_state()
-        self._refresh_languages()
         self._refresh_levels_enabled()
         self._refresh_books()
         self._refresh_lektions()
@@ -358,7 +510,7 @@ class SetupPage(QWidget):
 
     def _goto(self, idx: int):
         self.stack.setCurrentIndex(idx)
-        self.back_btn.setEnabled(idx != _PAGE_LANG)
+        self.back_btn.setEnabled(idx != _PAGE_LEVEL)
         self._update_breadcrumb()
 
     def _back(self):
@@ -369,16 +521,11 @@ class SetupPage(QWidget):
             self._goto(_PAGE_BOOK)
         elif idx == _PAGE_BOOK:
             self._goto(_PAGE_LEVEL)
-        elif idx == _PAGE_LEVEL:
-            self._goto(_PAGE_LANG)
 
     def _coerce_step_to_state(self):
         idx = self.stack.currentIndex()
-        if idx >= _PAGE_LEVEL and not self.lang:
-            self._goto(_PAGE_LANG)
-            return
         if idx >= _PAGE_BOOK and not self.level:
-            self._goto(_PAGE_LEVEL if self.lang else _PAGE_LANG)
+            self._goto(_PAGE_LEVEL)
             return
         if idx >= _PAGE_LEKTION and not self.book_slug:
             self._goto(_PAGE_BOOK)
@@ -389,8 +536,6 @@ class SetupPage(QWidget):
 
     def _update_breadcrumb(self):
         parts = []
-        if self.lang:
-            parts.append(self.lang.upper())
         if self.level:
             parts.append(self.level)
         if self.book_slug:
@@ -407,7 +552,6 @@ class SetupPage(QWidget):
         self.breadcrumb.setText("  •  ".join(parts) if parts else " ")
 
     def _sync_from_state(self):
-        self.lang = _norm_lang(getattr(self.session.state, "language_code", "") or "") or None
         self.level = _norm_level(getattr(self.session.state, "level", "") or "") or None
         self.book_slug = (getattr(self.session.state, "book_slug", "") or "").strip() or None
         ln = getattr(self.session.state, "lektion_number", 0) or 0
@@ -418,37 +562,9 @@ class SetupPage(QWidget):
     # ------------------------------------------------------------------
     # DB helpers
     # ------------------------------------------------------------------
-    def _db_language_names(self) -> Dict[str, str]:
-        names: Dict[str, str] = {}
+    def _deck_id(self, level: str, objective: str, lektion_id: int | None = None) -> Optional[int]:
         try:
-            with self.session.repo._conn() as conn:
-                rows = conn.execute("SELECT code, name FROM languages").fetchall()
-            for r in rows:
-                names[str(r["code"]).lower()] = str(r["name"])
-        except Exception:
-            pass
-        return names
-
-    def _available_languages(self) -> List[Tuple[str, str]]:
-        names = self._db_language_names()
-        codes: List[str] = []
-        try:
-            with self.session.repo._conn() as conn:
-                rows = conn.execute("SELECT DISTINCT language_code AS code FROM decks ORDER BY code").fetchall()
-            codes = [str(r["code"]).lower() for r in rows if r and r["code"]]
-        except Exception:
-            codes = []
-        if not codes:
-            codes = sorted(names.keys())
-        if self.lang and self.lang not in codes:
-            codes.insert(0, self.lang)
-        if not codes:
-            codes = ["de"]
-        return [(c, names.get(c, c.upper())) for c in codes]
-
-    def _deck_id(self, lang: str, level: str, objective: str, lektion_id: int | None = None) -> Optional[int]:
-        try:
-            return self.session.repo.get_deck_id(lang, level, objective, lektion_id=lektion_id)
+            return self.session.repo.get_deck_id(level, objective, lektion_id=lektion_id)
         except Exception:
             return None
 
@@ -461,53 +577,68 @@ class SetupPage(QWidget):
             return 0
 
     def _current_lektion_id(self) -> Optional[int]:
-        if not self.book_slug or not self.lektion_number or not self.lang:
+        if not self.book_slug or not self.lektion_number:
             return None
         try:
-            book_id = self.session.repo.get_book_id(self.lang, self.book_slug)
+            book_id = self.session.repo.get_book_id(self.book_slug)
             if book_id is None:
                 return None
             return self.session.repo.get_lektion_id(book_id, self.lektion_number)
         except Exception:
             return None
 
-    # ------------------------------------------------------------------
-    # Page: Language
-    # ------------------------------------------------------------------
-    def _make_language_page(self) -> QWidget:
-        w = QWidget()
-        w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        lay = QVBoxLayout(w)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(12)
+    def _book_summary(self, book_id: int, level: str) -> tuple[int, int]:
+        """Return (lektion_count, total_item_count) for a book at the given level."""
+        try:
+            with self.session.repo._conn() as conn:
+                lek = conn.execute(
+                    """
+                    SELECT COUNT(DISTINCT l.id) AS c
+                    FROM lektions l
+                    JOIN decks d ON d.lektion_id = l.id
+                    WHERE l.book_id = ? AND d.level = ?
+                    """,
+                    (book_id, level),
+                ).fetchone()
+                items = conn.execute(
+                    """
+                    SELECT
+                        (SELECT COUNT(*) FROM vocab v JOIN decks d ON v.deck_id=d.id
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?)
+                      + (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?)
+                      + (SELECT COUNT(*) FROM sentences s JOIN decks d ON s.deck_id=d.id
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS t
+                    """,
+                    (book_id, level, book_id, level, book_id, level),
+                ).fetchone()
+            return int(lek["c"] or 0), int(items["t"] or 0)
+        except Exception:
+            return 0, 0
 
-        title = QLabel("Select Language")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("QLabel { color:#FFFFFF; }")
-        lay.addWidget(title)
-
-        group = QGroupBox("Available Languages")
-        group.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        group.setStyleSheet(_GROUPBOX_STYLE)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-
-        inner = QWidget()
-        inner.setStyleSheet("background: transparent;")
-        self.lang_layout = QVBoxLayout(inner)
-        self.lang_layout.setContentsMargins(16, 16, 16, 16)
-        self.lang_layout.setSpacing(10)
-        scroll.setWidget(inner)
-
-        g_lay = QVBoxLayout(group)
-        g_lay.setContentsMargins(0, 0, 0, 0)
-        g_lay.addWidget(scroll)
-
-        lay.addWidget(group, 1)
-        return w
+    def _lektion_summaries(self, book_id: int, level: str) -> list:
+        """Return per-lektion rows (number, title, vocab_n, grammar_n, sentences_n)."""
+        try:
+            with self.session.repo._conn() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT l.number AS number, l.title AS title,
+                        (SELECT COUNT(*) FROM vocab v JOIN decks d ON v.deck_id=d.id
+                         WHERE d.lektion_id=l.id AND d.level=?) AS vocab_n,
+                        (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
+                         WHERE d.lektion_id=l.id AND d.level=?) AS grammar_n,
+                        (SELECT COUNT(*) FROM sentences s JOIN decks d ON s.deck_id=d.id
+                         WHERE d.lektion_id=l.id AND d.level=?) AS sentences_n
+                    FROM lektions l
+                    WHERE l.book_id=?
+                      AND EXISTS (SELECT 1 FROM decks d WHERE d.lektion_id=l.id AND d.level=?)
+                    ORDER BY l.number
+                    """,
+                    (level, level, level, book_id, level),
+                ).fetchall()
+            return list(rows)
+        except Exception:
+            return []
 
     def _clear_vbox(self, vbox: QVBoxLayout):
         while vbox.count():
@@ -515,35 +646,6 @@ class SetupPage(QWidget):
             ww = item.widget()
             if ww is not None:
                 ww.deleteLater()
-
-    def _refresh_languages(self):
-        self._clear_vbox(self.lang_layout)
-        for code, name in self._available_languages():
-            selected = (code == self.lang)
-            b = QPushButton(f"{name} ({code})")
-            b.setMinimumHeight(62)
-            b.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-            b.setStyleSheet(_BTN_SELECTED if selected else _BTN_NORMAL)
-            b.clicked.connect(lambda checked=False, c=code: self._choose_language(c))
-            self.lang_layout.addWidget(b)
-        self.lang_layout.addStretch(1)
-
-    def _choose_language(self, code: str):
-        code = _norm_lang(code)
-        if not code:
-            return
-        self.session.state.language_code = code
-        self.session.state.level = ""
-        self.session.state.book_slug = ""
-        self.session.state.lektion_number = 0
-        self.session.state.objective = ""
-        self._sync_from_state()
-        self._refresh_languages()
-        self._refresh_levels_enabled()
-        self._refresh_books()
-        self._refresh_lektions()
-        self._refresh_objectives()
-        self._goto(_PAGE_LEVEL)
 
     # ------------------------------------------------------------------
     # Page: CEFR Level
@@ -598,15 +700,9 @@ class SetupPage(QWidget):
         return w
 
     def _refresh_levels_enabled(self):
-        if not self.lang:
-            for btn in self.level_buttons.values():
-                btn.setEnabled(False)
-            return
-
-        lang = self.lang
         for lvl, btn in self.level_buttons.items():
             try:
-                has = self.session.repo.has_decks_for_level(lang, lvl)
+                has = self.session.repo.has_decks_for_level(lvl)
             except Exception:
                 has = False
             btn.setEnabled(has)
@@ -664,33 +760,36 @@ class SetupPage(QWidget):
 
     def _refresh_books(self):
         self._clear_vbox(self.book_layout)
-        if not self.lang or not self.level:
-            lbl = QLabel("Select a language and level first.")
+        if not self.level:
+            lbl = QLabel("Select a level first.")
             lbl.setStyleSheet("QLabel { color: #777; }")
             self.book_layout.addWidget(lbl)
             self.book_layout.addStretch(1)
             return
 
         try:
-            books = self.session.repo.get_books_for_level(self.lang, self.level)
+            books = self.session.repo.get_books_for_level(self.level)
         except Exception:
             books = []
 
         if not books:
-            lbl = QLabel(f"No books available for {self.lang.upper()} {self.level}.")
+            lbl = QLabel(f"No books available for {self.level}.")
             lbl.setStyleSheet("QLabel { color: #777; }")
             self.book_layout.addWidget(lbl)
             self.book_layout.addStretch(1)
             return
 
-        for book in books:
-            selected = (book.slug == self.book_slug)
-            b = QPushButton(book.title)
-            b.setMinimumHeight(62)
-            b.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-            b.setStyleSheet(_BTN_SELECTED if selected else _BTN_NORMAL)
-            b.clicked.connect(lambda checked=False, slug=book.slug: self._choose_book(slug))
-            self.book_layout.addWidget(b)
+        for i, book in enumerate(books):
+            lek_n, item_n = self._book_summary(book.id, self.level)
+            card = BookCard(
+                title=book.title,
+                lektion_count=lek_n,
+                item_count=item_n,
+                accent=_accent_for_index(i),
+                selected=(book.slug == self.book_slug),
+                on_click=lambda slug=book.slug: self._choose_book(slug),
+            )
+            self.book_layout.addWidget(card)
 
         self.book_layout.addStretch(1)
 
@@ -732,9 +831,12 @@ class SetupPage(QWidget):
 
         inner = QWidget()
         inner.setStyleSheet("background: transparent;")
-        self.lektion_layout = QVBoxLayout(inner)
-        self.lektion_layout.setContentsMargins(16, 16, 16, 16)
-        self.lektion_layout.setSpacing(10)
+        self.lektion_grid = QGridLayout(inner)
+        self.lektion_grid.setContentsMargins(16, 16, 16, 16)
+        self.lektion_grid.setHorizontalSpacing(12)
+        self.lektion_grid.setVerticalSpacing(12)
+        self.lektion_grid.setColumnStretch(0, 1)
+        self.lektion_grid.setColumnStretch(1, 1)
         scroll.setWidget(inner)
 
         g_lay = QVBoxLayout(group)
@@ -745,38 +847,39 @@ class SetupPage(QWidget):
         return w
 
     def _refresh_lektions(self):
-        self._clear_vbox(self.lektion_layout)
-        if not self.lang or not self.level or not self.book_slug:
+        self._clear_vbox(self.lektion_grid)
+        if not self.level or not self.book_slug:
             lbl = QLabel("Select a book first.")
             lbl.setStyleSheet("QLabel { color: #777; }")
-            self.lektion_layout.addWidget(lbl)
-            self.lektion_layout.addStretch(1)
+            self.lektion_grid.addWidget(lbl, 0, 0, 1, 2)
             return
 
         try:
-            book_id = self.session.repo.get_book_id(self.lang, self.book_slug)
-            lektions = self.session.repo.get_lektions_for_book_level(book_id, self.level) if book_id else []
+            book_id = self.session.repo.get_book_id(self.book_slug)
+            rows = self._lektion_summaries(book_id, self.level) if book_id else []
         except Exception:
-            lektions = []
+            rows = []
 
-        if not lektions:
+        if not rows:
             lbl = QLabel("No Lektionen found for this book and level.")
             lbl.setStyleSheet("QLabel { color: #777; }")
-            self.lektion_layout.addWidget(lbl)
-            self.lektion_layout.addStretch(1)
+            self.lektion_grid.addWidget(lbl, 0, 0, 1, 2)
             return
 
-        for lek in lektions:
-            selected = (lek.number == self.lektion_number)
-            label = f"Lektion {lek.number}  —  {lek.title}"
-            b = QPushButton(label)
-            b.setMinimumHeight(56)
-            b.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-            b.setStyleSheet(_BTN_LEKTION_SELECTED if selected else _BTN_LEKTION_NORMAL)
-            b.clicked.connect(lambda checked=False, n=lek.number: self._choose_lektion(n))
-            self.lektion_layout.addWidget(b)
+        for i, r in enumerate(rows):
+            card = LektionCard(
+                number=int(r["number"]),
+                title=str(r["title"]),
+                vocab_n=int(r["vocab_n"] or 0),
+                grammar_n=int(r["grammar_n"] or 0),
+                sentences_n=int(r["sentences_n"] or 0),
+                selected=(int(r["number"]) == self.lektion_number),
+                on_click=lambda n=int(r["number"]): self._choose_lektion(n),
+            )
+            self.lektion_grid.addWidget(card, i // 2, i % 2, Qt.AlignmentFlag.AlignTop)
 
-        self.lektion_layout.addStretch(1)
+        # Push cards to the top
+        self.lektion_grid.setRowStretch((len(rows) + 1) // 2, 1)
 
     def _choose_lektion(self, number: int):
         if not number:
@@ -839,7 +942,7 @@ class SetupPage(QWidget):
         return w
 
     def _refresh_objectives(self):
-        if not self.lang or not self.level or not self.book_slug or not self.lektion_number:
+        if not self.level or not self.book_slug or not self.lektion_number:
             self.card_vocab.set_meta("")
             self.card_vocab.set_enabled(False)
             self.card_grammar.set_meta("")
@@ -850,9 +953,9 @@ class SetupPage(QWidget):
 
         lektion_id = self._current_lektion_id()
 
-        dv = self._deck_id(self.lang, self.level, "vocab", lektion_id)
-        dg = self._deck_id(self.lang, self.level, "grammar", lektion_id)
-        ds = self._deck_id(self.lang, self.level, "sentences", lektion_id)
+        dv = self._deck_id(self.level, "vocab", lektion_id)
+        dg = self._deck_id(self.level, "grammar", lektion_id)
+        ds = self._deck_id(self.level, "sentences", lektion_id)
 
         vocab_n  = self._count_table("vocab",     dv) if dv is not None else 0
         gram_n   = self._count_table("grammar",   dg) if dg is not None else 0
@@ -868,21 +971,19 @@ class SetupPage(QWidget):
         self.card_sentences.set_meta(f"{_fmt_int(sent_n)} items" if ds is not None else "")
 
     def _choose_objective(self, key: str):
-        if not self.lang or not self.level or not self.book_slug or not self.lektion_number:
+        if not self.level or not self.book_slug or not self.lektion_number:
             return
 
         key = _norm_objective(key)
 
         try:
             self.session.set_context(
-                self.lang,
                 self.level,
                 key,
                 book_slug=self.book_slug,
                 lektion_number=self.lektion_number,
             )
         except Exception:
-            self.session.state.language_code = self.lang
             self.session.state.level = self.level
             self.session.state.book_slug = self.book_slug or ""
             self.session.state.lektion_number = self.lektion_number or 0

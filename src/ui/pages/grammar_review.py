@@ -289,8 +289,7 @@ class GrammarReviewPage(QWidget):
         self.typed_blank = ""
 
     def on_show(self) -> None:
-        lang = getattr(self.session.state, "language_code", "de") or "de"
-        self.special_kbd.set_language(lang)
+        self.special_kbd.set_language("de")
 
         try:
             deck_id = self.session.active_deck_id()
@@ -307,7 +306,7 @@ class GrammarReviewPage(QWidget):
 
             self._show_empty(
                 "No grammar reviews available.",
-                "Choose language, level, and grammar deck first.",
+                "Choose a level, book, and grammar deck first.",
             )
             self._update_counter()
             return
@@ -331,7 +330,7 @@ class GrammarReviewPage(QWidget):
 
             self._show_empty(
                 "No grammar reviews available.",
-                "Choose language, level, and grammar deck first.",
+                "Choose a level, book, and grammar deck first.",
             )
             self._update_counter()
             return

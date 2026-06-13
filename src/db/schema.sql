@@ -1,28 +1,17 @@
 PRAGMA foreign_keys = ON;
 
 -- =========================
--- Core reference tables
--- =========================
-CREATE TABLE IF NOT EXISTS languages (
-  code TEXT PRIMARY KEY,
-  name TEXT NOT NULL
-);
-
--- =========================
 -- Books and Lektions
+-- German-only app: there is no language dimension.
 -- =========================
 CREATE TABLE IF NOT EXISTS books (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  language_code TEXT NOT NULL,
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-  FOREIGN KEY(language_code) REFERENCES languages(code),
-  UNIQUE(language_code, slug)
+  UNIQUE(slug)
 );
-
-CREATE INDEX IF NOT EXISTS idx_books_lang ON books(language_code);
 
 CREATE TABLE IF NOT EXISTS lektions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,12 +28,11 @@ CREATE INDEX IF NOT EXISTS idx_lektions_book ON lektions(book_id);
 
 -- =========================
 -- Decks
--- Deck = (language, level, lektion, objective)
+-- Deck = (level, lektion, objective)
 -- lektion_id NULL = legacy flat-file deck (no book structure)
 -- =========================
 CREATE TABLE IF NOT EXISTS decks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  language_code TEXT NOT NULL,
   level TEXT NOT NULL,
   lektion_id INTEGER,
   objective TEXT NOT NULL,
@@ -53,16 +41,15 @@ CREATE TABLE IF NOT EXISTS decks (
   seed_sha1 TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-  FOREIGN KEY(language_code) REFERENCES languages(code),
   FOREIGN KEY(lektion_id) REFERENCES lektions(id) ON DELETE CASCADE
 );
 
 -- Expression index so NULL lektion_id is treated as 0 in uniqueness check
 CREATE UNIQUE INDEX IF NOT EXISTS idx_decks_unique
-ON decks(language_code, level, COALESCE(lektion_id, 0), objective);
+ON decks(level, COALESCE(lektion_id, 0), objective);
 
-CREATE INDEX IF NOT EXISTS idx_decks_lang_level
-ON decks(language_code, level);
+CREATE INDEX IF NOT EXISTS idx_decks_level
+ON decks(level);
 
 -- =========================
 -- Vocab
