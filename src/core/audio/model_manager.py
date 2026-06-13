@@ -13,15 +13,18 @@ class PiperModelManager:
         self._project_root = self._detect_project_root()
 
     def _detect_project_root(self) -> Path:
-        here = Path(__file__).resolve()
-        # project_root/src/core/audio/model_manager.py
-        # parents[0] = audio
-        # parents[1] = core
-        # parents[2] = src
-        # parents[3] = project root
-        if len(here.parents) >= 4:
-            return here.parents[3]
-        return Path.cwd()
+        # Voice models are read-only bundled resources under assets/audio/models.
+        # Resolve via the shared resource root so it works both from source and
+        # from a packaged (frozen) build.
+        try:
+            from mahira.config import resource_root
+            return resource_root()
+        except Exception:
+            here = Path(__file__).resolve()
+            # project_root/src/core/audio/model_manager.py -> parents[3] = root
+            if len(here.parents) >= 4:
+                return here.parents[3]
+            return Path.cwd()
 
     @property
     def project_root(self) -> Path:

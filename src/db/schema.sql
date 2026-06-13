@@ -13,15 +13,18 @@ CREATE TABLE IF NOT EXISTS books (
   UNIQUE(slug)
 );
 
+-- A book can span multiple CEFR levels and restart Lektion numbering per level
+-- (e.g. Starten Wir A1 L1 and A2 L1 are distinct), so identity is (book, level, number).
 CREATE TABLE IF NOT EXISTS lektions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   book_id INTEGER NOT NULL,
+  level TEXT NOT NULL DEFAULT 'A1',
   number INTEGER NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE,
-  UNIQUE(book_id, number)
+  UNIQUE(book_id, level, number)
 );
 
 CREATE INDEX IF NOT EXISTS idx_lektions_book ON lektions(book_id);

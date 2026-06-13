@@ -68,6 +68,12 @@ def _norm_level(level: str) -> str:
 
 
 def _find_project_root() -> Path:
+    # Prefer the shared resource root so lessons resolve in a packaged build.
+    try:
+        from mahira.config import resource_root
+        return resource_root()
+    except Exception:
+        pass
     here = Path(__file__).resolve()
     for p in [here] + list(here.parents):
         if (p / "data").exists():

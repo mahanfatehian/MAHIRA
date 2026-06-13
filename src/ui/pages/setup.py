@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
@@ -65,68 +65,15 @@ def _make_chip(text: str, color: str = "#D7DAE0") -> QLabel:
     return lbl
 
 
-# ---------------------------------------------------------------------------
-# Shared button styles
-# ---------------------------------------------------------------------------
-_BTN_SELECTED = """
-    QPushButton {
-        background-color: #1B4B78;
-        color: #FFFFFF;
-        border: 2px solid #FFFFFF;
-        border-radius: 12px;
-        padding: 12px;
-        font-weight: 900;
-        text-align: left;
-        padding-left: 12px;
-    }
-"""
+def _book_initials(title: str) -> str:
+    """Up to two uppercase initials for a book's cover tile."""
+    words = [w for w in (title or "").split() if w]
+    if not words:
+        return "?"
+    if len(words) == 1:
+        return words[0][:2].upper()
+    return (words[0][0] + words[1][0]).upper()
 
-_BTN_NORMAL = """
-    QPushButton {
-        background-color: #163A5C;
-        color: #FFFFFF;
-        border: 2px solid #2E2E2E;
-        border-radius: 12px;
-        padding: 12px;
-        font-weight: 900;
-        text-align: left;
-        padding-left: 12px;
-    }
-    QPushButton:hover { background-color: #1B4B78; border: 2px solid #FFFFFF; }
-    QPushButton:disabled {
-        background-color: #101010; color: #6B6B6B; border: 1px solid #252525;
-    }
-"""
-
-_BTN_LEKTION_NORMAL = """
-    QPushButton {
-        background-color: #1A1A2E;
-        color: #FFFFFF;
-        border: 2px solid #2E2E2E;
-        border-radius: 12px;
-        padding: 10px 14px;
-        font-weight: 700;
-        text-align: left;
-        padding-left: 12px;
-    }
-    QPushButton:hover { background-color: #22223B; border: 2px solid #FFFFFF; }
-    QPushButton:disabled {
-        background-color: #101010; color: #6B6B6B; border: 1px solid #252525;
-    }
-"""
-
-_BTN_LEKTION_SELECTED = """
-    QPushButton {
-        background-color: #22223B;
-        color: #FFFFFF;
-        border: 2px solid #FFFFFF;
-        border-radius: 12px;
-        padding: 10px 14px;
-        font-weight: 700;
-        text-align: left;
-        padding-left: 12px;
-    }
-"""
 
 _GROUPBOX_STYLE = """
     QGroupBox {
@@ -286,12 +233,12 @@ class _ClickCard(QFrame):
 
 
 class BookCard(_ClickCard):
-    def __init__(self, *, title, lektion_count, item_count, accent, selected, on_click):
+    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, accent, selected, on_click):
         super().__init__(on_click)
         self._accent = accent
         self._selected = selected
         self.setObjectName("BookCard")
-        self.setMinimumHeight(92)
+        self.setMinimumHeight(118)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -306,35 +253,55 @@ class BookCard(_ClickCard):
         outer.addWidget(body, 1)
 
         lay = QHBoxLayout(body)
-        lay.setContentsMargins(16, 12, 16, 12)
-        lay.setSpacing(12)
+        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setSpacing(14)
 
-        # Icon badge
-        self._icon = QLabel("📚")
-        self._icon.setAlignment(Qt.AlignCenter)
-        self._icon.setFixedSize(44, 44)
-        lay.addWidget(self._icon, 0, Qt.AlignmentFlag.AlignVCenter)
+        # Book "cover" tile with initials
+        self._cover = QLabel(_book_initials(title))
+        self._cover.setAlignment(Qt.AlignCenter)
+        self._cover.setFixedSize(52, 66)
+        self._cover.setFont(QFont("Segoe UI", 17, QFont.Weight.Black))
+        lay.addWidget(self._cover, 0, Qt.AlignmentFlag.AlignVCenter)
 
         text_col = QVBoxLayout()
         text_col.setSpacing(8)
 
         title_lbl = QLabel(title)
-        title_lbl.setFont(QFont("Segoe UI", 13, QFont.Weight.Black))
+        title_lbl.setFont(QFont("Segoe UI", 15, QFont.Weight.Black))
         title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; background: transparent; border: none; }")
         text_col.addWidget(title_lbl)
 
-        chips = QHBoxLayout()
-        chips.setSpacing(8)
+        # Meta row: level badge + Lektionen count
+        meta = QHBoxLayout()
+        meta.setSpacing(8)
+        lvl_badge = QLabel((level or "").upper())
+        lvl_badge.setFont(QFont("Segoe UI", 9, QFont.Weight.Black))
+        lvl_badge.setStyleSheet(
+            f"QLabel {{ color:#0B0B0B; background:{accent}; border-radius:8px; "
+            f"padding:2px 9px; font-weight:900; }}"
+        )
+        meta.addWidget(lvl_badge)
         lek_word = "Lektion" if lektion_count == 1 else "Lektionen"
-        chips.addWidget(_make_chip(f"{lektion_count} {lek_word}", accent))
-        chips.addWidget(_make_chip(f"{_fmt_int(item_count)} items"))
+        meta.addWidget(_make_chip(f"{lektion_count} {lek_word}"))
+        meta.addStretch(1)
+        text_col.addLayout(meta)
+
+        # Color-coded content totals (consistent with the Lektion cards)
+        chips = QHBoxLayout()
+        chips.setSpacing(6)
+        if vocab_n:
+            chips.addWidget(_make_chip(f"{_fmt_int(vocab_n)} Vocab", _ACCENT_VOCAB))
+        if grammar_n:
+            chips.addWidget(_make_chip(f"{_fmt_int(grammar_n)} Grammar", _ACCENT_GRAMMAR))
+        if sentences_n:
+            chips.addWidget(_make_chip(f"{_fmt_int(sentences_n)} Sentences", _ACCENT_SENTENCES))
         chips.addStretch(1)
         text_col.addLayout(chips)
 
         lay.addLayout(text_col, 1)
 
         self._chevron = QLabel("›")
-        self._chevron.setFont(QFont("Segoe UI", 22, QFont.Weight.Black))
+        self._chevron.setFont(QFont("Segoe UI", 24, QFont.Weight.Black))
         lay.addWidget(self._chevron, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self._apply_style()
@@ -355,9 +322,11 @@ class BookCard(_ClickCard):
             f"QFrame {{ background-color: {bar}; "
             f"border-top-left-radius: 15px; border-bottom-left-radius: 15px; }}"
         )
-        self._icon.setStyleSheet(
-            f"QLabel {{ background-color: rgba(255,255,255,0.04); "
-            f"border: 1px solid {accent}; border-radius: 12px; font-size: 20px; }}"
+        # Book-spine style cover: subtle vertical gradient in the book's accent.
+        self._cover.setStyleSheet(
+            f"QLabel {{ color: #FFFFFF; border: 1px solid {accent}; border-radius: 8px; "
+            f"background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+            f"stop:0 {accent}, stop:1 rgba(10,10,10,0.85)); }}"
         )
         self._chevron.setStyleSheet(f"QLabel {{ color: {chev}; background: transparent; border: none; }}")
 
@@ -365,16 +334,17 @@ class BookCard(_ClickCard):
 class LektionCard(_ClickCard):
     _ACCENT = "#6B9FFF"
 
-    def __init__(self, *, number, title, vocab_n, grammar_n, sentences_n, selected, on_click):
+    def __init__(self, *, number, title, topic, vocab_n, grammar_n, sentences_n, selected, on_click):
         super().__init__(on_click)
         self._selected = selected
         self.setObjectName("LektionCard")
-        # Compact so a full book of Lektionen fits a 2-column grid without scrolling
-        self.setMinimumHeight(72)
-        self.setMaximumHeight(78)
+        # Compact + fixed height so a full book of Lektionen fits a 2-column grid
+        # without scrolling. Lead with the real Lektion name, then its topic.
+        self.setMinimumHeight(94)
+        self.setMaximumHeight(100)
 
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(12, 8, 12, 8)
+        lay.setContentsMargins(12, 9, 14, 9)
         lay.setSpacing(12)
 
         # Round number badge
@@ -385,24 +355,37 @@ class LektionCard(_ClickCard):
         lay.addWidget(self._badge, 0, Qt.AlignmentFlag.AlignVCenter)
 
         text_col = QVBoxLayout()
-        text_col.setSpacing(6)
+        text_col.setSpacing(3)
 
-        title_lbl = QLabel(title)
-        title_lbl.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
+        title_lbl = QLabel(title or f"Lektion {number}")
+        title_lbl.setFont(QFont("Segoe UI", 12, QFont.Weight.Black))
         title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; background: transparent; border: none; }")
         text_col.addWidget(title_lbl)
 
-        chips = QHBoxLayout()
-        chips.setSpacing(6)
-        if vocab_n:
-            chips.addWidget(_make_chip(f"{vocab_n} Vocab", _ACCENT_VOCAB))
-        if grammar_n:
-            chips.addWidget(_make_chip(f"{grammar_n} Grammar", _ACCENT_GRAMMAR))
-        if sentences_n:
-            chips.addWidget(_make_chip(f"{sentences_n} Sentences", _ACCENT_SENTENCES))
-        chips.addStretch(1)
-        text_col.addLayout(chips)
+        if topic:
+            topic_lbl = QLabel(topic)
+            topic_lbl.setFont(QFont("Segoe UI", 9))
+            topic_lbl.setWordWrap(True)
+            topic_lbl.setMaximumHeight(30)
+            topic_lbl.setStyleSheet("QLabel { color: #9AA0A6; background: transparent; border: none; }")
+            text_col.addWidget(topic_lbl)
 
+        # Compact, color-coded counts on a single line (rich text).
+        bits = []
+        if vocab_n:
+            bits.append(f'<span style="color:{_ACCENT_VOCAB}">{vocab_n} Vocab</span>')
+        if grammar_n:
+            bits.append(f'<span style="color:{_ACCENT_GRAMMAR}">{grammar_n} Grammar</span>')
+        if sentences_n:
+            bits.append(f'<span style="color:{_ACCENT_SENTENCES}">{sentences_n} Sentences</span>')
+        if bits:
+            counts = QLabel("&nbsp;&nbsp;·&nbsp;&nbsp;".join(bits))
+            counts.setTextFormat(Qt.RichText)
+            counts.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+            counts.setStyleSheet("QLabel { color: #6B6B6B; background: transparent; border: none; }")
+            text_col.addWidget(counts)
+
+        text_col.addStretch(1)
         lay.addLayout(text_col, 1)
 
         self._apply_style()
@@ -616,38 +599,36 @@ class SetupPage(QWidget):
             book_id = self.session.repo.get_book_id(self.book_slug)
             if book_id is None:
                 return None
-            return self.session.repo.get_lektion_id(book_id, self.lektion_number)
+            return self.session.repo.get_lektion_id(book_id, self.level, self.lektion_number)
         except Exception:
             return None
 
-    def _book_summary(self, book_id: int, level: str) -> tuple[int, int]:
-        """Return (lektion_count, total_item_count) for a book at the given level."""
+    def _book_summary(self, book_id: int, level: str) -> tuple[int, int, int, int]:
+        """Return (lektion_count, vocab_n, grammar_n, sentences_n) for a book at a level."""
         try:
             with self.session.repo._conn() as conn:
-                lek = conn.execute(
-                    """
-                    SELECT COUNT(DISTINCT l.id) AS c
-                    FROM lektions l
-                    JOIN decks d ON d.lektion_id = l.id
-                    WHERE l.book_id = ? AND d.level = ?
-                    """,
-                    (book_id, level),
-                ).fetchone()
-                items = conn.execute(
+                row = conn.execute(
                     """
                     SELECT
+                        (SELECT COUNT(DISTINCT l.id) FROM lektions l JOIN decks d ON d.lektion_id=l.id
+                         WHERE l.book_id=? AND l.level=? AND d.level=?) AS lek,
                         (SELECT COUNT(*) FROM vocab v JOIN decks d ON v.deck_id=d.id
-                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?)
-                      + (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
-                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?)
-                      + (SELECT COUNT(*) FROM sentences s JOIN decks d ON s.deck_id=d.id
-                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS t
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS vocab_n,
+                        (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS grammar_n,
+                        (SELECT COUNT(*) FROM sentences s JOIN decks d ON s.deck_id=d.id
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS sentences_n
                     """,
-                    (book_id, level, book_id, level, book_id, level),
+                    (book_id, level, level, book_id, level, book_id, level, book_id, level),
                 ).fetchone()
-            return int(lek["c"] or 0), int(items["t"] or 0)
+            return (
+                int(row["lek"] or 0),
+                int(row["vocab_n"] or 0),
+                int(row["grammar_n"] or 0),
+                int(row["sentences_n"] or 0),
+            )
         except Exception:
-            return 0, 0
+            return 0, 0, 0, 0
 
     def _lektion_summaries(self, book_id: int, level: str) -> list:
         """Return per-lektion rows (number, title, vocab_n, grammar_n, sentences_n)."""
@@ -655,7 +636,7 @@ class SetupPage(QWidget):
             with self.session.repo._conn() as conn:
                 rows = conn.execute(
                     """
-                    SELECT l.number AS number, l.title AS title,
+                    SELECT l.number AS number, l.title AS title, l.description AS topic,
                         (SELECT COUNT(*) FROM vocab v JOIN decks d ON v.deck_id=d.id
                          WHERE d.lektion_id=l.id AND d.level=?) AS vocab_n,
                         (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
@@ -663,11 +644,11 @@ class SetupPage(QWidget):
                         (SELECT COUNT(*) FROM sentences s JOIN decks d ON s.deck_id=d.id
                          WHERE d.lektion_id=l.id AND d.level=?) AS sentences_n
                     FROM lektions l
-                    WHERE l.book_id=?
+                    WHERE l.book_id=? AND l.level=?
                       AND EXISTS (SELECT 1 FROM decks d WHERE d.lektion_id=l.id AND d.level=?)
                     ORDER BY l.number
                     """,
-                    (level, level, level, book_id, level),
+                    (level, level, level, book_id, level, level),
                 ).fetchall()
             return list(rows)
         except Exception:
@@ -813,11 +794,14 @@ class SetupPage(QWidget):
             return
 
         for i, book in enumerate(books):
-            lek_n, item_n = self._book_summary(book.id, self.level)
+            lek_n, vocab_n, grammar_n, sentences_n = self._book_summary(book.id, self.level)
             card = BookCard(
                 title=book.title,
+                level=self.level,
                 lektion_count=lek_n,
-                item_count=item_n,
+                vocab_n=vocab_n,
+                grammar_n=grammar_n,
+                sentences_n=sentences_n,
                 accent=_accent_for_index(i),
                 selected=(book.slug == self.book_slug),
                 on_click=lambda slug=book.slug: self._choose_book(slug),
@@ -903,6 +887,7 @@ class SetupPage(QWidget):
             card = LektionCard(
                 number=int(r["number"]),
                 title=str(r["title"]),
+                topic=(str(r["topic"]) if r["topic"] else None),
                 vocab_n=int(r["vocab_n"] or 0),
                 grammar_n=int(r["grammar_n"] or 0),
                 sentences_n=int(r["sentences_n"] or 0),

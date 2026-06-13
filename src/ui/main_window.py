@@ -36,9 +36,10 @@ class MainWindow(QMainWindow):
         self.session = session
 
         try:
-            project_root = self.session.repo.db_path.parent.parent
+            from mahira.config import resource_root
             candidates = [
-                project_root / "assets" / "logo.ico",
+                resource_root() / "assets" / "logo.ico",
+                resource_root() / "assets" / "logo.png",
             ]
             for p in candidates:
                 if p.exists():

@@ -24,6 +24,7 @@ class BookInfo:
 class LektionInfo:
     id: int
     book_id: int
+    level: str
     number: int
     title: str
     description: Optional[str]
@@ -168,49 +169,65 @@ class Repo:
         ]
 
     # ---------- Lektions ----------
-    def ensure_lektion(self, book_id: int, number: int, title: str, description: str | None = None) -> int:
-        title = (title or f"Lektion {number}").strip()
+    def ensure_lektion(self, book_id: int, level: str, number: int, title: str, description: str | None = None) -> int:
+        level = (level or "").upper().strip()
+        default_title = f"Lektion {number}"
+        title = (title or default_title).strip()
         now = int(time.time())
         with self._conn() as conn:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO lektions(book_id, number, title, description, created_at)
-                VALUES (?,?,?,?,?)
+                INSERT OR IGNORE INTO lektions(book_id, level, number, title, description, created_at)
+                VALUES (?,?,?,?,?,?)
                 """,
-                (book_id, number, title, description, now),
+                (book_id, level, number, title, description, now),
             )
             row = conn.execute(
-                "SELECT id FROM lektions WHERE book_id=? AND number=?",
-                (book_id, number),
+                "SELECT id, title, description FROM lektions WHERE book_id=? AND level=? AND number=?",
+                (book_id, level, number),
             ).fetchone()
-            return int(row["id"])
+            lek_id = int(row["id"])
 
-    def get_lektion_id(self, book_id: int, number: int) -> int | None:
+            # Apply filename metadata to an existing row. A real (non-default)
+            # title overwrites; the placeholder "Lektion N" never clobbers a
+            # name that was already set. Description is updated when provided.
+            new_title = title if title != default_title else (row["title"] or title)
+            new_desc = description if description is not None else row["description"]
+            if new_title != row["title"] or new_desc != row["description"]:
+                conn.execute(
+                    "UPDATE lektions SET title=?, description=? WHERE id=?",
+                    (new_title, new_desc, lek_id),
+                )
+            return lek_id
+
+    def get_lektion_id(self, book_id: int, level: str, number: int) -> int | None:
+        level = (level or "").upper().strip()
         with self._conn() as conn:
             row = conn.execute(
-                "SELECT id FROM lektions WHERE book_id=? AND number=?",
-                (book_id, number),
+                "SELECT id FROM lektions WHERE book_id=? AND level=? AND number=?",
+                (book_id, level, number),
             ).fetchone()
             return int(row["id"]) if row else None
 
     def get_lektions_for_book_level(self, book_id: int, level: str) -> list[LektionInfo]:
-        """Return lektions that have at least one deck for the given level."""
+        """Return lektions for the given book and level that have at least one deck."""
         level = (level or "").upper().strip()
         with self._conn() as conn:
             rows = conn.execute(
                 """
-                SELECT DISTINCT l.id, l.book_id, l.number, l.title, l.description
+                SELECT DISTINCT l.id, l.book_id, l.level, l.number, l.title, l.description
                 FROM lektions l
                 JOIN decks d ON d.lektion_id = l.id
-                WHERE l.book_id = ? AND d.level = ?
+                WHERE l.book_id = ? AND l.level = ? AND d.level = ?
                 ORDER BY l.number
                 """,
-                (book_id, level),
+                (book_id, level, level),
             ).fetchall()
         return [
             LektionInfo(
                 id=int(r["id"]),
                 book_id=int(r["book_id"]),
+                level=str(r["level"]),
                 number=int(r["number"]),
                 title=str(r["title"]),
                 description=str(r["description"]) if r["description"] else None,
