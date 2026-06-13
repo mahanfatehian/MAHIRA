@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor, QCursor, QFont, QPixmap
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QFrame,
+    QGraphicsDropShadowEffect,
     QStackedWidget,
     QSizePolicy,
 )
@@ -73,6 +74,47 @@ def _book_initials(title: str) -> str:
     if len(words) == 1:
         return words[0][:2].upper()
     return (words[0][0] + words[1][0]).upper()
+
+
+def _book_camel(slug: str) -> str:
+    """'starten_wir' -> 'startenWir';  'menschen' -> 'menschen'."""
+    parts = [p for p in (slug or "").split("_") if p]
+    if not parts:
+        return ""
+    return parts[0].lower() + "".join(p[:1].upper() + p[1:].lower() for p in parts[1:])
+
+
+def _book_icon_path(slug: str, level: str) -> Optional[str]:
+    """
+    Resolve the per-book, per-level cover icon. Exactly ONE name is accepted:
+
+        assets/books/<camelBook>_<level>.ico
+        e.g.  startenWir_a1.ico,  startenWir_a2.ico,  menschen_a1.ico
+
+    Returns None when the file is absent (the card then uses its initials cover).
+    """
+    camel = _book_camel(slug)
+    lvl = (level or "").strip().lower()
+    if not camel or not lvl:
+        return None
+    try:
+        from mahira.config import resource_root
+        p = resource_root() / "assets" / "books" / f"{camel}_{lvl}.ico"
+        return str(p) if p.exists() else None
+    except Exception:
+        return None
+
+
+def _level_blurb(level: str) -> str:
+    """A short, level-appropriate one-liner for a book card."""
+    return {
+        "A1": "Beginner German — greetings, everyday vocabulary, and core grammar.",
+        "A2": "Elementary German — past tense, daily life, and longer sentences.",
+        "B1": "Intermediate German — opinions, connected text, and broader topics.",
+        "B2": "Upper-intermediate German — nuanced expression and complex grammar.",
+        "C1": "Advanced German — fluent, flexible language for demanding topics.",
+        "C2": "Mastery German — precise, idiomatic command of the language.",
+    }.get((level or "").upper(), "Structured German course: vocabulary, grammar, and sentences.")
 
 
 _GROUPBOX_STYLE = """
@@ -233,62 +275,92 @@ class _ClickCard(QFrame):
 
 
 class BookCard(_ClickCard):
-    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, accent, selected, on_click):
+    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, accent, selected, on_click, icon_path=None):
         super().__init__(on_click)
         self._accent = accent
         self._selected = selected
         self.setObjectName("BookCard")
-        self.setMinimumHeight(118)
+        self.setMinimumHeight(150)
 
-        outer = QHBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
+        # Soft elevation, like the design mock.
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(26)
+        shadow.setOffset(0, 8)
+        shadow.setColor(QColor(0, 0, 0, 150))
+        self.setGraphicsEffect(shadow)
 
-        self._bar = QFrame()
-        self._bar.setFixedWidth(6)
-        outer.addWidget(self._bar)
+        root = QHBoxLayout(self)
+        root.setContentsMargins(18, 16, 18, 16)
+        root.setSpacing(16)
 
-        body = QWidget()
-        body.setStyleSheet("background: transparent;")
-        outer.addWidget(body, 1)
+        # ---- Cover tile: book icon if assets/books/<book>.ico exists, else initials ----
+        cover = QFrame()
+        cover.setFixedSize(80, 104)
+        cover.setStyleSheet(
+            f"QFrame {{ border-radius: 16px; border: 1px solid rgba(255,255,255,0.22); "
+            f"background: qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+            f"stop:0 {accent}, stop:1 #111827); }}"
+        )
+        cov = QVBoxLayout(cover)
+        cov.setContentsMargins(8, 10, 8, 10)
+        cov.setSpacing(2)
 
-        lay = QHBoxLayout(body)
-        lay.setContentsMargins(16, 14, 16, 14)
-        lay.setSpacing(14)
+        pixmap = QPixmap(icon_path) if icon_path else QPixmap()
+        cov.addStretch(1)
+        if not pixmap.isNull():
+            art = QLabel()
+            art.setAlignment(Qt.AlignCenter)
+            art.setStyleSheet("QLabel { background:transparent; border:none; }")
+            art.setPixmap(
+                pixmap.scaled(52, 52, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            )
+            cov.addWidget(art)
+        else:
+            ini = QLabel(_book_initials(title))
+            ini.setAlignment(Qt.AlignCenter)
+            ini.setStyleSheet("QLabel { color:#FFFFFF; font-size:24px; font-weight:900; background:transparent; border:none; }")
+            cov.addWidget(ini)
+        cov_lvl = QLabel((level or "").upper())
+        cov_lvl.setAlignment(Qt.AlignCenter)
+        cov_lvl.setStyleSheet("QLabel { color:rgba(255,255,255,0.80); font-size:10px; font-weight:800; background:transparent; border:none; }")
+        cov.addWidget(cov_lvl)
+        cov.addStretch(1)
+        root.addWidget(cover, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        # Book "cover" tile with initials
-        self._cover = QLabel(_book_initials(title))
-        self._cover.setAlignment(Qt.AlignCenter)
-        self._cover.setFixedSize(52, 66)
-        self._cover.setFont(QFont("Segoe UI", 17, QFont.Weight.Black))
-        lay.addWidget(self._cover, 0, Qt.AlignmentFlag.AlignVCenter)
+        # ---- Middle: title + badge, subtitle, description, stat chips ----
+        mid = QVBoxLayout()
+        mid.setSpacing(7)
 
-        text_col = QVBoxLayout()
-        text_col.setSpacing(8)
-
+        title_row = QHBoxLayout()
+        title_row.setSpacing(10)
         title_lbl = QLabel(title)
-        title_lbl.setFont(QFont("Segoe UI", 15, QFont.Weight.Black))
-        title_lbl.setStyleSheet("QLabel { color: #FFFFFF; font-weight: 900; background: transparent; border: none; }")
-        text_col.addWidget(title_lbl)
-
-        # Meta row: level badge + Lektionen count
-        meta = QHBoxLayout()
-        meta.setSpacing(8)
+        title_lbl.setFont(QFont("Segoe UI", 17, QFont.Weight.Black))
+        title_lbl.setStyleSheet("QLabel { color:#FFFFFF; font-weight:900; background:transparent; border:none; }")
         lvl_badge = QLabel((level or "").upper())
         lvl_badge.setFont(QFont("Segoe UI", 9, QFont.Weight.Black))
         lvl_badge.setStyleSheet(
-            f"QLabel {{ color:#0B0B0B; background:{accent}; border-radius:8px; "
-            f"padding:2px 9px; font-weight:900; }}"
+            f"QLabel {{ color:#0B0B0B; background:{accent}; border-radius:9px; "
+            f"padding:3px 10px; font-weight:900; }}"
         )
-        meta.addWidget(lvl_badge)
-        lek_word = "Lektion" if lektion_count == 1 else "Lektionen"
-        meta.addWidget(_make_chip(f"{lektion_count} {lek_word}"))
-        meta.addStretch(1)
-        text_col.addLayout(meta)
+        title_row.addWidget(title_lbl, 0)
+        title_row.addWidget(lvl_badge, 0)
+        title_row.addStretch(1)
+        mid.addLayout(title_row)
 
-        # Color-coded content totals (consistent with the Lektion cards)
+        lek_word = "Lektion" if lektion_count == 1 else "Lektionen"
+        subtitle = QLabel(f"German {(level or '').upper()} course • {lektion_count} {lek_word}")
+        subtitle.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        subtitle.setStyleSheet("QLabel { color:#D1D5DB; background:transparent; border:none; }")
+        mid.addWidget(subtitle)
+
+        desc = QLabel(_level_blurb(level))
+        desc.setWordWrap(True)
+        desc.setFont(QFont("Segoe UI", 9))
+        desc.setStyleSheet("QLabel { color:#9CA3AF; background:transparent; border:none; }")
+        mid.addWidget(desc)
+
         chips = QHBoxLayout()
-        chips.setSpacing(6)
+        chips.setSpacing(7)
         if vocab_n:
             chips.addWidget(_make_chip(f"{_fmt_int(vocab_n)} Vocab", _ACCENT_VOCAB))
         if grammar_n:
@@ -296,39 +368,40 @@ class BookCard(_ClickCard):
         if sentences_n:
             chips.addWidget(_make_chip(f"{_fmt_int(sentences_n)} Sentences", _ACCENT_SENTENCES))
         chips.addStretch(1)
-        text_col.addLayout(chips)
+        mid.addSpacing(2)
+        mid.addLayout(chips)
+        mid.addStretch(1)
 
-        lay.addLayout(text_col, 1)
+        root.addLayout(mid, 1)
 
-        self._chevron = QLabel("›")
-        self._chevron.setFont(QFont("Segoe UI", 24, QFont.Weight.Black))
-        lay.addWidget(self._chevron, 0, Qt.AlignmentFlag.AlignVCenter)
+        # ---- Right: explicit Select button (whole card is clickable too) ----
+        self._select_btn = QPushButton("Select  →")
+        self._select_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        self._select_btn.setFixedHeight(40)
+        self._select_btn.setMinimumWidth(116)
+        self._select_btn.setFont(QFont("Segoe UI", 10, QFont.Weight.Black))
+        self._select_btn.clicked.connect(lambda: on_click())
+        root.addWidget(self._select_btn, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self._apply_style()
 
     def _apply_style(self):
         accent = self._accent
         if self._hover:
-            border, bg, bar, chev = f"2px solid {accent}", "#1C1C1C", "#FFFFFF", "#FFFFFF"
+            border, bg = "2px solid #FFFFFF", "#1D1D1D"
         elif self._selected:
-            border, bg, bar, chev = f"2px solid {accent}", "#181818", accent, "#FFFFFF"
+            border, bg = f"2px solid {accent}", "#181818"
         else:
-            border, bg, bar, chev = "1px solid #2B2B2B", "#141414", accent, "#6B6B6B"
+            border, bg = "1px solid #2E2E2E", "#161616"
 
         self.setStyleSheet(
-            f"#BookCard {{ background-color: {bg}; border: {border}; border-radius: 16px; }}"
+            f"#BookCard {{ background-color: {bg}; border: {border}; border-radius: 20px; }}"
         )
-        self._bar.setStyleSheet(
-            f"QFrame {{ background-color: {bar}; "
-            f"border-top-left-radius: 15px; border-bottom-left-radius: 15px; }}"
+        self._select_btn.setStyleSheet(
+            f"QPushButton {{ background:{accent}; color:#0B0B0B; border:1px solid #2E2E2E; "
+            f"border-radius:13px; padding:10px 16px; font-weight:900; }}"
+            f"QPushButton:hover {{ border:1px solid #FFFFFF; }}"
         )
-        # Book-spine style cover: subtle vertical gradient in the book's accent.
-        self._cover.setStyleSheet(
-            f"QLabel {{ color: #FFFFFF; border: 1px solid {accent}; border-radius: 8px; "
-            f"background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-            f"stop:0 {accent}, stop:1 rgba(10,10,10,0.85)); }}"
-        )
-        self._chevron.setStyleSheet(f"QLabel {{ color: {chev}; background: transparent; border: none; }}")
 
 
 class LektionCard(_ClickCard):
@@ -742,41 +815,48 @@ class SetupPage(QWidget):
         w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(12)
+        lay.setSpacing(16)
 
-        title = QLabel("Select Book")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("QLabel { color:#FFFFFF; }")
-        lay.addWidget(title)
+        # ---- Section header: title + count ----
+        section = QHBoxLayout()
+        sec_title = QLabel("Available Books")
+        sec_title.setFont(QFont("Segoe UI", 13, QFont.Weight.Black))
+        sec_title.setStyleSheet("QLabel { color:#FFFFFF; background:transparent; }")
+        self.book_count_lbl = QLabel("0 books")
+        self.book_count_lbl.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
+        self.book_count_lbl.setStyleSheet(
+            "QLabel { color:#A1A1AA; background:#101010; border:1px solid #303030; "
+            "border-radius:10px; padding:6px 11px; }"
+        )
+        section.addWidget(sec_title)
+        section.addStretch(1)
+        section.addWidget(self.book_count_lbl)
+        lay.addLayout(section)
 
-        group = QGroupBox("Available Books")
-        group.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        group.setStyleSheet(_GROUPBOX_STYLE)
-
+        # ---- Cards box (scrollable) ----
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
-        inner = QWidget()
-        inner.setStyleSheet("background: transparent;")
-        self.book_layout = QVBoxLayout(inner)
+        box = QFrame()
+        box.setStyleSheet(
+            "QFrame { background:#101010; border:1px solid #2B2B2B; border-radius:20px; }"
+        )
+        self.book_layout = QVBoxLayout(box)
         self.book_layout.setContentsMargins(16, 16, 16, 16)
-        self.book_layout.setSpacing(10)
-        scroll.setWidget(inner)
+        self.book_layout.setSpacing(14)
+        scroll.setWidget(box)
 
-        g_lay = QVBoxLayout(group)
-        g_lay.setContentsMargins(0, 0, 0, 0)
-        g_lay.addWidget(scroll)
-
-        lay.addWidget(group, 1)
+        lay.addWidget(scroll, 1)
         return w
 
     def _refresh_books(self):
         self._clear_vbox(self.book_layout)
         if not self.level:
+            if hasattr(self, "book_count_lbl"):
+                self.book_count_lbl.setText("0 books")
             lbl = QLabel("Select a level first.")
-            lbl.setStyleSheet("QLabel { color: #777; }")
+            lbl.setStyleSheet("QLabel { color: #777; background: transparent; border: none; }")
             self.book_layout.addWidget(lbl)
             self.book_layout.addStretch(1)
             return
@@ -786,9 +866,13 @@ class SetupPage(QWidget):
         except Exception:
             books = []
 
+        if hasattr(self, "book_count_lbl"):
+            n = len(books)
+            self.book_count_lbl.setText(f"{n} book" if n == 1 else f"{n} books")
+
         if not books:
             lbl = QLabel(f"No books available for {self.level}.")
-            lbl.setStyleSheet("QLabel { color: #777; }")
+            lbl.setStyleSheet("QLabel { color: #777; background: transparent; border: none; }")
             self.book_layout.addWidget(lbl)
             self.book_layout.addStretch(1)
             return
@@ -805,6 +889,7 @@ class SetupPage(QWidget):
                 accent=_accent_for_index(i),
                 selected=(book.slug == self.book_slug),
                 on_click=lambda slug=book.slug: self._choose_book(slug),
+                icon_path=_book_icon_path(book.slug, self.level),
             )
             self.book_layout.addWidget(card)
 

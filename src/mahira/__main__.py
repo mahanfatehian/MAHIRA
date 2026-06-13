@@ -2,10 +2,21 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import traceback
 import faulthandler
 from pathlib import Path
+
+# Silence Qt Multimedia's informational FFmpeg banner on startup
+# ("qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version ..."). It is
+# not an error. Must be set BEFORE any Qt module is imported. Real warnings and
+# errors from the multimedia backend are preserved.
+_rules = os.environ.get("QT_LOGGING_RULES", "")
+if "qt.multimedia.ffmpeg" not in _rules:
+    os.environ["QT_LOGGING_RULES"] = (
+        _rules + ";qt.multimedia.ffmpeg.info=false;qt.multimedia.ffmpeg.debug=false"
+    ).strip(";")
 
 from mahira.app import run
 from mahira.config import data_root, resource_root, STATE_DIRNAME
