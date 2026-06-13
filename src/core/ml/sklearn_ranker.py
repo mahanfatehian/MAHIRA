@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core import fsrs, priority
+
 try:
     import joblib
     import numpy as np
@@ -171,23 +173,13 @@ class SklearnRanker:
             was_skipped=was_skipped,
         )
 
-        features = self._vector(
-            ease=_float(getattr(state_before, "ease", 2.5), 2.5),
-            interval_days=_float(getattr(state_before, "interval_days", 0.0), 0.0),
-            reps=_float(getattr(state_before, "reps", 0), 0.0),
-            lapses=_float(getattr(state_before, "lapses", 0), 0.0),
-            total_reviews=0.0,
-            avg_rating=float(effective_rating),
-            accuracy=self._vocab_accuracy_from_result(review_result),
-            tip_rate=1.0 if tip_used else 0.0,
-            helper_rate=1.0 if gender_tip_used else 0.0,
-            skip_rate=1.0 if was_skipped else 0.0,
-            response_ms=_float(response_ms, 0.0),
-            text_len=float(len(str(getattr(item, "word", "") or ""))),
-            extra_len=float(len(str(getattr(item, "meaning", "") or ""))),
-            is_unseen=1.0 if _int(getattr(state_before, "reps", 0), 0) <= 0 else 0.0,
-            overdue_days=0.0,
+        # Train on the SAME feature vector used at ranking time (built from the
+        # post-review DB aggregates), so there is no train/serve skew.
+        features = self._training_vector(
+            item, objective="vocab", vector_fn=self._vector_vocab_row, fetch_fn=self._fetch_vocab_rows
         )
+        if features is None:
+            return
 
         self._fit("vocab", level, features, target)
 
@@ -214,23 +206,11 @@ class SklearnRanker:
             was_skipped=was_skipped,
         )
 
-        features = self._vector(
-            ease=_float(getattr(state_before, "ease", 2.5), 2.5),
-            interval_days=_float(getattr(state_before, "interval_days", 0.0), 0.0),
-            reps=_float(getattr(state_before, "reps", 0), 0.0),
-            lapses=_float(getattr(state_before, "lapses", 0), 0.0),
-            total_reviews=0.0,
-            avg_rating=float(effective_rating),
-            accuracy=1.0 if review_result.get("ok") else 0.0,
-            tip_rate=1.0 if meaning_tip_used else 0.0,
-            helper_rate=1.0 if (hint_used or grammar_tip_used) else 0.0,
-            skip_rate=1.0 if was_skipped else 0.0,
-            response_ms=_float(response_ms, 0.0),
-            text_len=float(len(str(getattr(item, "test_text", "") or ""))),
-            extra_len=float(len(str(getattr(item, "answer", "") or ""))),
-            is_unseen=1.0 if _int(getattr(state_before, "reps", 0), 0) <= 0 else 0.0,
-            overdue_days=0.0,
+        features = self._training_vector(
+            item, objective="grammar", vector_fn=self._vector_grammar_row, fetch_fn=self._fetch_grammar_rows
         )
+        if features is None:
+            return
 
         self._fit("grammar", level, features, target)
 
@@ -256,23 +236,11 @@ class SklearnRanker:
             was_skipped=was_skipped,
         )
 
-        features = self._vector(
-            ease=_float(getattr(state_before, "ease", 2.5), 2.5),
-            interval_days=_float(getattr(state_before, "interval_days", 0.0), 0.0),
-            reps=_float(getattr(state_before, "reps", 0), 0.0),
-            lapses=_float(getattr(state_before, "lapses", 0), 0.0),
-            total_reviews=0.0,
-            avg_rating=float(effective_rating),
-            accuracy=1.0 if review_result.get("ok") else 0.0,
-            tip_rate=1.0 if tip_used else 0.0,
-            helper_rate=1.0 if translation_used else 0.0,
-            skip_rate=1.0 if was_skipped else 0.0,
-            response_ms=_float(response_ms, 0.0),
-            text_len=float(len(str(getattr(item, "target_text", "") or ""))),
-            extra_len=float(len(getattr(item, "words", []) or [])),
-            is_unseen=1.0 if _int(getattr(state_before, "reps", 0), 0) <= 0 else 0.0,
-            overdue_days=0.0,
+        features = self._training_vector(
+            item, objective="sentences", vector_fn=self._vector_sentence_row, fetch_fn=self._fetch_sentence_rows
         )
+        if features is None:
+            return
 
         self._fit("sentences", level, features, target)
 
@@ -365,6 +333,8 @@ class SklearnRanker:
                 s.lapses,
                 s.due_at,
                 s.last_review_at,
+                s.stability,
+                s.difficulty,
                 COUNT(r.id) AS total_reviews,
                 AVG(r.rating) AS avg_rating,
                 AVG(CASE WHEN r.meaning_correct IS NOT NULL THEN r.meaning_correct END) AS meaning_acc,
@@ -400,6 +370,8 @@ class SklearnRanker:
                 s.lapses,
                 s.due_at,
                 s.last_review_at,
+                s.stability,
+                s.difficulty,
                 COUNT(r.id) AS total_reviews,
                 AVG(r.rating) AS avg_rating,
                 AVG(r.correct) AS accuracy,
@@ -431,6 +403,8 @@ class SklearnRanker:
                 st.lapses,
                 st.due_at,
                 st.last_review_at,
+                st.stability,
+                st.difficulty,
                 COUNT(r.id) AS total_reviews,
                 AVG(r.rating) AS avg_rating,
                 AVG(r.correct) AS accuracy,
@@ -450,6 +424,29 @@ class SklearnRanker:
         with self.repo._conn() as conn:
             rows = conn.execute(q, tuple(ids)).fetchall()
         return {int(r["id"]): r for r in rows}
+
+    # ------------------------------------------------------------------
+    # Training
+    # ------------------------------------------------------------------
+    def _training_vector(self, item: Any, *, objective: str, vector_fn, fetch_fn):
+        """Build the feature vector for online training from the item's current
+        DB aggregates -- identical to the vector used when ranking, so the model
+        never suffers train/serve skew."""
+        try:
+            item_id = int(getattr(item, "id"))
+        except Exception:
+            return None
+        try:
+            rows = fetch_fn([item_id])
+            row = rows.get(item_id)
+        except Exception:
+            row = None
+        if row is None:
+            return None
+        try:
+            return vector_fn(row)
+        except Exception:
+            return None
 
     # ------------------------------------------------------------------
     # Scoring
@@ -479,6 +476,12 @@ class SklearnRanker:
         model = self._load_model(objective, level)
         preds = model.predict_many(vectors)
 
+        # The deterministic recall-priority is ALWAYS applied. The learned model
+        # only augments the ordering once it has actually been trained -- it is
+        # never a gate, so weak/forgotten items are targeted from review #1.
+        w_learned = 0.25 if getattr(model, "is_fitted", False) else 0.0
+        w_det = 1.0 - w_learned
+
         scored: list[tuple[float, int, int]] = []
 
         pred_by_id = {
@@ -496,12 +499,15 @@ class SklearnRanker:
             else:
                 deterministic = float(score_fn(row))
                 learned = float(pred_by_id.get(item_id, 0.5))
-                priority = (deterministic * 0.75) + (learned * 0.25)
+                priority = (deterministic * w_det) + (learned * w_learned)
 
             scored.append((priority, original_index.get(item_id, 0), item_id))
 
-        # LOW priority first, HIGH priority last because SessionService uses .pop()
-        scored.sort(key=lambda x: (x[0], x[1]))
+        # LOW priority first, HIGH priority last because SessionService uses
+        # .pop(). Tie-break: equal-priority items (e.g. a fresh, all-unseen
+        # deck) are ordered so the EARLIEST item pops first -> new material is
+        # introduced in natural deck/Lektion order.
+        scored.sort(key=lambda x: (x[0], -x[1]))
         return [item_id for _, _, item_id in scored]
 
     def _base_score(
@@ -520,39 +526,30 @@ class SklearnRanker:
         skip_rate: float,
         response_ms: float,
         extra_penalty: float = 0.0,
+        stability: float | None = None,
+        difficulty: float | None = None,
+        interval_days: float = 0.0,
     ) -> float:
-        now = time.time()
-
-        due_in_days = (due_at - now) / 86400.0
-        overdue_days = max(0.0, -due_in_days)
-        is_due = due_at <= now
-
-        is_unseen = total_reviews <= 0 or reps <= 0
-        low_rating_pressure = _clip((3.0 - avg_rating) / 3.0, 0.0, 1.0)
-        weak_accuracy = _clip(1.0 - accuracy, 0.0, 1.0)
-        slow_pressure = _clip(response_ms / 20000.0, 0.0, 1.0)
-
-        score = 0.0
-
-        score += weak_accuracy * 2.3
-        score += low_rating_pressure * 1.4
-        score += _clip(tip_rate, 0.0, 1.0) * 0.55
-        score += _clip(helper_rate, 0.0, 1.0) * 0.45
-        score += _clip(skip_rate, 0.0, 1.0) * 1.6
-        score += _clip(lapses / 5.0, 0.0, 1.0) * 0.8
-        score += _clip((2.5 - ease) / 1.2, 0.0, 1.0) * 0.6
-        score += slow_pressure * 0.25
-        score += _clip(overdue_days / 7.0, 0.0, 1.0) * 0.9
-        score += 0.35 if is_due else 0.0
-        score += 0.55 if is_unseen else 0.0
-        score += extra_penalty
-
-        if last_review_at:
-            hours_since = (now - float(last_review_at)) / 3600.0
-            if hours_since < 2.0:
-                score -= 0.8
-
-        return _clip(score / 6.0, 0.0, 1.0)
+        # Single source of truth: the always-on recall priority (FSRS
+        # retrievability + weakness signals + coverage).
+        return priority.compute_priority(
+            now=time.time(),
+            due_at=due_at,
+            last_review_at=last_review_at,
+            stability=stability,
+            difficulty=difficulty if difficulty is not None else fsrs.difficulty_from_ease(ease),
+            interval_days=interval_days,
+            reps=reps,
+            lapses=lapses,
+            total_reviews=total_reviews,
+            avg_rating=avg_rating,
+            accuracy=accuracy,
+            tip_rate=tip_rate,
+            helper_rate=helper_rate,
+            skip_rate=skip_rate,
+            response_ms=response_ms,
+            extra_penalty=extra_penalty,
+        )
 
     def _score_vocab_row(self, row: Any) -> float:
         accuracies = [
@@ -576,6 +573,9 @@ class SklearnRanker:
             helper_rate=_float(_row(row, "helper_rate", 0.0), 0.0),
             skip_rate=_float(_row(row, "skip_rate", 0.0), 0.0),
             response_ms=_float(_row(row, "avg_response_ms", 0.0), 0.0),
+            stability=_row(row, "stability", None),
+            difficulty=_row(row, "difficulty", None),
+            interval_days=_float(_row(row, "interval_days", 0.0), 0.0),
         )
 
     def _score_grammar_row(self, row: Any) -> float:
@@ -592,6 +592,9 @@ class SklearnRanker:
             helper_rate=_float(_row(row, "helper_rate", 0.0), 0.0),
             skip_rate=_float(_row(row, "skip_rate", 0.0), 0.0),
             response_ms=_float(_row(row, "avg_response_ms", 0.0), 0.0),
+            stability=_row(row, "stability", None),
+            difficulty=_row(row, "difficulty", None),
+            interval_days=_float(_row(row, "interval_days", 0.0), 0.0),
         )
 
     def _score_sentence_row(self, row: Any) -> float:
@@ -611,6 +614,9 @@ class SklearnRanker:
             skip_rate=_float(_row(row, "skip_rate", 0.0), 0.0),
             response_ms=_float(_row(row, "avg_response_ms", 0.0), 0.0),
             extra_penalty=mismatch_penalty,
+            stability=_row(row, "stability", None),
+            difficulty=_row(row, "difficulty", None),
+            interval_days=_float(_row(row, "interval_days", 0.0), 0.0),
         )
 
     # ------------------------------------------------------------------
@@ -634,6 +640,9 @@ class SklearnRanker:
         extra_len: float,
         is_unseen: float,
         overdue_days: float,
+        stability: float = 0.0,
+        difficulty: float = 5.0,
+        recall: float = 0.5,
     ) -> list[float]:
         return [
             _clip(ease / 4.0, 0.0, 1.0),
@@ -651,7 +660,39 @@ class SklearnRanker:
             _clip(extra_len / 120.0, 0.0, 1.0),
             _clip(is_unseen, 0.0, 1.0),
             _clip(overdue_days / 30.0, 0.0, 1.0),
+            _clip(stability / 365.0, 0.0, 1.0),
+            _clip((difficulty - 1.0) / 9.0, 0.0, 1.0),
+            _clip(recall, 0.0, 1.0),
         ]
+
+    def _fsrs_features(self, row: Any, now: float) -> tuple[float, float, float]:
+        """Return (stability_days, difficulty, recall_prob) for an item row,
+        deriving values for legacy items that predate the FSRS columns."""
+        reps = _int(_row(row, "reps", 0), 0)
+        interval_days = _float(_row(row, "interval_days", 0.0), 0.0)
+        ease = _float(_row(row, "ease", 2.5), 2.5)
+        stability_raw = _row(row, "stability", None)
+        difficulty_raw = _row(row, "difficulty", None)
+        last_review_at = _row(row, "last_review_at", None)
+
+        if stability_raw is not None:
+            stability = _float(stability_raw, 0.0)
+        else:
+            stability = (interval_days if interval_days > 0 else 1.0) if reps > 0 else 0.0
+
+        if difficulty_raw is not None:
+            difficulty = _float(difficulty_raw, 5.0)
+        else:
+            difficulty = fsrs.difficulty_from_ease(ease)
+
+        r = priority.recall_probability(
+            now=now,
+            last_review_at=last_review_at,
+            stability=stability_raw,
+            interval_days=interval_days,
+            reps=reps,
+        )
+        return stability, difficulty, (0.5 if r is None else r)
 
     def _vector_vocab_row(self, row: Any) -> list[float]:
         now = time.time()
@@ -668,6 +709,7 @@ class SklearnRanker:
 
         reps = _float(_row(row, "reps", 0), 0.0)
         total_reviews = _float(_row(row, "total_reviews", 0), 0.0)
+        stability, difficulty, recall = self._fsrs_features(row, now)
 
         return self._vector(
             ease=_float(_row(row, "ease", 2.5), 2.5),
@@ -685,6 +727,9 @@ class SklearnRanker:
             extra_len=float(len(str(_row(row, "meaning", "") or ""))),
             is_unseen=1.0 if reps <= 0 or total_reviews <= 0 else 0.0,
             overdue_days=overdue_days,
+            stability=stability,
+            difficulty=difficulty,
+            recall=recall,
         )
 
     def _vector_grammar_row(self, row: Any) -> list[float]:
@@ -694,6 +739,7 @@ class SklearnRanker:
 
         reps = _float(_row(row, "reps", 0), 0.0)
         total_reviews = _float(_row(row, "total_reviews", 0), 0.0)
+        stability, difficulty, recall = self._fsrs_features(row, now)
 
         return self._vector(
             ease=_float(_row(row, "ease", 2.5), 2.5),
@@ -711,6 +757,9 @@ class SklearnRanker:
             extra_len=float(len(str(_row(row, "answer", "") or ""))),
             is_unseen=1.0 if reps <= 0 or total_reviews <= 0 else 0.0,
             overdue_days=overdue_days,
+            stability=stability,
+            difficulty=difficulty,
+            recall=recall,
         )
 
     def _vector_sentence_row(self, row: Any) -> list[float]:
@@ -720,6 +769,7 @@ class SklearnRanker:
 
         reps = _float(_row(row, "reps", 0), 0.0)
         total_reviews = _float(_row(row, "total_reviews", 0), 0.0)
+        stability, difficulty, recall = self._fsrs_features(row, now)
 
         return self._vector(
             ease=_float(_row(row, "ease", 2.5), 2.5),
@@ -737,13 +787,20 @@ class SklearnRanker:
             extra_len=float(len(str(_row(row, "translation", "") or ""))),
             is_unseen=1.0 if reps <= 0 or total_reviews <= 0 else 0.0,
             overdue_days=overdue_days,
+            stability=stability,
+            difficulty=difficulty,
+            recall=recall,
         )
 
     # ------------------------------------------------------------------
     # Model persistence
     # ------------------------------------------------------------------
+    # Bump when the feature vector layout changes so stale joblib models
+    # (trained on a different feature count) are never loaded.
+    _MODEL_VERSION = "v2"
+
     def _model_name(self, objective: str, level: str | None) -> str:
-        return f"{_safe_key(objective)}__{_safe_key(level)}"
+        return f"{_safe_key(objective)}__{_safe_key(level)}__{self._MODEL_VERSION}"
 
     def _model_path(self, objective: str, level: str | None) -> Path:
         return self.model_dir / f"{self._model_name(objective, level)}.joblib"

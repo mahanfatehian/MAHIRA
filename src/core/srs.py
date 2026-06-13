@@ -2,54 +2,64 @@ from __future__ import annotations
 
 import time
 from dataclasses import replace
+from typing import Any
 
-from db.repo import VocabState
+from core import fsrs
 
 
-def schedule_next(state: VocabState, rating: int) -> VocabState:
-    """Simple SM-2-ish scheduler.
+def schedule_next(state: Any, rating: int, *, now: int | None = None) -> Any:
+    """
+    Advance an SRS state by one review using the FSRS-4.5 memory model.
+
+    Works for any of the three frozen state dataclasses (VocabState /
+    GrammarState / SentenceState) -- they share the scheduling fields
+    (ease, interval_days, reps, lapses, due_at, last_review_at, stability,
+    difficulty), so a single scheduler keeps vocab, grammar and sentences on
+    identical, correct logic.
 
     rating: 0=Again, 1=Hard, 2=Good, 3=Easy
 
-    FIX: Hard must *shorten* interval (old code incorrectly made it longer).
+    The returned state carries the updated FSRS stability/difficulty (the real
+    drivers) plus a derived `ease` and `interval_days` so legacy readers keep
+    working. On Again the item re-enters a 10-minute relearning step.
     """
-    if rating not in (0, 1, 2, 3):
-        raise ValueError("rating must be 0..3")
+    now = int(time.time()) if now is None else int(now)
 
-    now = int(time.time())
-    s = replace(state, last_review_at=now)
+    last_review_at = getattr(state, "last_review_at", None)
+    elapsed_days = 0.0
+    if last_review_at:
+        elapsed_days = max(0.0, (now - float(last_review_at)) / 86400.0)
 
-    # Again
-    if rating == 0:
-        ease = max(1.3, s.ease - 0.2)
-        return replace(
-            s,
-            ease=ease,
-            lapses=s.lapses + 1,
-            reps=max(0, s.reps - 1),
-            interval_days=0.0,
-            due_at=now + 10 * 60,  # 10 minutes
-        )
+    # Pull the current memory model, lazily migrating legacy items that predate
+    # the FSRS upgrade (stability/difficulty not yet recorded).
+    stability = getattr(state, "stability", None)
+    difficulty = getattr(state, "difficulty", None)
+    reps = int(getattr(state, "reps", 0) or 0)
 
-    reps = s.reps + 1
+    if stability is None:
+        stability = fsrs.stability_from_interval(getattr(state, "interval_days", 0.0), reps)
+    if difficulty is None and reps > 0:
+        difficulty = fsrs.difficulty_from_ease(getattr(state, "ease", 2.5))
 
-    # First reps: fixed short steps
-    if reps == 1:
-        interval = 1.0
-    elif reps == 2:
-        interval = 3.0
-    else:
-        # Hard should shorten, Easy should lengthen.
-        mult = {1: 0.8, 2: 1.0, 3: 1.3}[rating]
-        interval = max(1.0, s.interval_days * s.ease * mult)
+    result = fsrs.schedule(
+        rating=rating,
+        stability=stability,
+        difficulty=difficulty,
+        elapsed_days=elapsed_days,
+    )
 
-    # Ease adjustment
-    if rating == 1:
-        ease = max(1.3, s.ease - 0.15)
-    elif rating == 3:
-        ease = max(1.3, s.ease + 0.10)
-    else:
-        ease = max(1.3, s.ease)
+    is_again = int(rating) <= 0
+    lapses = int(getattr(state, "lapses", 0) or 0) + (1 if is_again else 0)
+    new_reps = reps + 1  # monotonic review counter; reps > 0 means "seen"
 
-    due_at = now + int(interval * 86400)
-    return replace(s, ease=ease, reps=reps, interval_days=interval, due_at=due_at)
+    return replace(
+        state,
+        ease=fsrs.ease_from_difficulty(result.difficulty),
+        interval_days=float(result.interval_days),
+        reps=new_reps,
+        lapses=lapses,
+        due_at=now + int(result.due_in_seconds),
+        last_review_at=now,
+        stability=float(result.stability),
+        difficulty=float(result.difficulty),
+    )

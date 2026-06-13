@@ -125,6 +125,12 @@ def init_db(db_path: str | Path, schema_path: str | Path | None = None) -> None:
 
         _ensure_column(conn, "sentence_reviews", "translation_used", "INTEGER NOT NULL DEFAULT 0")
 
+        # FSRS memory model columns. Added in-place (no reset) on existing DBs;
+        # left NULL so the scheduler migrates each item lazily on its next review.
+        for _tbl in ("vocab_states", "grammar_states", "sentence_states"):
+            _ensure_column(conn, _tbl, "stability", "REAL")
+            _ensure_column(conn, _tbl, "difficulty", "REAL")
+
         _repair_sentences(conn)
 
         conn.commit()

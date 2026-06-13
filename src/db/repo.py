@@ -52,6 +52,8 @@ class VocabState:
     lapses: int
     due_at: int
     last_review_at: Optional[int]
+    stability: Optional[float] = None
+    difficulty: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +77,8 @@ class GrammarState:
     lapses: int
     due_at: int
     last_review_at: Optional[int]
+    stability: Optional[float] = None
+    difficulty: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +101,8 @@ class SentenceState:
     lapses: int
     due_at: int
     last_review_at: Optional[int]
+    stability: Optional[float] = None
+    difficulty: Optional[float] = None
 
 
 class Repo:
@@ -481,10 +487,12 @@ class Repo:
             conn.execute(
                 """
                 UPDATE vocab_states
-                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?, last_review_at=?
+                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?, last_review_at=?,
+                       stability=?, difficulty=?
                  WHERE vocab_id=?
                 """,
-                (state.ease, state.interval_days, state.reps, state.lapses, state.due_at, state.last_review_at, state.vocab_id),
+                (state.ease, state.interval_days, state.reps, state.lapses, state.due_at, state.last_review_at,
+                 state.stability, state.difficulty, state.vocab_id),
             )
 
     def insert_review(
@@ -648,10 +656,12 @@ class Repo:
             conn.execute(
                 """
                 UPDATE grammar_states
-                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?, last_review_at=?
+                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?, last_review_at=?,
+                       stability=?, difficulty=?
                  WHERE grammar_id=?
                 """,
-                (state.ease, state.interval_days, state.reps, state.lapses, state.due_at, state.last_review_at, state.grammar_id),
+                (state.ease, state.interval_days, state.reps, state.lapses, state.due_at, state.last_review_at,
+                 state.stability, state.difficulty, state.grammar_id),
             )
 
     def insert_grammar_review(
@@ -845,7 +855,8 @@ class Repo:
             conn.execute(
                 """
                 UPDATE sentence_states
-                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?, last_review_at=?
+                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?, last_review_at=?,
+                       stability=?, difficulty=?
                  WHERE sentence_id=?
                 """,
                 (
@@ -855,6 +866,8 @@ class Repo:
                     state.lapses,
                     state.due_at,
                     state.last_review_at,
+                    state.stability,
+                    state.difficulty,
                     state.sentence_id,
                 ),
             )
@@ -1073,6 +1086,16 @@ class Repo:
         )
 
     @staticmethod
+    def _opt_float(r: sqlite3.Row, key: str) -> Optional[float]:
+        try:
+            if key not in set(r.keys()):
+                return None
+            v = r[key]
+            return float(v) if v is not None else None
+        except Exception:
+            return None
+
+    @staticmethod
     def _row_to_state(r: sqlite3.Row) -> VocabState:
         return VocabState(
             vocab_id=int(r["vocab_id"]),
@@ -1082,6 +1105,8 @@ class Repo:
             lapses=int(r["lapses"]),
             due_at=int(r["due_at"]),
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
+            stability=Repo._opt_float(r, "stability"),
+            difficulty=Repo._opt_float(r, "difficulty"),
         )
 
     @staticmethod
@@ -1107,6 +1132,8 @@ class Repo:
             lapses=int(r["lapses"]),
             due_at=int(r["due_at"]),
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
+            stability=Repo._opt_float(r, "stability"),
+            difficulty=Repo._opt_float(r, "difficulty"),
         )
 
     @staticmethod
@@ -1173,4 +1200,6 @@ class Repo:
             lapses=int(r["lapses"]),
             due_at=int(r["due_at"]),
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
+            stability=Repo._opt_float(r, "stability"),
+            difficulty=Repo._opt_float(r, "difficulty"),
         )

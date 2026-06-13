@@ -510,13 +510,20 @@ class SessionService:
         """
         Build a new review queue for the active deck.
 
-        Queue rule:
-        - next_* methods use self._queue.pop()
-        - the item at the END of self._queue is shown first
+        Recall-engine contract (see core/priority.py and core/fsrs.py):
+        - We score the FULL deck with the always-on recall priority (FSRS
+          retrievability + weakness signals + coverage). The ML model only
+          augments the ordering once trained -- it is never a gate, so weak or
+          forgotten items are targeted from the very first review.
+        - Selection takes the highest-priority items first, so the items you
+          are most likely to forget can NEVER be randomly dropped from a
+          session (the old picker shuffled and truncated the due queue).
+        - A coverage quota guarantees a steady trickle of never-seen items so
+          new material is always introduced.
 
-        ML ranker contract:
-        - rank_*_ids returns LOW priority first, HIGH priority last
-        - we keep that order so .pop() shows the highest-priority item first
+        Queue order: next_* use self._queue.pop(), so the END of the queue is
+        shown first. rank_*_ids returns LOW priority first / HIGH priority
+        last, so the highest-priority item is popped first.
         """
         deck_id = self.active_deck_id()
         if deck_id is None:
@@ -531,209 +538,151 @@ class SessionService:
             limit = 30
         limit = max(1, limit)
 
-        try:
-            pool_factor = int(getattr(self.plan, "pool_factor", 8) or 8)
-        except Exception:
-            pool_factor = 8
-        pool_factor = max(1, pool_factor)
+        specs = {
+            "vocab": (self._all_vocab_ids_for_deck, "vocab", "vocab_states", "vocab_id",
+                      getattr(self.ml, "rank_vocab_ids", None)),
+            "grammar": (self._all_grammar_ids_for_deck, "grammar", "grammar_states", "grammar_id",
+                        getattr(self.ml, "rank_grammar_ids", None)),
+            "sentences": (self._all_sentence_ids_for_deck, "sentences", "sentence_states", "sentence_id",
+                          getattr(self.ml, "rank_sentence_ids", None)),
+        }
 
-        pool_limit = max(limit, limit * pool_factor)
+        spec = specs.get(objective)
+        if spec is None:
+            self._queue = []
+            return False
+
+        full_fn, table, state_table, fk, rank_fn = spec
+
+        full = _unique_preserve_order(full_fn(deck_id))
+        if not full:
+            self._queue = []
+            return False
+
+        unseen = self._unseen_ids_for_deck(deck_id, table, state_table, fk)
+
+        # Always rank the full deck with the recall priority (ML-augmented when
+        # trained). Fall back to a shuffle only if ranking is unavailable.
+        ranked: list[int] = []
         use_ml = bool(getattr(self, "enable_ml_ranking", True) and getattr(self, "ml", None))
-
-        def _ml_ready(obj: str) -> bool:
-            if not use_ml:
-                return False
-
+        if use_ml and callable(rank_fn):
             try:
-                return bool(
-                    self.ml.is_ready(
-                        level=getattr(self.state, "level", None),
-                        objective=obj,
-                        min_seen=getattr(self, "ml_min_seen_before_ranking", 80),
-                    )
+                ranked = _unique_preserve_order(
+                    rank_fn(list(full), level=getattr(self.state, "level", None))
                 )
             except Exception:
-                return False
+                ranked = []
 
-        def _ml_should_explore() -> bool:
-            try:
-                eps = float(getattr(self, "ml_exploration_eps", 0.12) or 0.0)
-            except Exception:
-                eps = 0.12
+        if not ranked:
+            ranked = list(full)
+            self.rng.shuffle(ranked)
 
-            eps = max(0.0, min(1.0, eps))
+        self._queue = self._assemble_queue(
+            full_ids=full, unseen_ids=unseen, ranked_ids=ranked, limit=limit
+        )
+        return bool(self._queue)
 
-            try:
-                return bool(self.rng.random() < eps)
-            except Exception:
-                return False
-
-        def _call_picker(method_name: str) -> list[int]:
-            fn = getattr(self, method_name, None)
-            if not callable(fn):
-                return []
-
-            call_styles = (
-                lambda: fn(deck_id, limit=pool_limit),
-                lambda: fn(deck_id, pool_limit),
-                lambda: fn(deck_id),
-            )
-
-            for call in call_styles:
-                try:
-                    ids = _unique_preserve_order(call())
-                    if ids:
-                        return ids
-                except TypeError:
-                    continue
-                except Exception:
-                    return []
-
+    # -----------------------------------------------------------------
+    # Selection assembly
+    # -----------------------------------------------------------------
+    def _unseen_ids_for_deck(self, deck_id: int, table: str, state_table: str, fk: str) -> list[int]:
+        """Items in the deck that have never been reviewed (no state row)."""
+        try:
+            with self.repo._conn() as conn:
+                rows = conn.execute(
+                    f"""
+                    SELECT t.id
+                    FROM {table} t
+                    LEFT JOIN {state_table} s ON s.{fk} = t.id
+                    WHERE t.deck_id = ? AND s.id IS NULL
+                    """,
+                    (deck_id,),
+                ).fetchall()
+            return [int(r["id"]) for r in rows if r and r["id"] is not None]
+        except Exception:
             return []
 
-        def _call_repo_picker(method_names: tuple[str, ...]) -> list[int]:
-            for method_name in method_names:
-                fn = getattr(self.repo, method_name, None)
-                if not callable(fn):
-                    continue
+    def _coverage_target(self, limit: int) -> int:
+        try:
+            frac = float(getattr(self, "unseen_coverage_fraction", 0.3) or 0.0)
+        except Exception:
+            frac = 0.3
+        frac = max(0.0, min(1.0, frac))
+        return max(1, int(round(limit * frac))) if frac > 0 else 0
 
-                call_styles = (
-                    lambda: fn(deck_id, pool_limit, self.plan.mode, cooldown_hours=12),
-                    lambda: fn(deck_id, pool_limit, self.plan.mode),
-                    lambda: fn(deck_id, pool_limit, mode=self.plan.mode),
-                    lambda: fn(deck_id, pool_limit),
-                    lambda: fn(deck_id),
-                )
+    def _assemble_queue(
+        self,
+        *,
+        full_ids: list[int],
+        unseen_ids: list[int],
+        ranked_ids: list[int],
+        limit: int,
+    ) -> list[int]:
+        """
+        Turn a low->high priority ranking of the full deck into a session queue
+        of size `limit`, guaranteeing (a) the highest-priority items are never
+        dropped, and (b) a minimum quota of never-seen items for coverage.
+        """
+        full_ids = _unique_preserve_order(full_ids)
+        ranked = _unique_preserve_order(ranked_ids)
 
-                for call in call_styles:
-                    try:
-                        ids = _unique_preserve_order(call())
-                        if ids:
-                            return ids
-                    except TypeError:
-                        continue
-                    except Exception:
-                        break
+        # Make sure every deck item appears in the ranking (missing -> lowest).
+        ranked_set = set(ranked)
+        missing = [i for i in full_ids if i not in ranked_set]
+        ranked = missing + ranked
 
-            return []
+        if len(ranked) <= limit:
+            selected = list(ranked)
+        else:
+            selected = list(ranked[-limit:])  # top `limit`, low->high priority
 
-        def _finalize_queue(ids: list[int], *, ranked: bool) -> bool:
-            ids = _unique_preserve_order(ids)
+            unseen_set = set(unseen_ids or [])
+            if unseen_set:
+                sel_set = set(selected)
+                in_sel_unseen = [i for i in selected if i in unseen_set]
+                quota = min(self._coverage_target(limit), len(unseen_set))
+                if len(in_sel_unseen) < quota:
+                    need = quota - len(in_sel_unseen)
+                    # Highest-priority unseen items not already selected.
+                    unseen_not_sel = [
+                        i for i in reversed(ranked) if i in unseen_set and i not in sel_set
+                    ]
+                    to_add = unseen_not_sel[:need]
+                    if to_add:
+                        # Evict the lowest-priority SEEN items to make room
+                        # (never evict an at-risk seen item for coverage).
+                        seen_in_sel = [i for i in selected if i not in unseen_set]
+                        evict = set(seen_in_sel[: len(to_add)])
+                        selected = [i for i in selected if i not in evict]
+                        selected = to_add + selected  # coverage shown after urgent items
 
-            if not ids:
-                self._queue = []
-                return False
+        selected = self._maybe_explore(selected, ranked, limit)
+        return _unique_preserve_order(selected)
 
-            if ranked:
-                selected = ids[-limit:]
-            else:
-                selected = ids[:limit]
+    def _maybe_explore(self, selected: list[int], ranked: list[int], limit: int) -> list[int]:
+        """Occasionally promote one non-selected item to avoid starving an item
+        whose priority sits just below the cut (epsilon-greedy)."""
+        try:
+            eps = float(getattr(self, "ml_exploration_eps", 0.12) or 0.0)
+        except Exception:
+            eps = 0.12
+        eps = max(0.0, min(1.0, eps))
 
-            self._queue = _unique_preserve_order(selected)
-            return bool(self._queue)
-
-        # -------------------------
-        # Vocab
-        # -------------------------
-        if objective == "vocab":
-            ids = _call_picker("_pick_vocab_ids")
-
-            if not ids:
-                ids = _call_repo_picker(("pick_session_vocab_ids", "pick_vocab_ids"))
-
-            if not ids:
-                ids = self._top_up_with_random_from_full_deck(
-                    picked=[],
-                    full=self._all_vocab_ids_for_deck(deck_id),
-                    desired_pool=pool_limit,
-                )
-
-            ids = _unique_preserve_order(ids)
-
-            if use_ml and _ml_ready("vocab") and not _ml_should_explore() and ids:
-                try:
-                    ids = self.ml.rank_vocab_ids(
-                        ids,
-                        level=getattr(self.state, "level", None),
-                    )
-                    return _finalize_queue(ids, ranked=True)
-                except Exception:
-                    pass
-
-            self.rng.shuffle(ids)
-            return _finalize_queue(ids, ranked=False)
-
-        # -------------------------
-        # Grammar
-        # -------------------------
-        if objective == "grammar":
-            ids = _call_picker("_pick_grammar_ids")
-
-            if not ids:
-                ids = _call_repo_picker(("pick_session_grammar_ids", "pick_grammar_ids"))
-
-            if not ids:
-                ids = self._top_up_with_random_from_full_deck(
-                    picked=[],
-                    full=self._all_grammar_ids_for_deck(deck_id),
-                    desired_pool=pool_limit,
-                )
-
-            ids = _unique_preserve_order(ids)
-
-            if use_ml and _ml_ready("grammar") and not _ml_should_explore() and ids:
-                try:
-                    ids = self.ml.rank_grammar_ids(
-                        ids,
-                        level=getattr(self.state, "level", None),
-                    )
-                    return _finalize_queue(ids, ranked=True)
-                except Exception:
-                    pass
-
-            self.rng.shuffle(ids)
-            return _finalize_queue(ids, ranked=False)
-
-        # -------------------------
-        # Sentences
-        # -------------------------
-        if objective == "sentences":
-            ids = _call_picker("_pick_sentence_ids")
-
-            if not ids:
-                ids = _call_repo_picker(
-                    (
-                        "pick_session_sentence_ids",
-                        "pick_sentence_ids",
-                        "pick_session_sentences_ids",
-                        "pick_sentences_ids",
-                    )
-                )
-
-            if not ids:
-                ids = self._top_up_with_random_from_full_deck(
-                    picked=[],
-                    full=self._all_sentence_ids_for_deck(deck_id),
-                    desired_pool=pool_limit,
-                )
-
-            ids = _unique_preserve_order(ids)
-
-            if use_ml and _ml_ready("sentences") and not _ml_should_explore() and ids:
-                try:
-                    ids = self.ml.rank_sentence_ids(
-                        ids,
-                        level=getattr(self.state, "level", None),
-                    )
-                    return _finalize_queue(ids, ranked=True)
-                except Exception:
-                    pass
-
-            self.rng.shuffle(ids)
-            return _finalize_queue(ids, ranked=False)
-
-        self._queue = []
-        return False
+        if eps <= 0 or len(ranked) <= limit or not selected:
+            return selected
+        try:
+            if self.rng.random() >= eps:
+                return selected
+            sel_set = set(selected)
+            candidates = [i for i in ranked if i not in sel_set]
+            if not candidates:
+                return selected
+            pick = self.rng.choice(candidates)
+            out = list(selected)
+            out[0] = pick  # replace the lowest-priority selected item
+            return out
+        except Exception:
+            return selected
 
     # -----------------------------------------------------------------
     # Unified next item API
@@ -945,7 +894,7 @@ class SessionService:
             response_ms=response_ms,
         )
 
-        st2 = _schedule_next_grammar(st, effective_rating)
+        st2 = schedule_next(st, effective_rating)
         self.repo.update_grammar_state(st2)
 
         ml = getattr(self, "ml", None)
@@ -1108,47 +1057,3 @@ class SessionService:
 
         res["effective_rating"] = effective_rating
         return res
-
-
-def _schedule_next_grammar(state, rating: int):
-    now = int(time.time())
-    rating = _rating_0_3(rating)
-    s = replace(state, last_review_at=now)
-
-    if rating == 0:
-        ease = max(1.3, s.ease - 0.2)
-        return replace(
-            s,
-            ease=ease,
-            lapses=s.lapses + 1,
-            reps=max(0, s.reps - 1),
-            interval_days=0.0,
-            due_at=now + 10 * 60,
-        )
-
-    reps = s.reps + 1
-
-    if reps == 1:
-        interval = 1.0
-    elif reps == 2:
-        interval = 3.0
-    else:
-        mult = {1: 1.2, 2: 1.0, 3: 1.3}.get(rating, 1.0)
-        interval = max(1.0, s.interval_days * s.ease * mult)
-
-    if rating == 1:
-        ease = max(1.3, s.ease - 0.15)
-    elif rating == 3:
-        ease = max(1.3, s.ease + 0.10)
-    else:
-        ease = max(1.3, s.ease)
-
-    due_at = now + int(interval * 86400)
-
-    return replace(
-        s,
-        ease=ease,
-        reps=reps,
-        interval_days=interval,
-        due_at=due_at,
-    )
