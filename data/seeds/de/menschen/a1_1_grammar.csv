@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Wie null Sie?","heißen","heißen","to be called","What is your name? (formal)","heißen: Sie → heißen (formal W-Frage)"
+"Ich null Ana Martínez.","heiße","heißen","to be called","My name is Ana Martínez.","heißen: ich → heiße"
+"Woher null Sie?","kommen","kommen","to come from","Where are you from? (formal)","kommen: Sie → kommen (formal)"
+"Ich null aus Portugal.","komme","kommen","to come from","I come from Portugal.","kommen: ich → komme; aus + country"
+"Wo null Sie?","wohnen","wohnen","to live","Where do you live? (formal)","wohnen: Sie → wohnen"
+"Ich null in Wien.","wohne","wohnen","to live","I live in Vienna.","wohnen: ich → wohne; in + city"
+"null Sie Deutsch?","Sprechen","sprechen","to speak","Do you speak German? (formal)","sprechen: Sie → sprechen"
+"Ich null Englisch und Spanisch.","spreche","sprechen","to speak","I speak English and Spanish.","sprechen: ich → spreche"
+"Was ist Ihr null?","Beruf","—","profession","What is your profession?","Was ist Ihr Beruf? — W-Frage"
+"null Sie Ihren Namen bitte.","Buchstabieren","buchstabieren","to spell","Please spell your name. (formal)","Buchstabieren Sie — formal imperative"
+"Wie null du?","heißt","heißen","to be called","What is your name? (informal)","heißen: du → heißt"
+"Woher null du?","kommst","kommen","to come from","Where are you from? (informal)","kommen: du → kommst"

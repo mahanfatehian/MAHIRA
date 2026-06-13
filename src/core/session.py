@@ -216,6 +216,8 @@ class AppState:
     language_code: str = "de"
     level: str = "A1"
     objective: str = "vocab"  # vocab | grammar | sentences
+    book_slug: str = ""
+    lektion_number: int = 0
 
 
 @dataclass
@@ -258,24 +260,70 @@ class SessionService:
         self.ml_min_seen_before_ranking = 80
         self.ml_exploration_eps = 0.12
 
+        # Global study session tracker — shared across all panels
+        self.study_answered: int = 0
+        self.study_next_milestone: int = 30
+
     # -----------------------------------------------------------------
     # Context / deck selection
     # -----------------------------------------------------------------
-    def set_context(self, language_code: str, level: str, objective: str) -> None:
+    def _resolve_lektion_id(self) -> int | None:
+        """Look up lektion_id from state.book_slug + state.lektion_number."""
+        book_slug = (getattr(self.state, "book_slug", "") or "").strip()
+        lektion_number = int(getattr(self.state, "lektion_number", 0) or 0)
+        if not book_slug or lektion_number <= 0:
+            return None
+        lang = _norm_lang(getattr(self.state, "language_code", "de"))
+        try:
+            book_id = self.repo.get_book_id(lang, book_slug)
+            if book_id is None:
+                return None
+            return self.repo.get_lektion_id(book_id, lektion_number)
+        except Exception:
+            return None
+
+    def set_context(
+        self,
+        language_code: str,
+        level: str,
+        objective: str,
+        book_slug: str = "",
+        lektion_number: int = 0,
+    ) -> None:
         lang = _norm_lang(language_code)
         lvl = _norm_level(level)
         obj = _norm_objective(objective)
+        book_slug = (book_slug or "").strip()
+        lektion_number = int(lektion_number or 0)
 
-        deck_id = self.repo.get_deck_id(lang, lvl, obj)
+        # Reset study tracker when the lektion context changes (not just objective)
+        old_lang = _norm_lang(getattr(self.state, "language_code", ""))
+        old_lvl = _norm_level(getattr(self.state, "level", ""))
+        old_book = (getattr(self.state, "book_slug", "") or "").strip()
+        old_lektion = int(getattr(self.state, "lektion_number", 0) or 0)
+        if lang != old_lang or lvl != old_lvl or book_slug != old_book or lektion_number != old_lektion:
+            self.study_answered = 0
+            self.study_next_milestone = 30
+
+        # Temporarily write book/lektion to state so _resolve_lektion_id works
+        self.state.language_code = lang
+        self.state.book_slug = book_slug
+        self.state.lektion_number = lektion_number
+        lektion_id = self._resolve_lektion_id()
+
+        deck_id = self.repo.get_deck_id(lang, lvl, obj, lektion_id=lektion_id)
         if deck_id is None:
             self._active_deck_id = None
             self._queue = []
-            raise RuntimeError(f"No deck found for {lang}/{lvl}/{obj}. Did you import seeds?")
+            raise RuntimeError(
+                f"No deck found for {lang}/{lvl}/{obj} "
+                f"(book={book_slug or 'none'}, lektion={lektion_number or 'none'}). "
+                "Did you import seeds?"
+            )
 
         if self._active_deck_id != deck_id:
             self._queue = []
 
-        self.state.language_code = lang
         self.state.level = lvl
         self.state.objective = obj
         self._active_deck_id = deck_id
@@ -284,8 +332,9 @@ class SessionService:
         lang = _norm_lang(getattr(self.state, "language_code", "de"))
         lvl = _norm_level(getattr(self.state, "level", "A1"))
         obj = _norm_objective(getattr(self.state, "objective", "vocab"))
+        lektion_id = self._resolve_lektion_id()
 
-        deck_id = self.repo.get_deck_id(lang, lvl, obj)
+        deck_id = self.repo.get_deck_id(lang, lvl, obj, lektion_id=lektion_id)
 
         if deck_id != self._active_deck_id:
             self._queue = []
@@ -314,6 +363,21 @@ class SessionService:
 
     def clear_session(self) -> None:
         self._queue = []
+
+    def record_item_answered(self) -> bool:
+        """
+        Increment the global study counter (shared across all panels).
+        Returns True when a milestone of 30 is reached, so the UI can celebrate.
+        """
+        self.study_answered += 1
+        if self.study_answered >= self.study_next_milestone:
+            self.study_next_milestone += 30
+            return True
+        return False
+
+    def study_progress(self) -> tuple[int, int]:
+        """Returns (total_answered_this_session, next_milestone_target) for the counter."""
+        return self.study_answered, self.study_next_milestone
 
     # -----------------------------------------------------------------
     # Picker wrappers

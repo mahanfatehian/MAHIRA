@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Ich null Maria.","heiße","heißen","to be called","My name is Maria.","Present tense: ich → -e ending"
+"Wie null du?","heißt","heißen","to be called","What is your name?","Present tense: du → -st ending"
+"Woher null du?","kommst","kommen","to come","Where do you come from?","Present tense: du → -st ending"
+"Ich null aus Deutschland.","komme","kommen","to come","I come from Germany.","Present tense: ich → -e ending"
+"Wo null du?","wohnst","wohnen","to live","Where do you live?","Present tense: du → -st ending"
+"Ich null in Berlin.","wohne","wohnen","to live","I live in Berlin.","Present tense: ich → -e ending"
+"null du Deutsch?","Sprichst","sprechen","to speak","Do you speak German?","sprechen is irregular: du → sprichst"
+"Ich null Student.","bin","sein","to be","I am a student.","sein is irregular: ich → bin"
+"null du aus Österreich?","Bist","sein","to be","Are you from Austria?","sein is irregular: du → bist"
+"Er null aus Japan.","kommt","kommen","to come","He comes from Japan.","Present tense: er/sie/es → -t ending"
+"Woher null Sie?","kommen","kommen","to come","Where do you come from? (formal)","Formal Sie: verb keeps infinitive form for wir/Sie"
+"Sie null Englisch und Deutsch.","spricht","sprechen","to speak","She speaks English and German.","sprechen irregular: sie/er → spricht"

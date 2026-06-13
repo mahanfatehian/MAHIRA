@@ -8,11 +8,45 @@ CREATE TABLE IF NOT EXISTS languages (
   name TEXT NOT NULL
 );
 
--- Deck = (language, level, objective)
+-- =========================
+-- Books and Lektions
+-- =========================
+CREATE TABLE IF NOT EXISTS books (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  language_code TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  FOREIGN KEY(language_code) REFERENCES languages(code),
+  UNIQUE(language_code, slug)
+);
+
+CREATE INDEX IF NOT EXISTS idx_books_lang ON books(language_code);
+
+CREATE TABLE IF NOT EXISTS lektions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  book_id INTEGER NOT NULL,
+  number INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  FOREIGN KEY(book_id) REFERENCES books(id) ON DELETE CASCADE,
+  UNIQUE(book_id, number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lektions_book ON lektions(book_id);
+
+-- =========================
+-- Decks
+-- Deck = (language, level, lektion, objective)
+-- lektion_id NULL = legacy flat-file deck (no book structure)
+-- =========================
 CREATE TABLE IF NOT EXISTS decks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   language_code TEXT NOT NULL,
   level TEXT NOT NULL,
+  lektion_id INTEGER,
   objective TEXT NOT NULL,
   name TEXT NOT NULL DEFAULT '',
   seed_file TEXT,
@@ -20,11 +54,15 @@ CREATE TABLE IF NOT EXISTS decks (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   FOREIGN KEY(language_code) REFERENCES languages(code),
-  UNIQUE(language_code, level, objective)
+  FOREIGN KEY(lektion_id) REFERENCES lektions(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_decks_lang_level_obj
-ON decks(language_code, level, objective);
+-- Expression index so NULL lektion_id is treated as 0 in uniqueness check
+CREATE UNIQUE INDEX IF NOT EXISTS idx_decks_unique
+ON decks(language_code, level, COALESCE(lektion_id, 0), objective);
+
+CREATE INDEX IF NOT EXISTS idx_decks_lang_level
+ON decks(language_code, level);
 
 -- =========================
 -- Vocab
@@ -151,7 +189,6 @@ CREATE INDEX IF NOT EXISTS idx_grammar_reviews_created ON grammar_reviews(create
 -- =========================
 -- Sentences
 -- =========================
--- Modified sentences table without required_json
 CREATE TABLE IF NOT EXISTS sentences (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   deck_id INTEGER NOT NULL,
@@ -163,7 +200,6 @@ CREATE TABLE IF NOT EXISTS sentences (
   UNIQUE(deck_id, target_text),
   FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
 );
-
 
 CREATE INDEX IF NOT EXISTS idx_sentences_deck ON sentences(deck_id);
 

@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Ich null krank.","bin","sein","to be","I am ill.","sein: ich → bin"
+"Er null Schmerzen.","hat","haben","to have","He has pain.","haben: er → hat"
+"Ich null zum Arzt.","gehe","gehen","to go","I go to the doctor.","gehen: ich → gehe"
+"null du dich gut?","Fühlst","fühlen","to feel","Do you feel well?","sich fühlen: du → fühlst dich"
+"Die Ärztin null mir.","hilft","helfen","to help","The doctor helps me.","helfen irregular: sie (she) → hilft"
+"Ich null ein Medikament.","nehme","nehmen","to take","I take a medicine.","nehmen irregular: ich → nehme"
+"Er null im Krankenhaus.","ist","sein","to be","He is in hospital.","sein: er → ist"
+"null du gut?","Schläfst","schlafen","to sleep","Do you sleep well?","schlafen irregular: du → schläfst"
+"Mein Kopf null weh.","tut","tun","to do/hurt","My head hurts.","wehtun: tut weh — separable"
+"Ich null Kopfschmerzen.","habe","haben","to have","I have a headache.","haben: ich → habe"
+"null Sie mir bitte?","Helfen","helfen","to help","Can you help me please? (formal)","helfen: Sie → helfen"
+"Das Medikament null gut.","hilft","helfen","to help","The medicine helps well.","helfen: es → hilft"

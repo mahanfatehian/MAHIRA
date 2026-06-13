@@ -13,6 +13,13 @@ def _has_column(conn, table: str, col: str) -> bool:
     return any((r[1] == col) for r in rows)
 
 
+def _has_table(conn, table: str) -> bool:
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    ).fetchone()
+    return row is not None
+
+
 def _ensure_column(conn, table: str, col: str, col_def_sql: str) -> None:
     try:
         if not _has_column(conn, table, col):
@@ -22,7 +29,7 @@ def _ensure_column(conn, table: str, col: str, col_def_sql: str) -> None:
 
 
 _TOKEN_RE = re.compile(
-    r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"“”„‚’‘…–—-]"
+    r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"""„‚''…–—-]"
 )
 
 
@@ -36,11 +43,7 @@ def _looks_like_json_list(s: str) -> bool:
 
 
 def _repair_sentences(conn) -> None:
-    # only if table exists
-    row = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='sentences'"
-    ).fetchone()
-    if not row:
+    if not _has_table(conn, "sentences"):
         return
 
     rows = conn.execute("SELECT id, target_text, words_json FROM sentences").fetchall()
@@ -53,9 +56,7 @@ def _repair_sentences(conn) -> None:
                 continue
 
             words_raw = str(r["words_json"] or "").strip()
-            req_raw = str(r["required_json"] or "").strip()
 
-            # words_json fix
             if (not words_raw) or (words_raw == "[]") or (not _looks_like_json_list(words_raw)):
                 if "|" in words_raw:
                     words = [t.strip() for t in words_raw.split("|") if t.strip()]
@@ -67,19 +68,20 @@ def _repair_sentences(conn) -> None:
                     "UPDATE sentences SET words_json=? WHERE id=?",
                     (json.dumps(words, ensure_ascii=False), sid),
                 )
-
-            # required_json fix
-            if req_raw and (not _looks_like_json_list(req_raw)):
-                if "|" in req_raw:
-                    req = [x.strip() for x in req_raw.split("|") if x.strip()]
-                else:
-                    req = [x.strip() for x in re.split(r"[,;]", req_raw) if x.strip()]
-                conn.execute(
-                    "UPDATE sentences SET required_json=? WHERE id=?",
-                    (json.dumps(req, ensure_ascii=False), sid),
-                )
         except Exception:
             continue
+
+
+def _needs_full_reset(conn) -> bool:
+    """Return True if DB is pre-books-lektion schema and must be recreated."""
+    if not _has_table(conn, "books"):
+        return True
+    if not _has_table(conn, "lektions"):
+        return True
+    # If decks exists but has no lektion_id column it's the old schema
+    if _has_table(conn, "decks") and not _has_column(conn, "decks", "lektion_id"):
+        return True
+    return False
 
 
 def init_db(db_path: str | Path, schema_path: str | Path | None = None) -> None:
@@ -91,10 +93,25 @@ def init_db(db_path: str | Path, schema_path: str | Path | None = None) -> None:
     else:
         schema_path = Path(schema_path).expanduser().resolve()
 
+    schema_sql = schema_path.read_text(encoding="utf-8")
+
+    # Check if a reset is needed before applying new schema
+    if db_path.exists():
+        conn = connect(db_path)
+        try:
+            needs_reset = _needs_full_reset(conn)
+        finally:
+            conn.close()
+
+        if needs_reset:
+            # Old schema (no books/lektions). Seeds are always reimported so
+            # dropping and recreating is the cleanest migration path.
+            db_path.unlink(missing_ok=True)
+
     conn = connect(db_path)
     try:
         conn.execute("PRAGMA foreign_keys = ON;")
-        conn.executescript(schema_path.read_text(encoding="utf-8"))
+        conn.executescript(schema_sql)
 
         _ensure_column(conn, "sentence_reviews", "translation_used", "INTEGER NOT NULL DEFAULT 0")
 

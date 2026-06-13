@@ -1,0 +1,17 @@
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Kopf,der,m,der Kopf — masculine.,Köpfe,head,"Ich habe Kopfschmerzen.","I have a headache.","Der Kopf tut weh.","My head hurts."
+noun,Arm,der,m,der Arm — masculine.,Arme,arm,"Mein Arm tut weh.","My arm hurts.",,,
+noun,Bein,das,n,das Bein — neuter.,Beine,leg,"Das Bein tut weh.","The leg hurts.",,,
+noun,Bauch,der,m,der Bauch — masculine.,Bäuche,stomach / belly,"Ich habe Bauchschmerzen.","I have a stomachache.",,,
+noun,Hand,die,f,die Hand — feminine.,Hände,hand,"Gib mir die Hand.","Give me your hand.",,,
+noun,Arzt,der,m,der Arzt — masculine (doctor, male).,Ärzte,doctor (m),"Ich gehe zum Arzt.","I go to the doctor.","Der Arzt ist freundlich.","The doctor is friendly."
+noun,Ärztin,die,f,die Ärztin — feminine form.,Ärztinnen,doctor (f),"Die Ärztin hilft mir.","The doctor helps me.",,,
+noun,Krankenhaus,das,n,das Krankenhaus — neuter. Compound.,Krankenhäuser,hospital,"Er ist im Krankenhaus.","He is in hospital.",,,
+noun,Schmerzen,die,f,Plural only: die Schmerzen.,—,pain,"Ich habe Schmerzen.","I am in pain.","Wo sind die Schmerzen?","Where is the pain?"
+noun,Medikament,das,n,das Medikament — neuter.,Medikamente,medicine / medication,"Ich nehme ein Medikament.","I take a medicine.",,,
+verb,schlafen,,,—,,to sleep,"Ich schlafe gut.","I sleep well.","Wie lange schläfst du?","How long do you sleep?"
+verb,helfen,,,—,,to help,"Kann ich Ihnen helfen?","Can I help you?","Er hilft mir.","He helps me."
+verb,nehmen,,,—,,to take,"Ich nehme eine Tablette.","I take a tablet.","Nimm das Medikament!","Take the medicine!"
+verb,fühlen,,,—,,to feel,"Wie fühlen Sie sich?","How do you feel?","Ich fühle mich krank.","I feel ill."
+adj,krank,,,—,,ill / sick,"Ich bin krank.","I am ill.","Er ist sehr krank.","He is very ill."
+adj,gesund,,,—,,healthy,"Ich bin gesund.","I am healthy.","Das Essen ist gesund.","The food is healthy."

@@ -1,0 +1,17 @@
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Wetter,das,n,das Wetter — neuter.,—,weather,"Das Wetter ist schön.","The weather is nice.","Wie ist das Wetter?","What is the weather like?"
+noun,Sonne,die,f,die Sonne — feminine.,—,sun,"Die Sonne scheint.","The sun is shining.","Heute scheint die Sonne.","The sun shines today."
+noun,Regen,der,m,der Regen — masculine.,—,rain,"Es gibt Regen.","There is rain.","Ich mag keinen Regen.","I don't like rain."
+noun,Schnee,der,m,der Schnee — masculine.,—,snow,"Im Winter gibt es Schnee.","In winter there is snow.",,,
+noun,Wind,der,m,der Wind — masculine.,Winde,wind,"Der Wind ist stark.","The wind is strong.",,,
+noun,Frühling,der,m,der Frühling — masculine.,—,spring,"Im Frühling ist es warm.","In spring it is warm.",,,
+noun,Sommer,der,m,der Sommer — masculine.,—,summer,"Im Sommer ist es heiß.","In summer it is hot.",,,
+noun,Herbst,der,m,der Herbst — masculine.,—,autumn,"Im Herbst wird es kalt.","In autumn it becomes cold.",,,
+noun,Winter,der,m,der Winter — masculine.,—,winter,"Im Winter schneit es.","In winter it snows.",,,
+adv,heute,,,—,,today,"Heute ist es kalt.","Today it is cold.","Was machst du heute?","What are you doing today?"
+adv,morgen,,,—,,tomorrow,"Morgen wird es besser.","Tomorrow it will be better.",,,
+adj,warm,,,—,,warm,"Es ist warm heute.","It is warm today.",,,
+adj,kalt,,,—,,cold,"Es ist sehr kalt.","It is very cold.",,,
+adj,heiß,,,—,,hot,"Im Sommer ist es heiß.","In summer it is hot.",,,
+adj,schön,,,—,,nice / beautiful,"Das Wetter ist schön.","The weather is nice.",,,
+adj,schlecht,,,—,,bad,"Das Wetter ist schlecht.","The weather is bad.",,,

@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Meine Wohnung null drei Zimmer.","hat","haben","to have","My apartment has three rooms.","haben: sie (Wohnung) → hat"
+"Das Wohnzimmer null hell.","ist","sein","to be","The living room is bright.","sein: das → ist"
+"Ich null in einem Haus.","wohne","wohnen","to live","I live in a house.","wohnen: ich → wohne"
+"null die Wohnung groß?","Ist","sein","to be","Is the apartment big?","Yes/No question: verb first"
+"Das Bett null sehr groß.","ist","sein","to be","The bed is very big.","sein: das → ist"
+"Wir null eine Küche.","haben","haben","to have","We have a kitchen.","haben: wir → haben"
+"Die Küche null modern.","ist","sein","to be","The kitchen is modern.","sein: die → ist"
+"null du ein Schlafzimmer?","Hast","haben","to have","Do you have a bedroom?","haben: du → hast"
+"Der Tisch null aus Holz.","ist","sein","to be","The table is made of wood.","aus + material"
+"Das Haus null sehr schön.","ist","sein","to be","The house is very nice.","sehr = very"
+"Wie viele Zimmer null die Wohnung?","hat","haben","to have","How many rooms does the apartment have?","haben: sie (Wohnung) → hat"
+"Der Stuhl null bequem.","ist","sein","to be","The chair is comfortable.","sein: der → ist"

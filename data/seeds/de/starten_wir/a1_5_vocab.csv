@@ -1,0 +1,16 @@
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Brot,das,n,das Brot — neuter (common for food).,Brote,bread,"Ich esse Brot zum Frühstück.","I eat bread for breakfast.","Magst du Brot?","Do you like bread?"
+noun,Milch,die,f,die Milch — feminine (memorize).,—,milk,"Ich trinke jeden Tag Milch.","I drink milk every day.","Magst du Milch?","Do you like milk?"
+noun,Wasser,das,n,das Wasser — neuter.,—,water,"Ich trinke gern Wasser.","I like drinking water.",,,
+noun,Kaffee,der,m,der Kaffee — masculine (French loanword).,—,coffee,"Am Morgen trinke ich Kaffee.","In the morning I drink coffee.","Möchten Sie Kaffee?","Would you like coffee?"
+noun,Tee,der,m,der Tee — masculine.,—,tea,"Möchtest du Tee oder Kaffee?","Would you like tea or coffee?",,,
+noun,Apfel,der,m,der Apfel — masculine.,Äpfel,apple,"Ich esse gern Äpfel.","I like eating apples.","Ein Apfel ist gesund.","An apple is healthy."
+noun,Fleisch,das,n,das Fleisch — neuter.,—,meat,"Ich esse kein Fleisch.","I don't eat meat.",,,
+noun,Gemüse,das,n,das Gemüse — neuter (collective noun).,—,vegetable(s),"Ich mag Gemüse.","I like vegetables.","Gemüse ist gesund.","Vegetables are healthy."
+noun,Restaurant,das,n,das Restaurant — neuter (French loanword).,Restaurants,restaurant,"Wir essen im Restaurant.","We eat in the restaurant.",,,
+noun,Frühstück,das,n,Compound: Früh + Stück — neuter.,—,breakfast,"Das Frühstück ist fertig.","Breakfast is ready.","Was isst du zum Frühstück?","What do you eat for breakfast?"
+verb,essen,,,—,,to eat,"Was isst du?","What are you eating?","Ich esse gern Brot.","I like eating bread."
+verb,trinken,,,—,,to drink,"Was trinkst du?","What are you drinking?","Er trinkt Wasser.","He drinks water."
+verb,mögen,,,—,,to like (food/things),"Magst du Kaffee?","Do you like coffee?","Ich mag kein Fleisch.","I don't like meat."
+verb,schmecken,,,—,,to taste / taste good,"Schmeckt es?","Does it taste good?","Das schmeckt gut.","That tastes good."
+verb,möchten,,,—,,would like (polite request),"Ich möchte einen Kaffee.","I would like a coffee.","Was möchten Sie?","What would you like?"

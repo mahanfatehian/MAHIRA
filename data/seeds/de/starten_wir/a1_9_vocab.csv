@@ -1,0 +1,16 @@
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Bus,der,m,der Bus — masculine.,Busse,bus,"Ich fahre mit dem Bus.","I go by bus.","Der Bus kommt um 8 Uhr.","The bus comes at 8 o'clock."
+noun,Bahn,die,f,die Bahn — feminine (train/rail).,Bahnen,train / railway,"Ich fahre mit der Bahn.","I travel by train.",,,
+noun,Auto,das,n,das Auto — neuter.,Autos,car,"Ich fahre mit dem Auto.","I go by car.","Das Auto ist rot.","The car is red."
+noun,Straße,die,f,die Straße — feminine.,Straßen,street / road,"Die Straße ist lang.","The street is long.","Gehen Sie die Straße entlang.","Go along the street."
+noun,Haltestelle,die,f,die Haltestelle — feminine. Compound.,Haltestellen,bus/tram stop,"Wo ist die Haltestelle?","Where is the bus stop?",,,
+noun,Bahnhof,der,m,der Bahnhof — masculine. Compound: Bahn+Hof.,Bahnhöfe,train station,"Der Bahnhof ist groß.","The station is big.","Wo ist der Bahnhof?","Where is the station?"
+noun,Flughafen,der,m,der Flughafen — masculine. Compound: Flug+Hafen.,Flughäfen,airport,"Das Flugzeug landet am Flughafen.","The plane lands at the airport.",,,
+noun,Ticket,das,n,das Ticket — neuter (English loanword).,Tickets,ticket,"Ich kaufe ein Ticket.","I buy a ticket.",,,
+adv,links,,,—,,left,"Gehen Sie links.","Go left.","Das Geschäft ist links.","The shop is on the left."
+adv,rechts,,,—,,right,"Biegen Sie rechts ab.","Turn right.","Das Hotel ist rechts.","The hotel is on the right."
+adv,geradeaus,,,—,,straight ahead,"Gehen Sie geradeaus.","Go straight ahead.",,,
+adj,nah,,,—,,near / close,"Der Bahnhof ist nah.","The station is near.",,,
+adj,weit,,,—,,far,"Das Kino ist weit.","The cinema is far away.",,,
+verb,fahren,,,—,,to drive / to travel,"Ich fahre in die Stadt.","I drive into town.","Wie fahre ich zum Bahnhof?","How do I get to the station?"
+verb,biegen,,,—,,to turn,"Biegen Sie links ab.","Turn left.",,,

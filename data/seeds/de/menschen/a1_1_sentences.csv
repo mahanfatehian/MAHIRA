@@ -1,0 +1,11 @@
+sentence,words,tip,translation_en
+"Wie heißen Sie?","Wie|heißen|Sie|?","W-Frage: Wie = how/what; formal Sie","What is your name?"
+"Ich heiße Thomas Bauer.","Ich|heiße|Thomas|Bauer|.","heißen: ich → heiße","My name is Thomas Bauer."
+"Woher kommen Sie?","Woher|kommen|Sie|?","Woher = where from; formal","Where are you from?"
+"Ich komme aus Deutschland.","Ich|komme|aus|Deutschland|.","aus + country (no article)","I come from Germany."
+"Wo wohnen Sie?","Wo|wohnen|Sie|?","Wo = where; formal","Where do you live?"
+"Ich wohne in Frankfurt.","Ich|wohne|in|Frankfurt|.","in + city name","I live in Frankfurt."
+"Sprechen Sie Deutsch?","Sprechen|Sie|Deutsch|?","verb first = yes/no question","Do you speak German?"
+"Buchstabieren Sie Ihren Namen bitte.","Buchstabieren|Sie|Ihren|Namen|bitte|.","formal imperative; Ihren = accusative masc.","Please spell your name."
+"Was ist Ihr Beruf?","Was|ist|Ihr|Beruf|?","Ihr = your (formal, possessive)","What is your profession?"
+"Ich bin Lehrerin von Beruf.","Ich|bin|Lehrerin|von|Beruf|.","von Beruf = by profession","I am a teacher by profession."

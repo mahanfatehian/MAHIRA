@@ -1,0 +1,16 @@
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Uhr,die,f,die Uhr — feminine.,Uhren,clock / o'clock,"Es ist 8 Uhr.","It is 8 o'clock.","Die Uhr ist neu.","The clock is new."
+noun,Stunde,die,f,die Stunde — feminine.,Stunden,hour,"Eine Stunde hat 60 Minuten.","One hour has 60 minutes.",,,
+noun,Minute,die,f,die Minute — feminine.,Minuten,minute,"Es dauert 10 Minuten.","It takes 10 minutes.",,,
+noun,Morgen,der,m,der Morgen — masculine (morning).,—,morning,"Am Morgen trinke ich Kaffee.","In the morning I drink coffee.",,,
+noun,Mittag,der,m,der Mittag — masculine.,—,midday / noon,"Um Mittag esse ich.","At noon I eat.",,,
+noun,Abend,der,m,der Abend — masculine.,Abende,evening,"Am Abend lese ich.","In the evening I read.",,,
+noun,Nacht,die,f,die Nacht — feminine.,Nächte,night,"In der Nacht schlafe ich.","At night I sleep.",,,
+adv,früh,,,—,,early,"Ich stehe früh auf.","I get up early.",,,
+adv,spät,,,—,,late,"Es ist spät.","It is late.","Er kommt spät.","He comes late."
+adv,täglich,,,—,,daily / every day,"Ich lerne täglich Deutsch.","I learn German every day.",,,
+verb,aufstehen,,,—,,to get up (separable),"Ich stehe um 7 Uhr auf.","I get up at 7 o'clock.","Wann stehst du auf?","When do you get up?"
+verb,frühstücken,,,—,,to have breakfast,"Ich frühstücke um 8 Uhr.","I have breakfast at 8 o'clock.",,,
+verb,arbeiten,,,—,,to work,"Ich arbeite von 9 bis 17 Uhr.","I work from 9 to 5.",,,
+verb,schlafen,,,—,,to sleep,"Ich schlafe um 23 Uhr.","I go to sleep at 11 pm.",,,
+verb,anfangen,,,—,,to start / begin (separable),"Der Unterricht fängt um 9 Uhr an.","Class starts at 9 o'clock.",,,

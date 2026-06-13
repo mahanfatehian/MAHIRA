@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Ich null gestern gearbeitet.","habe","haben","Perfekt auxiliary","I worked yesterday.","Perfekt with haben: ich habe + past participle"
+"Er null nach Berlin gefahren.","ist","sein","Perfekt auxiliary (movement)","He went to Berlin.","Perfekt with sein for movement verbs"
+"Ich null in Köln gewohnt.","habe","haben","Perfekt auxiliary","I lived in Cologne.","wohnen → gewohnt; uses haben"
+"null du schon Deutsch gelernt?","Hast","haben","Perfekt auxiliary question","Have you already learned German?","Hast du...? = Perfekt question"
+"Sie null ein Praktikum gemacht.","hat","haben","Perfekt auxiliary","She did an internship.","machen → gemacht; haben"
+"Wir null nach Hause gegangen.","sind","sein","Perfekt with sein","We went home.","gehen → gegangen; uses sein"
+"Ich null früher in München gelebt.","habe","haben","Perfekt auxiliary","I used to live in Munich.","leben → gelebt; haben"
+"null du schon gegessen?","Hast","haben","Perfekt auxiliary","Have you already eaten?","essen → gegessen; haben"
+"Er null Medizin studiert.","hat","haben","Perfekt auxiliary","He studied medicine.","studieren → studiert; haben"
+"null Sie in Deutschland gewohnt?","Haben","haben","Perfekt auxiliary (formal)","Have you lived in Germany? (formal)","formal: Haben Sie...?"
+"Ich null dort zwei Jahre gearbeitet.","habe","haben","Perfekt auxiliary","I worked there for two years.","Perfekt: habe + gearbeitet"
+"Wo null du gelernt?","hast","haben","Perfekt auxiliary","Where did you learn?","Perfekt question: hast...gelernt"

@@ -1,0 +1,16 @@
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Geburtstag,der,m,der Geburtstag — masculine. Compound.,Geburtstage,birthday,"Alles Gute zum Geburtstag!","Happy birthday!","Wann ist dein Geburtstag?","When is your birthday?"
+noun,Fest,das,n,das Fest — neuter.,Feste,celebration / festival,"Das Fest ist schön.","The celebration is nice.",,,
+noun,Party,die,f,die Party — feminine (English loanword).,Partys,party,"Die Party ist heute Abend.","The party is this evening.",,,
+noun,Geschenk,das,n,das Geschenk — neuter.,Geschenke,gift / present,"Ich habe ein Geschenk.","I have a gift.","Was schenkst du?","What are you giving as a gift?"
+noun,Freund,der,m,der Freund — masculine.,Freunde,friend (m) / boyfriend,"Das ist mein Freund.","This is my friend.",,,
+noun,Freundin,die,f,die Freundin — feminine.,Freundinnen,friend (f) / girlfriend,"Das ist meine Freundin.","This is my friend.",,,
+noun,Gast,der,m,der Gast — masculine.,Gäste,guest,"Wir haben Gäste.","We have guests.",,,
+adj,herzlich,,,—,,heartfelt / warm,"Herzlich willkommen!","Welcome! (lit: heartfelt welcome)","Herzlichen Glückwunsch!","Congratulations!"
+adj,glücklich,,,—,,happy,"Ich bin glücklich.","I am happy.",,,
+verb,gratulieren,,,—,,to congratulate,"Ich gratuliere dir!","I congratulate you!","Herzlichen Glückwunsch!","Congratulations!"
+verb,feiern,,,—,,to celebrate,"Wir feiern meinen Geburtstag.","We celebrate my birthday.",,,
+verb,einladen,,,—,,to invite (separable),"Ich lade dich ein.","I invite you.","Wen lädst du ein?","Whom do you invite?"
+verb,schenken,,,—,,to give as a gift,"Ich schenke dir ein Buch.","I give you a book as a gift.",,,
+verb,bringen,,,—,,to bring,"Ich bringe einen Kuchen.","I bring a cake.",,,
+verb,danken,,,—,,to thank,"Ich danke dir.","I thank you.","Danke schön!","Thank you very much!"

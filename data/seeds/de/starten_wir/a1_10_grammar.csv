@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Die Sonne null heute.","scheint","scheinen","to shine","The sun shines today.","scheinen: die Sonne scheint"
+"Es null Regen.","gibt","geben","to give/there is","There is rain.","es gibt = there is"
+"Im Sommer null es heiß.","ist","sein","to be","In summer it is hot.","sein: es ist"
+"Heute null es kalt.","ist","sein","to be","Today it is cold.","sein: es ist"
+"Ich null gern Sommer.","mag","mögen","to like","I like summer.","mögen irregular: ich → mag"
+"Im Winter null es.","schneit","schneien","to snow","In winter it snows.","schneien: es schneit"
+"Wie null das Wetter morgen?","ist","sein","to be","What is the weather like tomorrow?","sein: das Wetter ist"
+"Der Wind null stark.","ist","sein","to be","The wind is strong.","sein: der Wind ist"
+"Es null heute.","regnet","regnen","to rain","It rains today.","regnen: es regnet"
+"Im Frühling null es warm.","wird","werden","to become","In spring it becomes warm.","werden: es wird — future/change"
+"null du den Schnee?","Magst","mögen","to like","Do you like the snow?","mögen: du → magst"
+"Das Wetter null schlecht.","ist","sein","to be","The weather is bad.","sein: das Wetter ist"

@@ -11,7 +11,7 @@ CEFR_LEVELS = {"a1", "a2", "b1", "b2", "c1", "c2"}
 ALLOWED_OBJECTIVES = {"vocab", "grammar", "sentences"}
 
 _TOKEN_RE = re.compile(
-    r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"“”„‚’‘…–—-]"
+    r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"""„‚''…–—-]"
 )
 
 
@@ -50,23 +50,46 @@ def _split_words_bank(raw: str, fallback_sentence: str) -> list[str]:
     return _tokenize_sentence(fallback_sentence)
 
 
-def parse_seed_filename(name: str) -> Optional[tuple[str, str]]:
+def parse_seed_filename(name: str) -> Optional[tuple[str, Optional[int], str]]:
+    """
+    Parse a seed CSV filename and return (level, lektion_number, objective).
+
+    Supports two formats:
+      - New: "{level}_{lektion_number}_{objective}.csv"  e.g. "a1_1_vocab.csv"
+      - Old: "{level}_{objective}.csv"                   e.g. "a1_vocab.csv"
+
+    Returns None if the filename doesn't match a valid pattern.
+    """
     name = (name or "").lower().strip()
     if not name.endswith(".csv"):
         return None
 
     base = name[:-4]
-    parts = base.split("_", 1)
-    if len(parts) != 2:
+    parts = base.split("_")
+
+    if len(parts) < 2:
         return None
 
-    level, objective = parts[0], parts[1]
+    level = parts[0]
     if level not in CEFR_LEVELS:
         return None
-    if objective not in ALLOWED_OBJECTIVES:
-        return None
 
-    return level.upper(), objective
+    # Try new format: level_number_objective
+    if len(parts) >= 3:
+        try:
+            lektion_number = int(parts[1])
+            objective = "_".join(parts[2:])
+            if objective in ALLOWED_OBJECTIVES:
+                return level.upper(), lektion_number, objective
+        except ValueError:
+            pass
+
+    # Fall back to old format: level_objective
+    objective = "_".join(parts[1:])
+    if objective in ALLOWED_OBJECTIVES:
+        return level.upper(), None, objective
+
+    return None
 
 
 def _norm_key(*parts: str) -> tuple[str, ...]:
@@ -94,12 +117,27 @@ def _sentences_deck_needs_reimport(repo, deck_id: int) -> bool:
         return False
 
 
-def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
+def _slug_to_title(slug: str) -> str:
+    """Convert a directory slug like 'starten_wir' to 'Starten Wir'."""
+    return " ".join(word.capitalize() for word in (slug or "").replace("-", "_").split("_"))
+
+
+def import_seed_csv(
+    repo,
+    language_code: str,
+    csv_path: Path,
+    book_slug: str | None = None,
+    lektion_number: int | None = None,
+) -> None:
     parsed = parse_seed_filename(csv_path.name)
     if not parsed:
         return
 
-    level, objective = parsed
+    level, file_lektion_number, objective = parsed
+
+    # lektion_number from caller takes priority (e.g. if parsed from dir structure),
+    # otherwise use the one embedded in the filename.
+    effective_lektion = lektion_number if lektion_number is not None else file_lektion_number
 
     try:
         if csv_path.stat().st_size == 0:
@@ -108,7 +146,21 @@ def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
         pass
 
     seed_sha1 = sha1_file(csv_path)
-    deck_id, changed = repo.upsert_deck(language_code, level, objective, csv_path.name, seed_sha1)
+
+    # Resolve lektion_id from book/lektion if provided
+    lektion_id: int | None = None
+    if book_slug and effective_lektion is not None:
+        book_id = repo.ensure_book(
+            language_code,
+            book_slug,
+            _slug_to_title(book_slug),
+        )
+        lektion_title = f"Lektion {effective_lektion}"
+        lektion_id = repo.ensure_lektion(book_id, effective_lektion, lektion_title)
+
+    deck_id, changed = repo.upsert_deck(
+        language_code, level, objective, csv_path.name, seed_sha1, lektion_id=lektion_id
+    )
 
     # ---------- VOCAB ----------
     if objective == "vocab":
@@ -207,7 +259,7 @@ def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
             for n in names:
                 n = (n or "").strip().lower()
                 for k in row.keys():
-                    kk = (k or "").strip().lower().lstrip("\ufeff")
+                    kk = (k or "").strip().lower().lstrip("﻿")
                     if kk == n:
                         return (row.get(k) or "").strip()
             return ""
@@ -220,7 +272,6 @@ def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
                 return
 
             for row in reader:
-                # Prefer generic names first for future language support
                 target = _get(
                     row,
                     "sentence",
@@ -251,7 +302,6 @@ def import_seed_csv(repo, language_code: str, csv_path: Path) -> None:
 
                 tip = _get(row, "tip") or None
                 translation = _get(row, "translation_en", "translation", "en") or None
-
 
                 repo.insert_sentence(
                     deck_id=deck_id,

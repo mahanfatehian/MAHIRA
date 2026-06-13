@@ -1,0 +1,15 @@
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Name,der,m,der Name — masculine (weak noun, -n in all cases except nominative).,Namen,name,"Mein Name ist Anna.","My name is Anna.","Wie ist Ihr Name?","What is your name?"
+noun,Vorname,der,m,der Vorname — masculine. Compound: vor+Name.,Vornamen,first name,"Mein Vorname ist Thomas.","My first name is Thomas.",,,
+noun,Familienname,der,m,der Familienname — masculine.,Familiennamen,surname / family name,"Mein Familienname ist Müller.","My surname is Müller.",,,
+noun,Land,das,n,das Land — neuter.,Länder,country,"Aus welchem Land kommen Sie?","Which country do you come from?","Das Land ist groß.","The country is big."
+noun,Wohnort,der,m,der Wohnort — masculine. Compound: Wohn+Ort.,Wohnorte,place of residence,"Mein Wohnort ist Berlin.","My place of residence is Berlin.",,,
+noun,Beruf,der,m,der Beruf — masculine.,Berufe,profession / job,"Was ist Ihr Beruf?","What is your profession?","Ich bin Arzt von Beruf.","I am a doctor by profession."
+noun,Sprache,die,f,die Sprache — feminine.,Sprachen,language,"Welche Sprache sprechen Sie?","Which language do you speak?","Ich lerne die Sprache.","I am learning the language."
+noun,Alphabet,das,n,das Alphabet — neuter.,—,alphabet,"Das deutsche Alphabet hat 26 Buchstaben.","The German alphabet has 26 letters.",,,
+noun,Buchstabe,der,m,der Buchstabe — masculine (weak noun).,Buchstaben,letter (of alphabet),"Wie buchstabiert man das?","How do you spell that?","Der Buchstabe A","The letter A"
+verb,heißen,,,—,,to be called,"Ich heiße Maria.","My name is Maria.","Wie heißen Sie?","What is your name?"
+verb,kommen,,,—,,to come (from),"Ich komme aus Spanien.","I come from Spain.","Woher kommen Sie?","Where do you come from?"
+verb,wohnen,,,—,,to live (in),"Ich wohne in München.","I live in Munich.","Wo wohnen Sie?","Where do you live?"
+verb,sprechen,,,—,,to speak,"Ich spreche Deutsch.","I speak German.","Welche Sprachen sprechen Sie?","Which languages do you speak?"
+verb,buchstabieren,,,—,,to spell,"Buchstabieren Sie bitte Ihren Namen.","Please spell your name.",,,

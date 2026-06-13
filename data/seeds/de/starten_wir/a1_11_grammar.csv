@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Ich null um 7 Uhr auf.","stehe","aufstehen","to get up","I get up at 7 o'clock.","aufstehen separable: auf goes to end"
+"Er null früh.","frühstückt","frühstücken","to have breakfast","He has breakfast early.","frühstücken: er → frühstückt"
+"Wann null du?","arbeitest","arbeiten","to work","When do you work?","arbeiten: du → arbeitest (adds -e-)"
+"Ich null um 23 Uhr.","schlafe","schlafen","to sleep","I go to sleep at 11 pm.","schlafen: ich → schlafe"
+"Der Unterricht null um 9 an.","fängt","anfangen","to start","Class starts at 9.","anfangen separable: fängt...an"
+"Es null 8 Uhr.","ist","sein","to be","It is 8 o'clock.","Es ist ... Uhr (telling time)"
+"Ich null täglich Deutsch.","lerne","lernen","to learn","I learn German every day.","lernen: ich → lerne"
+"null du früh auf?","Stehst","aufstehen","to get up","Do you get up early?","aufstehen: du → stehst auf"
+"Sie null von 9 bis 17 Uhr.","arbeitet","arbeiten","to work","She works from 9 to 5.","arbeiten: sie (she) → arbeitet"
+"Wann null es an?","fängt","anfangen","to start","When does it start?","anfangen: es fängt an"
+"Ich null jeden Morgen Kaffee.","trinke","trinken","to drink","I drink coffee every morning.","trinken: ich → trinke"
+"Er null sehr spät.","schläft","schlafen","to sleep","He sleeps very late.","schlafen irregular: er → schläft"

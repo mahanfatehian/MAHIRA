@@ -5,7 +5,7 @@ import re
 import time
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -104,6 +104,32 @@ class SentenceReviewPage(QWidget):
 
         outer.addWidget(top_bar)
 
+        # Milestone celebration banner (hidden by default)
+        self.milestone_bar = QFrame()
+        self.milestone_bar.setObjectName("MilestoneBar")
+        self.milestone_bar.setFixedHeight(48)
+        self.milestone_bar.setStyleSheet(
+            "QFrame#MilestoneBar { background: #1A3A20; border: 1px solid #4CAF50; border-radius: 12px; }"
+        )
+        ms_layout = QHBoxLayout(self.milestone_bar)
+        ms_layout.setContentsMargins(16, 6, 12, 6)
+        ms_layout.setSpacing(8)
+        self.milestone_lbl = QLabel("Milestone reached!")
+        self.milestone_lbl.setStyleSheet(
+            "QLabel { color: #7AE582; font-size: 13px; font-weight: 900; border: none; }"
+        )
+        ms_dismiss = QPushButton("×")
+        ms_dismiss.setFixedSize(26, 26)
+        ms_dismiss.setStyleSheet(
+            "QPushButton { background: #2A2A2A; color: #888; border: 1px solid #3A3A3A; border-radius: 6px; font-size: 14px; font-weight: 700; }"
+            "QPushButton:hover { color: #FFF; border-color: #666; }"
+        )
+        ms_dismiss.clicked.connect(self._dismiss_milestone_banner)
+        ms_layout.addWidget(self.milestone_lbl, 1)
+        ms_layout.addWidget(ms_dismiss)
+        self.milestone_bar.hide()
+        outer.addWidget(self.milestone_bar)
+
         # Main content - compact
         self.main_shell = QFrame()
         self.main_shell.setObjectName("MainShell")
@@ -174,15 +200,31 @@ class SentenceReviewPage(QWidget):
         self._load_next()
 
     def _update_counter(self) -> None:
-        remaining = int(self.session.remaining())
-        limit = int(getattr(getattr(self.session, "plan", None), "limit", 0) or 0)
-        completed = max(0, limit - remaining) if limit > 0 else 0
+        try:
+            answered, milestone = self.session.study_progress()
+            self.counter_lbl.setText(f"{answered} / {milestone}")
+        except Exception:
+            self.counter_lbl.setText("0 / 30")
 
-        if limit > 0:
-            shown = min(limit, completed + 1) if remaining > 0 else completed
-            self.counter_lbl.setText(f"{shown} / {limit}")
-        else:
-            self.counter_lbl.setText(f"{completed} / ?")
+    def _show_milestone_banner(self) -> None:
+        answered = getattr(self.session, "study_answered", 0)
+        self.milestone_lbl.setText(
+            f"Milestone! {answered} items reviewed this session. Keep going!"
+        )
+        self.counter_lbl.setStyleSheet(
+            "color:#FFD700; font-size:12px; font-weight:800; "
+            "background:#2A2000; border:1px solid #FFD700; border-radius:8px; padding:6px 10px;"
+        )
+        self.milestone_bar.show()
+        QTimer.singleShot(6000, self._dismiss_milestone_banner)
+        self._update_counter()
+
+    def _dismiss_milestone_banner(self) -> None:
+        self.milestone_bar.hide()
+        self.counter_lbl.setStyleSheet(
+            "color:#FFFFFF; font-size:12px; font-weight:800; "
+            "background:#1A1A1A; border:1px solid #2E2E2E; border-radius:8px; padding:6px 10px;"
+        )
 
     def _normalize_sentence(self, text: str) -> str:
         text = str(text or "").strip()
@@ -357,4 +399,14 @@ class SentenceReviewPage(QWidget):
             response_ms=response_ms,
         )
 
+        milestone_hit = False
+        if hasattr(self.session, "record_item_answered"):
+            try:
+                milestone_hit = bool(self.session.record_item_answered())
+            except Exception:
+                pass
+
         self._load_next()
+
+        if milestone_hit:
+            self._show_milestone_banner()
