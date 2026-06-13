@@ -6,6 +6,12 @@ name: Build & Release
 #   - Run manually (Actions tab -> "Run workflow") -> builds the installers and
 #     uploads them as workflow artifacts WITHOUT creating a release. Use this to
 #     test packaging before you ever cut a real release.
+#
+# Targets (latest GitHub-hosted runners):
+#   - Windows: windows-latest  (x64)        -> Inno Setup installer + portable zip
+#   - macOS:   macos-latest    (Apple Silicon / arm64) -> .dmg + .zip
+# Apple Silicon only: GitHub is retiring Intel macOS runners. arm64 apps do not
+# run on Intel Macs; add a `macos-13` matrix entry while it lasts if you need x86_64.
 
 on:
   push:
@@ -21,12 +27,19 @@ on:
 permissions:
   contents: write   # needed by the release job to create/upload a Release
 
+# Cancel an in-progress run if the same ref is pushed again.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ---------------------------------------------------------------------------
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true   # pull the Piper .onnx voice models (Git LFS), not pointer stubs
 
       - uses: actions/setup-python@v5
         with:
@@ -40,12 +53,27 @@ jobs:
           else { $ver = "${{ github.event.inputs.version }}" }
           if (-not $ver) { $ver = "0.1.0-dev" }
           "VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MAHIRA_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Verify LFS assets are real (not pointers)
+        shell: pwsh
+        run: |
+          $m = Get-ChildItem assets/audio/models/*.onnx -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $m) { Write-Error "Voice model missing"; exit 1 }
+          if ($m.Length -lt 1MB) { Write-Error "Voice model is an LFS pointer ($($m.Length) bytes). Checkout did not pull LFS."; exit 1 }
+          Write-Host "Voice model OK: $([math]::Round($m.Length/1MB,1)) MB"
 
       - name: Install dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-build.txt
+
+      - name: Smoke-check imports
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -c "import mahira, PySide6.QtWidgets, sklearn, scipy, numpy, joblib; print('imports OK')"
 
       - name: Build app (PyInstaller)
         shell: pwsh
@@ -72,9 +100,11 @@ jobs:
 
   # ---------------------------------------------------------------------------
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-latest   # Apple Silicon (arm64)
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true   # pull the Piper .onnx voice models (Git LFS), not pointer stubs
 
       - uses: actions/setup-python@v5
         with:
@@ -86,11 +116,23 @@ jobs:
           if [[ "$ref" == v* ]]; then ver="${ref#v}"; else ver="${{ github.event.inputs.version }}"; fi
           [ -z "$ver" ] && ver="0.1.0-dev"
           echo "VERSION=$ver" >> "$GITHUB_ENV"
+          echo "MAHIRA_VERSION=$ver" >> "$GITHUB_ENV"
+
+      - name: Verify LFS assets are real (not pointers)
+        run: |
+          m=$(ls assets/audio/models/*.onnx 2>/dev/null | head -1)
+          if [ -z "$m" ]; then echo "Voice model missing"; exit 1; fi
+          sz=$(stat -f%z "$m")
+          if [ "$sz" -lt 1000000 ]; then echo "Voice model is an LFS pointer ($sz bytes). Checkout did not pull LFS."; exit 1; fi
+          echo "Voice model OK: $sz bytes"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-build.txt
+
+      - name: Smoke-check imports
+        run: PYTHONPATH=src python -c "import mahira, PySide6.QtWidgets, sklearn, scipy, numpy, joblib; print('imports OK')"
 
       - name: Generate .icns from logo (best effort)
         run: |
@@ -115,6 +157,12 @@ jobs:
       - name: Build app (PyInstaller)
         run: pyinstaller packaging/mahira.spec --noconfirm
 
+      - name: Ad-hoc codesign (so the unsigned arm64 app launches)
+        run: |
+          set -e
+          codesign --force --deep --sign - "dist/MAHIRA.app"
+          codesign --verify --deep --strict "dist/MAHIRA.app" || true
+
       - name: Package DMG + ZIP
         run: |
           set -e
@@ -122,8 +170,8 @@ jobs:
           cp -R "dist/MAHIRA.app" dist/dmg/
           ln -s /Applications dist/dmg/Applications
           hdiutil create -volname "MAHIRA" -srcfolder dist/dmg -ov -format UDZO \
-            "dist/artifacts/MAHIRA-$VERSION-macos.dmg"
-          ditto -c -k --keepParent "dist/MAHIRA.app" "dist/artifacts/MAHIRA-$VERSION-macos.zip"
+            "dist/artifacts/MAHIRA-$VERSION-macos-arm64.dmg"
+          ditto -c -k --keepParent "dist/MAHIRA.app" "dist/artifacts/MAHIRA-$VERSION-macos-arm64.zip"
 
       - uses: actions/upload-artifact@v4
         with:
