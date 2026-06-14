@@ -119,6 +119,7 @@ class CardWidget(QWidget):
     tip_clicked = Signal()
     gender_tip_clicked = Signal()
     audio_clicked = Signal()
+    accepted = Signal()  # "Accept my answer" override
 
     def __init__(self, accent: str = "#66E39A", parent=None):
         super().__init__(parent)
@@ -276,6 +277,14 @@ class CardWidget(QWidget):
         self._add_result_row("gender", "Gender")
         self._add_result_row("plural", "Plural")
 
+        # "Accept my answer" override — shown only when the meaning was marked
+        # wrong, so a valid synonym the key didn't list isn't punished.
+        self.accept_btn = QPushButton("✓  Accept my answer")
+        self.accept_btn.setMinimumHeight(34)
+        self.accept_btn.setVisible(False)
+        self.accept_btn.setStyleSheet(self._accept_btn_style())
+        self.results_layout.addWidget(self.accept_btn)
+
         root.addWidget(self.results_frame)
 
         # ===== Rating card =====
@@ -417,6 +426,21 @@ class CardWidget(QWidget):
             QPushButton:hover { background-color: #1B4B78; border: 1px solid #FFFFFF; }
             QPushButton:pressed { background-color: #123050; }
             QPushButton:disabled { background-color: #1A1A1A; color: #6B6B6B; border: 1px solid #252525; }
+        """
+
+    def _accept_btn_style(self) -> str:
+        return """
+            QPushButton {
+                background-color: #17314A;
+                color: #BBD7FF;
+                border: 1px solid #2F567E;
+                border-radius: 12px;
+                padding: 7px 12px;
+                font-weight: 900;
+                font-size: 12px;
+            }
+            QPushButton:hover { background-color: #1D3E5E; border: 1px solid #6B9FFF; color: #FFFFFF; }
+            QPushButton:pressed { background-color: #15293D; }
         """
 
     def _reveal_btn_style(self) -> str:
@@ -730,6 +754,9 @@ class CardWidget(QWidget):
         self.results_frame.setVisible(True)
         self.rating_frame.setVisible(True)
 
+        # Offer the override only when the meaning was actually marked wrong.
+        self.accept_btn.setVisible(payload.meaning_ok is False)
+
         rec = self._recommend_from_checks(
             payload.meaning_ok,
             payload.gender_ok,
@@ -737,6 +764,19 @@ class CardWidget(QWidget):
         )
         self.set_recommended_rating(rec)
         return rec
+
+    def mark_meaning_accepted(self) -> None:
+        """Flip the meaning result to correct after the learner overrides."""
+        if "meaning" in self._res_rows:
+            _, status, detail = self._res_rows["meaning"]
+            status.setText("OK")
+            status.setStyleSheet(self._status_style(True))
+            detail.setText(
+                "<span style='color:#66E39A; font-weight:900;'>Accepted ✓</span>"
+            )
+        self.accept_btn.setVisible(False)
+        # Nudge the recommended rating up now that meaning counts as correct.
+        self.set_recommended_rating(2)
 
     def set_recommended_rating(self, rating: int | None) -> None:
         self._recommended_rating = rating
@@ -746,6 +786,7 @@ class CardWidget(QWidget):
     def reset_for_next(self) -> None:
         self._recommended_rating = None
 
+        self.accept_btn.setVisible(False)
         self.results_frame.setVisible(False)
         self.rating_frame.setVisible(False)
         self.input_frame.setVisible(True)
@@ -853,6 +894,8 @@ class CardWidget(QWidget):
         self.btn_hard.clicked.connect(lambda: self.rated.emit(1))
         self.btn_good.clicked.connect(lambda: self.rated.emit(2))
         self.btn_easy.clicked.connect(lambda: self.rated.emit(3))
+
+        self.accept_btn.clicked.connect(self.accepted.emit)
 
         self.btn_reveal_meaning.clicked.connect(self._on_reveal_meaning)
         self.btn_reveal_example.clicked.connect(self._on_reveal_example)

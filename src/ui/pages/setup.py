@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
+from ui.widgets.images import rounded_cover_pixmap
+
 CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 # Page indices inside the stacked widget
@@ -293,38 +295,36 @@ class BookCard(_ClickCard):
         root.setContentsMargins(18, 16, 18, 16)
         root.setSpacing(16)
 
-        # ---- Cover tile: book icon if assets/books/<book>.ico exists, else initials ----
-        cover = QFrame()
-        cover.setFixedSize(80, 104)
-        cover.setStyleSheet(
-            f"QFrame {{ border-radius: 16px; border: 1px solid rgba(255,255,255,0.22); "
-            f"background: qlineargradient(x1:0, y1:0, x2:1, y2:1, "
-            f"stop:0 {accent}, stop:1 #111827); }}"
-        )
-        cov = QVBoxLayout(cover)
-        cov.setContentsMargins(8, 10, 8, 10)
-        cov.setSpacing(2)
-
-        pixmap = QPixmap(icon_path) if icon_path else QPixmap()
-        cov.addStretch(1)
-        if not pixmap.isNull():
-            art = QLabel()
-            art.setAlignment(Qt.AlignCenter)
-            art.setStyleSheet("QLabel { background:transparent; border:none; }")
-            art.setPixmap(
-                pixmap.scaled(52, 52, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            )
-            cov.addWidget(art)
+        # ---- Cover tile: crisp HiDPI book cover filling the tile if an icon
+        # exists (assets/books/<book>_<level>.ico), else an initials placeholder.
+        cover_pm = rounded_cover_pixmap(icon_path, 80, 104, 16) if icon_path else None
+        if cover_pm is not None:
+            cover = QLabel()
+            cover.setFixedSize(80, 104)
+            cover.setAlignment(Qt.AlignCenter)
+            cover.setStyleSheet("QLabel { background: transparent; border: none; }")
+            cover.setPixmap(cover_pm)
         else:
+            cover = QFrame()
+            cover.setFixedSize(80, 104)
+            cover.setStyleSheet(
+                f"QFrame {{ border-radius: 16px; border: 1px solid rgba(255,255,255,0.22); "
+                f"background: qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+                f"stop:0 {accent}, stop:1 #111827); }}"
+            )
+            cov = QVBoxLayout(cover)
+            cov.setContentsMargins(8, 10, 8, 10)
+            cov.setSpacing(2)
+            cov.addStretch(1)
             ini = QLabel(_book_initials(title))
             ini.setAlignment(Qt.AlignCenter)
             ini.setStyleSheet("QLabel { color:#FFFFFF; font-size:24px; font-weight:900; background:transparent; border:none; }")
             cov.addWidget(ini)
-        cov_lvl = QLabel((level or "").upper())
-        cov_lvl.setAlignment(Qt.AlignCenter)
-        cov_lvl.setStyleSheet("QLabel { color:rgba(255,255,255,0.80); font-size:10px; font-weight:800; background:transparent; border:none; }")
-        cov.addWidget(cov_lvl)
-        cov.addStretch(1)
+            cov_lvl = QLabel((level or "").upper())
+            cov_lvl.setAlignment(Qt.AlignCenter)
+            cov_lvl.setStyleSheet("QLabel { color:rgba(255,255,255,0.80); font-size:10px; font-weight:800; background:transparent; border:none; }")
+            cov.addWidget(cov_lvl)
+            cov.addStretch(1)
         root.addWidget(cover, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # ---- Middle: title + badge, subtitle, description, stat chips ----

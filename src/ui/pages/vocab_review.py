@@ -78,6 +78,7 @@ class VocabReviewPage(QWidget):
         self.gender_tip_used = False
         self.was_checked = False
         self.was_skipped = False
+        self._accept_override = False
 
         self.typed_meaning = ""
         self.typed_gender = ""
@@ -225,6 +226,7 @@ class VocabReviewPage(QWidget):
 
         self.card.check_clicked.connect(self._on_check)
         self.card.rated.connect(self._on_rated)
+        self.card.accepted.connect(self._on_accept_override)
         self.card.tip_clicked.connect(self._on_tip)
         self.card.gender_tip_clicked.connect(self._on_gender_tip)
         self.card.skipped.connect(self._on_skipped)
@@ -517,6 +519,7 @@ class VocabReviewPage(QWidget):
         self.gender_tip_used = False
         self.was_checked = False
         self.was_skipped = False
+        self._accept_override = False
 
         self.typed_meaning = ""
         self.typed_gender = ""
@@ -659,6 +662,11 @@ class VocabReviewPage(QWidget):
         self.card.apply_check_results(payload)
         self.card.lock_after_check()
 
+    def _on_accept_override(self) -> None:
+        """Learner asserts their meaning was right (valid synonym not in the key)."""
+        self._accept_override = True
+        self.card.mark_meaning_accepted()
+
     def _on_rated(self, rating: int) -> None:
         if not self.current_item:
             return
@@ -680,6 +688,7 @@ class VocabReviewPage(QWidget):
                     was_checked=self.was_checked,
                     was_skipped=self.was_skipped,
                     response_ms=response_ms,
+                    accept_override=self._accept_override,
                 )
             except Exception:
                 pass

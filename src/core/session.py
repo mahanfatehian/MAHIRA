@@ -13,17 +13,87 @@ from core.ml.sklearn_ranker import SklearnRanker
 
 
 # ---------------------------------------------------------------------
-# Shared normalizers
+# Shared normalizers / answer matching
 # ---------------------------------------------------------------------
+# Alternative glosses in the seed data are separated inconsistently
+# ("leaf / paper", "a; b", "x, y"), so we split on any of these.
+_ALT_SEP_RE = re.compile(r"\s*[/;|,]\s*")
+_PARENS_RE = re.compile(r"\([^)]*\)")
+# Leading English markers we strip so "to work" == "work", "a house" == "house".
+_LEADING_PREFIXES = ("to ", "the ", "a ", "an ")
+
+
 def _norm(s: str) -> str:
     s = (s or "").strip().lower()
-    s = re.sub(r"[^\w\säöüß-]", "", s)
+    s = _PARENS_RE.sub(" ", s)               # drop "(coll.)", "(formal)" notes
+    s = re.sub(r"[^\w\säöüß-]", " ", s)       # punctuation -> space
     s = " ".join(s.split())
+    for pref in _LEADING_PREFIXES:
+        if s.startswith(pref):
+            s = s[len(pref):].strip()
+            break
     return s
 
 
 def _split_answers(ans: str) -> list[str]:
-    return [_norm(x) for x in (ans or "").split(";") if x.strip()]
+    """All acceptable normalized forms of an answer key.
+
+    Splits alternatives on / ; | , AND keeps the whole phrase, so a learner who
+    types one valid gloss ("leaf") matches a key of "leaf / paper", while a
+    phrase that legitimately contains a separator still matches in full.
+    """
+    raw = (ans or "").strip()
+    if not raw:
+        return []
+    candidates = _ALT_SEP_RE.split(raw)
+    candidates.append(raw)
+    out: list[str] = []
+    for c in candidates:
+        n = _norm(c)
+        if n and n not in out:
+            out.append(n)
+    return out
+
+
+def _levenshtein(a: str, b: str) -> int:
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def _fuzzy_equal(a: str, b: str) -> bool:
+    """Tolerate small typos, scaled to length. Short words must match exactly
+    (avoids 'ist'=='isst'-style false positives)."""
+    if a == b:
+        return True
+    m = max(len(a), len(b))
+    if m <= 4 or abs(len(a) - len(b)) > 2:
+        return False
+    threshold = 1 if m <= 7 else 2
+    return _levenshtein(a, b) <= threshold
+
+
+def _answer_matches(typed: str, accepted: list[str], *, fuzzy: bool = False) -> bool:
+    """True if the typed answer matches any accepted gloss. `fuzzy` adds typo
+    tolerance (used for vocab meanings, NOT for precision-critical grammar)."""
+    t = _norm(typed)
+    if not t or not accepted:
+        return False
+    if t in accepted:
+        return True
+    if fuzzy:
+        return any(_fuzzy_equal(t, a) for a in accepted)
+    return False
 
 
 def _norm_gender(s: str) -> str:
@@ -47,7 +117,8 @@ def _render_blank(text: str) -> str:
 
 def _grammar_correct(item: GrammarItem, typed: str) -> bool:
     accepted = _split_answers(getattr(item, "answer", "") or "")
-    return _norm(typed) in accepted
+    # No fuzzy matching for grammar: forms like "ist"/"isst" must stay distinct.
+    return _answer_matches(typed, accepted, fuzzy=False)
 
 
 def _norm_objective(obj: str) -> str:
@@ -731,9 +802,7 @@ class SessionService:
         typed_plural: str,
     ) -> dict:
         accepted = _split_answers(getattr(item, "meaning", "") or "")
-        typed_norm = _norm(typed_meaning)
-
-        meaning_ok = typed_norm in accepted if accepted else False
+        meaning_ok = _answer_matches(typed_meaning, accepted, fuzzy=True)
         expected_meaning = getattr(item, "meaning", "") or ""
 
         gender_ok: bool | None = None
@@ -776,9 +845,16 @@ class SessionService:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
+        accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_state(item.id)
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
+
+        # Learner override ("Accept my answer"): they assert their meaning was a
+        # valid gloss the key didn't list, so count meaning as correct.
+        if accept_override:
+            res = dict(res)
+            res["meaning_ok"] = True
 
         effective_rating = _effective_vocab_rating(
             result=res,
@@ -865,9 +941,15 @@ class SessionService:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
+        accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_grammar_state(item.id)
         res = self.check_grammar(item, typed_blank)
+
+        # Learner override ("Accept my answer"): count the answer as correct.
+        if accept_override:
+            res = dict(res)
+            res["ok"] = True
 
         used_help = bool(meaning_tip_used or hint_used or grammar_tip_used)
 

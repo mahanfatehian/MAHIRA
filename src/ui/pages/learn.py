@@ -25,6 +25,8 @@ from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
 )
 
+from ui.widgets.images import rounded_cover_pixmap
+
 CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 # -------------------------
@@ -542,40 +544,30 @@ class LevelCard(_ClickableCard):
         root.setContentsMargins(16, 14, 18, 14)
         root.setSpacing(16)
 
-        # Cover tile: a random book icon for this level (assets/books/<book>_<level>.ico)
-        # if one exists, otherwise the gradient level-code tile.
-        tile = QFrame()
-        tile.setFixedSize(68, 80)
-        tile.setStyleSheet(
-            f"QFrame {{ border-radius:16px; border:1px solid rgba(255,255,255,0.22); "
-            f"background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {accent}, stop:1 #111827); }}"
-        )
-        tlay = QVBoxLayout(tile)
-        tlay.setContentsMargins(4, 6, 4, 6)
-        tlay.setSpacing(2)
-        tlay.addStretch(1)
-
-        pixmap = QPixmap(icon_path) if icon_path else QPixmap()
-        if not pixmap.isNull():
-            art = QLabel()
-            art.setAlignment(Qt.AlignCenter)
-            art.setStyleSheet("QLabel { background:transparent; border:none; }")
-            art.setPixmap(
-                pixmap.scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            )
-            tlay.addWidget(art)
-            cap = QLabel(level)
-            cap.setAlignment(Qt.AlignCenter)
-            cap.setStyleSheet("QLabel { color:rgba(255,255,255,0.85); font-size:10px; font-weight:800; background:transparent; border:none; }")
-            tlay.addWidget(cap)
+        # Cover tile: a random book cover for this level (assets/books/<book>_<level>.ico)
+        # rendered crisp + HiDPI-aware filling the tile; otherwise a gradient
+        # level-code tile.
+        cover = rounded_cover_pixmap(icon_path, 68, 80, 16) if icon_path else None
+        if cover is not None:
+            tile = QLabel()
+            tile.setFixedSize(68, 80)
+            tile.setAlignment(Qt.AlignCenter)
+            tile.setStyleSheet("QLabel { background: transparent; border: none; }")
+            tile.setPixmap(cover)
         else:
+            tile = QFrame()
+            tile.setFixedSize(68, 80)
+            tile.setStyleSheet(
+                f"QFrame {{ border-radius:16px; border:1px solid rgba(255,255,255,0.22); "
+                f"background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 {accent}, stop:1 #111827); }}"
+            )
+            tlay = QVBoxLayout(tile)
+            tlay.setContentsMargins(4, 6, 4, 6)
             lvl_lbl = QLabel(level)
             lvl_lbl.setAlignment(Qt.AlignCenter)
             lvl_lbl.setFont(QFont("Segoe UI", 16, QFont.Weight.Black))
             lvl_lbl.setStyleSheet("QLabel { color:#FFFFFF; background:transparent; border:none; }")
             tlay.addWidget(lvl_lbl)
-
-        tlay.addStretch(1)
 
         mid = QVBoxLayout()
         mid.setSpacing(5)
