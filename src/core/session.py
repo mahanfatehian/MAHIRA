@@ -1225,11 +1225,15 @@ class SessionService:
         was_skipped: bool,
         response_ms: int | None,
         replay_count: int = 0,
+<<<<<<< HEAD
         rating: int | None = None,
+=======
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
     ) -> dict:
         st = self.repo.ensure_listening_state(item.id)
         res = self.check_listening(item, chosen)
 
+<<<<<<< HEAD
         # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),
         # exactly like the other review tabs. When no manual rating is given we
         # default to Good, so correctness still drives the schedule. A wrong or
@@ -1238,6 +1242,13 @@ class SessionService:
         effective_rating = _effective_binary_rating(
             ok=bool(res["ok"]),
             user_rating=user_rating,
+=======
+        # MCQ has no manual self-rating: correctness drives the schedule.
+        # Correct -> Good (2); wrong/skipped -> Again (0).
+        effective_rating = _effective_binary_rating(
+            ok=bool(res["ok"]),
+            user_rating=2,
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
             used_help=False,
             was_checked=was_checked,
             was_skipped=was_skipped,

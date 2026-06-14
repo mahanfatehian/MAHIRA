@@ -1,4 +1,5 @@
 text,question,answer,distractor1,distractor2,distractor3,translation,tip
+<<<<<<< HEAD
 "Mein Wohnzimmer ist sehr groß und hell. Ich liebe es!","Wie ist das Wohnzimmer?","Groß und hell","Klein und dunkel","Groß und dunkel","Klein und hell","My living room is very big and bright. I love it!","'hell' means bright or light."
 "Entschuldigung, was kostet das Sofa? - Das Sofa kostet 299 Euro.","Wie viel kostet das Sofa?","299 Euro","209 Euro","199 Euro","992 Euro","Excuse me, how much is the sofa? - The sofa costs 299 euros.","Listen closely to 'zweihundertneunundneunzig'."
 "Ist das ein Schrank? - Nein, das ist kein Schrank. Das ist ein Regal.","Was ist das?","Ein Regal","Ein Schrank","Ein Sofa","Ein Tisch","Is that a cabinet? - No, that is not a cabinet. That is a shelf.","Listen for the correction after 'Nein'."
@@ -49,3 +50,6 @@ text,question,answer,distractor1,distractor2,distractor3,translation,tip
 "Der Spiegel im Badezimmer ist rund und sehr groß.","Wie ist der Spiegel?","Rund und groß","Eckig und klein","Rund und klein","Eckig und groß","The mirror in the bathroom is round and very big.","'Spiegel' means mirror."
 "Das Zimmer ist leider nicht sehr hell. Es hat nur ein kleines Fenster.","Warum ist das Zimmer nicht hell?","Es hat nur ein kleines Fenster.","Es gibt keine Lampe.","Die Wand ist schwarz.","Es ist im Keller.","The room is unfortunately not very bright. It only has one small window.","Listen for the reason given."
 "Wo wohnt ihr? - Wir wohnen im zweiten Stock.","In welchem Stock wohnen sie?","Im zweiten Stock","Im ersten Stock","Im dritten Stock","Im Erdgeschoss","Where do you live? - We live on the second floor.","'zweiten Stock' means second floor."
+=======
+"Hallo! Ich heiße Anna. Ich komme aus Berlin und ich bin Studentin. Ich lerne Deutsch und ein bisschen Englisch.","Woher kommt Anna?","Aus Berlin","Aus Hamburg","Aus München","Aus Köln","Hello! My name is Anna. I come from Berlin and I am a student. I learn German and a little English.","Listen for the name of the city."
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e

@@ -305,7 +305,11 @@ class _ClickCard(QFrame):
 
 
 class BookCard(_ClickCard):
+<<<<<<< HEAD
     def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, listening_n=0, accent, selected, on_click, icon_path=None, completed=False):
+=======
+    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, accent, selected, on_click, icon_path=None, completed=False):
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
         super().__init__(on_click)
         self._accent = accent
         self._selected = selected
@@ -440,7 +444,11 @@ class BookCard(_ClickCard):
 class LektionCard(_ClickCard):
     _ACCENT = "#6B9FFF"
 
+<<<<<<< HEAD
     def __init__(self, *, number, title, topic, vocab_n, grammar_n, sentences_n, listening_n=0, selected, on_click, completed=False):
+=======
+    def __init__(self, *, number, title, topic, vocab_n, grammar_n, sentences_n, selected, on_click, completed=False):
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
         super().__init__(on_click)
         self._selected = selected
         self.setObjectName("LektionCard")

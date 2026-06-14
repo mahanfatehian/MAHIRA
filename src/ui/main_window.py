@@ -144,6 +144,7 @@ class MainWindow(QMainWindow):
         self._show(self._practice_page_key())
 
     def _nav_key_for_page(self, page_key: str) -> str:
+<<<<<<< HEAD
         return {
             "vocab_review": "vocab",
             "grammar_review": "grammar",
@@ -187,6 +188,19 @@ class MainWindow(QMainWindow):
                     except Exception:
                         pass
         self.nav.set_objective_states(enabled)
+=======
+        if page_key in ("vocab_review", "grammar_review", "sentence_review"):
+            return "practice"
+        if page_key == "listening_review":
+            return "listening"
+        if page_key == "setup":
+            return "setup"
+        if page_key == "learn":
+            return "learn"
+        if page_key == "progress":
+            return "progress"
+        return "setup"
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
 
     def _show(self, page_key: str) -> None:
         w = self.pages[page_key]
@@ -209,6 +223,7 @@ class MainWindow(QMainWindow):
                 return k
         return None
 
+<<<<<<< HEAD
     # nav key -> review page for the four practice objectives.
     _OBJ_TO_PAGE = {
         "vocab": "vocab_review",
@@ -216,6 +231,27 @@ class MainWindow(QMainWindow):
         "sentences": "sentence_review",
         "listening": "listening_review",
     }
+=======
+    def go(self, page_key: str) -> None:
+        if page_key == "practice":
+            page_key = self._practice_page_key()
+        elif page_key == "listening":
+            # Dedicated Listening tab: it's always the listening objective.
+            if not getattr(self.session.state, "level", None):
+                self._show("setup")
+                return
+            try:
+                self.session.state.objective = "listening"
+            except Exception:
+                pass
+            page_key = "listening_review"
+        elif page_key == "setup":
+            page_key = "setup"
+        elif page_key == "learn":
+            page_key = "learn"
+        elif page_key == "progress":
+            page_key = "progress"
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
 
     def go(self, page_key: str) -> None:
         # An objective tab IS its objective: set it, then show its review page.
@@ -248,6 +284,13 @@ class MainWindow(QMainWindow):
                 self._show("setup")
                 return
             self._show(self._practice_page_key())
+            return
+
+        if page_key == "listening_review":
+            if not getattr(self.session.state, "level", None):
+                self._show("setup")
+                return
+            self._show("listening_review")
             return
 
         self._show(page_key)

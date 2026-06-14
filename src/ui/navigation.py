@@ -80,6 +80,7 @@ class NavBar(QWidget):
         )
 
         self.btn_setup = QPushButton("Setup")
+<<<<<<< HEAD
 
         practice_lbl = QLabel("PRACTICE")
         practice_lbl.setStyleSheet(group_lbl_style)
@@ -114,6 +115,25 @@ class NavBar(QWidget):
         layout.addWidget(self.btn_sentences)
         layout.addWidget(self.btn_listening)
         layout.addSpacing(6)
+=======
+        self.btn_practice = QPushButton("Practice")
+        self.btn_listening = QPushButton("Listening")
+        self.btn_learn = QPushButton("Learn")
+        self.btn_progress = QPushButton("Progress")
+
+        for b in (self.btn_setup, self.btn_practice, self.btn_listening, self.btn_learn, self.btn_progress):
+            b.setStyleSheet(self._btn_style)
+
+        self.btn_setup.clicked.connect(lambda: self.go.emit("setup"))
+        self.btn_practice.clicked.connect(lambda: self.go.emit("practice"))
+        self.btn_listening.clicked.connect(lambda: self.go.emit("listening"))
+        self.btn_learn.clicked.connect(lambda: self.go.emit("learn"))
+        self.btn_progress.clicked.connect(lambda: self.go.emit("progress"))
+
+        layout.addWidget(self.btn_setup)
+        layout.addWidget(self.btn_practice)
+        layout.addWidget(self.btn_listening)
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
         layout.addWidget(self.btn_learn)
         layout.addWidget(self.btn_progress)
 
@@ -133,6 +153,7 @@ class NavBar(QWidget):
         self._active = (nav_key or "").strip().lower()
         self._render()
 
+<<<<<<< HEAD
     def _render(self) -> None:
         for key, btn in self._buttons.items():
             is_active = (key == self._active)
@@ -140,6 +161,15 @@ class NavBar(QWidget):
                 enabled = key in self._enabled_objectives
             else:
                 enabled = True
+=======
+        mapping = {
+            "setup": self.btn_setup,
+            "practice": self.btn_practice,
+            "listening": self.btn_listening,
+            "learn": self.btn_learn,
+            "progress": self.btn_progress,
+        }
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
 
             # The active button is left unclickable to read as "current page".
             btn.setEnabled(enabled and not is_active)

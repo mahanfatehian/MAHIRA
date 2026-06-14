@@ -1,4 +1,5 @@
 text,question,answer,distractor1,distractor2,distractor3,translation,tip
+<<<<<<< HEAD
 "Hallo, ich bin Lisa. Das ist meine Familie. Das ist mein Vater, er heißt Thomas.","Wer ist Thomas?","Der Vater","Der Bruder","Der Großvater","Der Onkel","Hello, I am Lisa. This is my family. This is my father, his name is Thomas.","Listen for the family member associated with the name Thomas."
 "Meine Mutter heißt Susanne. Sie ist Lehrerin von Beruf.","Was ist Susanne von Beruf?","Lehrerin","Ärztin","Studentin","Kellnerin","My mother's name is Susanne. She is a teacher by profession.","Listen for the profession mentioned after 'ist'."
 "Das ist mein Bruder. Er ist zwanzig Jahre alt.","Wie alt ist der Bruder?","20","12","22","2","This is my brother. He is twenty years old.","Pay attention to the number 'zwanzig'."
@@ -49,3 +50,6 @@ text,question,answer,distractor1,distractor2,distractor3,translation,tip
 "Sie spricht sehr gut Deutsch und ein bisschen Französisch.","Was spricht sie sehr gut?","Deutsch","Französisch","Englisch","Spanisch","She speaks German very well and a little French.","Pay attention to which language is spoken 'sehr gut'."
 "Wir suchen eine Wohnung in Frankfurt.","Was suchen sie?","Eine Wohnung","Ein Haus","Ein Auto","Einen Job","We are looking for an apartment in Frankfurt.","'Wohnung' means apartment."
 "Er arbeitet viel. Er ist fast nie zu Hause.","Wo ist er fast nie?","Zu Hause","Auf der Arbeit","Im Büro","Im Park","He works a lot. He is almost never at home.","'fast nie zu Hause' means almost never at home."
+=======
+"Hallo! Ich heiße Anna. Ich komme aus Berlin und ich bin Studentin. Ich lerne Deutsch und ein bisschen Englisch.","Woher kommt Anna?","Aus Berlin","Aus Hamburg","Aus München","Aus Köln","Hello! My name is Anna. I come from Berlin and I am a student. I learn German and a little English.","Listen for the name of the city."
+>>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
