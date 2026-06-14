@@ -305,7 +305,7 @@ class _ClickCard(QFrame):
 
 
 class BookCard(_ClickCard):
-    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, accent, selected, on_click, icon_path=None, completed=False):
+    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, listening_n=0, accent, selected, on_click, icon_path=None, completed=False):
         super().__init__(on_click)
         self._accent = accent
         self._selected = selected
@@ -398,6 +398,8 @@ class BookCard(_ClickCard):
             chips.addWidget(_make_chip(f"{_fmt_int(grammar_n)} Grammar", _ACCENT_GRAMMAR))
         if sentences_n:
             chips.addWidget(_make_chip(f"{_fmt_int(sentences_n)} Sentences", _ACCENT_SENTENCES))
+        if listening_n:
+            chips.addWidget(_make_chip(f"{_fmt_int(listening_n)} Listening", _ACCENT_LISTENING))
         chips.addStretch(1)
         mid.addSpacing(2)
         mid.addLayout(chips)
@@ -438,7 +440,7 @@ class BookCard(_ClickCard):
 class LektionCard(_ClickCard):
     _ACCENT = "#6B9FFF"
 
-    def __init__(self, *, number, title, topic, vocab_n, grammar_n, sentences_n, selected, on_click, completed=False):
+    def __init__(self, *, number, title, topic, vocab_n, grammar_n, sentences_n, listening_n=0, selected, on_click, completed=False):
         super().__init__(on_click)
         self._selected = selected
         self.setObjectName("LektionCard")
@@ -482,6 +484,8 @@ class LektionCard(_ClickCard):
             bits.append(f'<span style="color:{_ACCENT_GRAMMAR}">{grammar_n} Grammar</span>')
         if sentences_n:
             bits.append(f'<span style="color:{_ACCENT_SENTENCES}">{sentences_n} Sentences</span>')
+        if listening_n:
+            bits.append(f'<span style="color:{_ACCENT_LISTENING}">{listening_n} Listening</span>')
         if bits:
             counts = QLabel("&nbsp;&nbsp;·&nbsp;&nbsp;".join(bits))
             counts.setTextFormat(Qt.RichText)
@@ -519,6 +523,7 @@ class LektionCard(_ClickCard):
 
 class SetupPage(QWidget):
     start_practice = Signal()
+    context_changed = Signal()   # level/book/lektion changed — nav re-syncs its tabs
 
     def __init__(self, session, nav=None):
         super().__init__()
@@ -752,8 +757,8 @@ class SetupPage(QWidget):
         except Exception:
             return None
 
-    def _book_summary(self, book_id: int, level: str) -> tuple[int, int, int, int]:
-        """Return (lektion_count, vocab_n, grammar_n, sentences_n) for a book at a level."""
+    def _book_summary(self, book_id: int, level: str) -> tuple[int, int, int, int, int]:
+        """Return (lektion_count, vocab_n, grammar_n, sentences_n, listening_n) for a book at a level."""
         try:
             with self.session.repo._conn() as conn:
                 row = conn.execute(
@@ -766,21 +771,24 @@ class SetupPage(QWidget):
                         (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
                          JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS grammar_n,
                         (SELECT COUNT(*) FROM sentences s JOIN decks d ON s.deck_id=d.id
-                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS sentences_n
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS sentences_n,
+                        (SELECT COUNT(*) FROM listening li JOIN decks d ON li.deck_id=d.id
+                         JOIN lektions l ON d.lektion_id=l.id WHERE l.book_id=? AND d.level=?) AS listening_n
                     """,
-                    (book_id, level, level, book_id, level, book_id, level, book_id, level),
+                    (book_id, level, level, book_id, level, book_id, level, book_id, level, book_id, level),
                 ).fetchone()
             return (
                 int(row["lek"] or 0),
                 int(row["vocab_n"] or 0),
                 int(row["grammar_n"] or 0),
                 int(row["sentences_n"] or 0),
+                int(row["listening_n"] or 0),
             )
         except Exception:
-            return 0, 0, 0, 0
+            return 0, 0, 0, 0, 0
 
     def _lektion_summaries(self, book_id: int, level: str) -> list:
-        """Return per-lektion rows (number, title, vocab_n, grammar_n, sentences_n)."""
+        """Return per-lektion rows (number, title, vocab_n, grammar_n, sentences_n, listening_n)."""
         try:
             with self.session.repo._conn() as conn:
                 rows = conn.execute(
@@ -791,13 +799,15 @@ class SetupPage(QWidget):
                         (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
                          WHERE d.lektion_id=l.id AND d.level=?) AS grammar_n,
                         (SELECT COUNT(*) FROM sentences s JOIN decks d ON s.deck_id=d.id
-                         WHERE d.lektion_id=l.id AND d.level=?) AS sentences_n
+                         WHERE d.lektion_id=l.id AND d.level=?) AS sentences_n,
+                        (SELECT COUNT(*) FROM listening li JOIN decks d ON li.deck_id=d.id
+                         WHERE d.lektion_id=l.id AND d.level=?) AS listening_n
                     FROM lektions l
                     WHERE l.book_id=? AND l.level=?
                       AND EXISTS (SELECT 1 FROM decks d WHERE d.lektion_id=l.id AND d.level=?)
                     ORDER BY l.number
                     """,
-                    (level, level, level, book_id, level, level),
+                    (level, level, level, level, book_id, level, level),
                 ).fetchall()
             return list(rows)
         except Exception:
@@ -882,6 +892,7 @@ class SetupPage(QWidget):
         self._refresh_levels_enabled()
         self._refresh_books()
         self._goto(_PAGE_BOOK)
+        self.context_changed.emit()
 
     # ------------------------------------------------------------------
     # Page: Book
@@ -954,7 +965,7 @@ class SetupPage(QWidget):
             return
 
         for i, book in enumerate(books):
-            lek_n, vocab_n, grammar_n, sentences_n = self._book_summary(book.id, self.level)
+            lek_n, vocab_n, grammar_n, sentences_n, listening_n = self._book_summary(book.id, self.level)
             card = BookCard(
                 title=book.title,
                 level=self.level,
@@ -962,6 +973,7 @@ class SetupPage(QWidget):
                 vocab_n=vocab_n,
                 grammar_n=grammar_n,
                 sentences_n=sentences_n,
+                listening_n=listening_n,
                 accent=_accent_for_index(i),
                 selected=(book.slug == self.book_slug),
                 on_click=lambda slug=book.slug: self._choose_book(slug),
@@ -983,6 +995,7 @@ class SetupPage(QWidget):
         self._refresh_books()
         self._refresh_lektions()
         self._goto(_PAGE_LEKTION)
+        self.context_changed.emit()
 
     # ------------------------------------------------------------------
     # Page: Lektion
@@ -1057,6 +1070,7 @@ class SetupPage(QWidget):
                 vocab_n=int(r["vocab_n"] or 0),
                 grammar_n=int(r["grammar_n"] or 0),
                 sentences_n=int(r["sentences_n"] or 0),
+                listening_n=int(r["listening_n"] or 0),
                 selected=(int(r["number"]) == self.lektion_number),
                 on_click=lambda n=int(r["number"]): self._choose_lektion(n),
                 completed=self._is_complete(total, seen),
@@ -1075,6 +1089,7 @@ class SetupPage(QWidget):
         self._refresh_lektions()
         self._refresh_objectives()
         self._goto(_PAGE_OBJ)
+        self.context_changed.emit()
 
     # ------------------------------------------------------------------
     # Page: Objective

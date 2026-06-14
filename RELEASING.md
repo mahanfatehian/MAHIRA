@@ -103,8 +103,8 @@ You do **not** need to create a release manually — the workflow does it. Steps
 
    - `MAHIRA-Setup-<ver>-win64.exe` (Windows installer)
    - `MAHIRA-<ver>-win64-portable.zip` (Windows portable, unzip & run)
-   - `MAHIRA-<ver>-macos-arm64.dmg` (macOS disk image, Apple Silicon)
-   - `MAHIRA-<ver>-macos-arm64.zip`
+   - `MAHIRA-<ver>-macos-arm64.dmg` / `.zip` (macOS, Apple Silicon)
+   - `MAHIRA-<ver>-macos-x86_64.dmg` / `.zip` (macOS, Intel)
 
 3. **Review & publish:** GitHub → **Releases** → open the draft → edit notes →
    **Publish release**. (It's created as a draft so nothing goes public until you
@@ -129,10 +129,12 @@ and notarizing in the macOS job.
 
 ## Known caveats
 
-- **macOS architecture:** `macos-latest` is Apple Silicon (arm64), so the
-  `.app`/`.dmg` are **arm64‑only** and do not run on Intel Macs. GitHub is
-  retiring Intel runners; if you still need an x86_64 build, add a `macos-13`
-  entry while it remains available (artifacts are already arch‑tagged).
+- **macOS architecture:** the macOS job runs as a matrix on `macos-14`
+  (Apple Silicon → arm64) **and** `macos-13` (Intel → x86_64), so each
+  architecture gets its own `.dmg`/`.zip`. An arm64 app will not launch on an
+  Intel Mac ("not supported on this Mac"), which is why both are built. GitHub
+  is winding down the Intel `macos-13` runner; when it is retired, drop that
+  matrix entry (arm64‑only) or move the Intel build to a self‑hosted runner.
 - **macOS signing:** builds are unsigned but **ad‑hoc signed** in CI
   (`codesign --sign -`) so the app launches without a "damaged" error.
   Gatekeeper still requires right‑click → **Open** on first launch (or

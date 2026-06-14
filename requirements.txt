@@ -1,6 +1,13 @@
 greenlet==3.4.0
 joblib==1.5.3
-numpy==2.4.4
+# numpy is pinned to the 1.26.x line on purpose. numpy 2.x ships a per-process
+# reload guard on its compiled _multiarray_umath extension; once frozen with
+# PyInstaller that extension can be registered under two module paths
+# (numpy._core vs the legacy numpy.core shim) and startup dies with
+# "ImportError: cannot load module more than once per process". 1.26.4 has no
+# such split/guard and is accepted by every other pin here (scipy needs
+# >=1.26.4, sklearn >=1.24.1, onnxruntime >=1.21.6).
+numpy==1.26.4
 PySide6==6.11.0
 PySide6_Addons==6.11.0
 PySide6_Essentials==6.11.0
@@ -13,4 +20,10 @@ typing_extensions==4.15.0
 
 # Text-to-speech / pronunciation audio
 piper-tts
-onnxruntime
+# onnxruntime is pinned to the last release that still publishes a macOS
+# *universal2* wheel (1.20.1). Newer releases (>=1.26) ship an arm64-only macOS
+# wheel, so `pip install` would fail on the Intel (x86_64) macOS build runner and
+# Intel Macs would get no working build. 1.20.1 covers win_amd64 + macOS
+# universal2 (Intel & Apple Silicon), needs only numpy>=1.21.6, and satisfies
+# piper-tts's onnxruntime>=1,<2 constraint.
+onnxruntime==1.20.1

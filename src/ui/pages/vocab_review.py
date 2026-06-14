@@ -318,6 +318,7 @@ class VocabReviewPage(QWidget):
 
     def on_show(self) -> None:
         self.special_kbd.set_language("de")
+        self.page_subtitle.setText(self.session.context_label() or "Interactive vocabulary practice")
 
         deck_id = self._active_deck_id()
 

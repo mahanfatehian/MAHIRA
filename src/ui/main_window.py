@@ -104,6 +104,10 @@ class MainWindow(QMainWindow):
         if hasattr(self.pages["setup"], "start_practice"):
             self.pages["setup"].start_practice.connect(self._go_from_objective)
 
+        # Keep the nav's objective tabs in sync as the user picks a Lektion in Setup.
+        if hasattr(self.pages["setup"], "context_changed"):
+            self.pages["setup"].context_changed.connect(self._sync_nav)
+
         if hasattr(self.pages["vocab_review"], "go_progress"):
             self.pages["vocab_review"].go_progress.connect(lambda: self.go("progress"))
         if hasattr(self.pages["grammar_review"], "go_progress"):
@@ -140,22 +144,53 @@ class MainWindow(QMainWindow):
         self._show(self._practice_page_key())
 
     def _nav_key_for_page(self, page_key: str) -> str:
-        if page_key in ("vocab_review", "grammar_review", "sentence_review"):
-            return "practice"
-        if page_key == "listening_review":
-            return "listening"
-        if page_key == "setup":
-            return "setup"
-        if page_key == "learn":
-            return "learn"
-        if page_key == "progress":
-            return "progress"
-        return "setup"
+        return {
+            "vocab_review": "vocab",
+            "grammar_review": "grammar",
+            "sentence_review": "sentences",
+            "listening_review": "listening",
+            "setup": "setup",
+            "learn": "learn",
+            "progress": "progress",
+        }.get(page_key, "setup")
+
+    def _current_lektion_id(self) -> int | None:
+        st = self.session.state
+        book = (getattr(st, "book_slug", "") or "").strip()
+        level = (getattr(st, "level", "") or "").strip()
+        n = int(getattr(st, "lektion_number", 0) or 0)
+        if not book or not n:
+            return None
+        try:
+            book_id = self.session.repo.get_book_id(book)
+            if book_id is None:
+                return None
+            return self.session.repo.get_lektion_id(book_id, level, n)
+        except Exception:
+            return None
+
+    def _sync_nav(self) -> None:
+        """Enable the objective tabs that have a deck for the current Lektion;
+        disable them all while the user is still choosing a Lektion in Setup."""
+        enabled: set[str] = set()
+        st = self.session.state
+        level = (getattr(st, "level", "") or "").strip()
+        book = (getattr(st, "book_slug", "") or "").strip()
+        lek_n = int(getattr(st, "lektion_number", 0) or 0)
+        if level and book and lek_n:
+            lek_id = self._current_lektion_id()
+            if lek_id is not None:
+                for obj in ("vocab", "grammar", "sentences", "listening"):
+                    try:
+                        if self.session.repo.get_deck_id(level, obj, lektion_id=lek_id) is not None:
+                            enabled.add(obj)
+                    except Exception:
+                        pass
+        self.nav.set_objective_states(enabled)
 
     def _show(self, page_key: str) -> None:
         w = self.pages[page_key]
         self.stack.setCurrentWidget(w)
-        self.nav.set_active(self._nav_key_for_page(page_key))
         self.page_scroll.verticalScrollBar().setValue(0)
 
         if hasattr(w, "on_show"):
@@ -164,6 +199,9 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 print(f"[NAV] on_show error in {page_key}: {e}")
 
+        self._sync_nav()
+        self.nav.set_active(self._nav_key_for_page(page_key))
+
     def _current_page_key(self) -> str | None:
         cur = self.stack.currentWidget()
         for k, w in self.pages.items():
@@ -171,52 +209,45 @@ class MainWindow(QMainWindow):
                 return k
         return None
 
+    # nav key -> review page for the four practice objectives.
+    _OBJ_TO_PAGE = {
+        "vocab": "vocab_review",
+        "grammar": "grammar_review",
+        "sentences": "sentence_review",
+        "listening": "listening_review",
+    }
+
     def go(self, page_key: str) -> None:
-        if page_key == "practice":
-            page_key = self._practice_page_key()
-        elif page_key == "listening":
-            # Dedicated Listening tab: it's always the listening objective.
-            if not getattr(self.session.state, "level", None):
+        # An objective tab IS its objective: set it, then show its review page.
+        # Requires a chosen Lektion; otherwise fall back to Setup. (The nav also
+        # disables these tabs until a Lektion exists, so this is a safety net.)
+        if page_key in self._OBJ_TO_PAGE:
+            if not getattr(self.session.state, "level", None) or not self._current_lektion_id():
                 self._show("setup")
                 return
             try:
-                self.session.state.objective = "listening"
+                self.session.state.objective = page_key
             except Exception:
                 pass
-            page_key = "listening_review"
-        elif page_key == "setup":
-            page_key = "setup"
-        elif page_key == "learn":
-            page_key = "learn"
-        elif page_key == "progress":
-            page_key = "progress"
+            self._show(self._OBJ_TO_PAGE[page_key])
+            return
 
-        if page_key in ("practice_select", "level_select", "objective_select"):
+        if page_key == "practice":
+            # Logical route (e.g. Progress' "Back to Practice"): the current objective.
+            page_key = self._practice_page_key()
+        elif page_key in ("practice_select", "level_select", "objective_select"):
             page_key = "setup"
 
         if page_key not in self.pages:
             print(f"[NAV] Unknown page key: {page_key}")
             return
 
-        if self._current_page_key() == page_key:
-            self._show(page_key)
-            return
-
-        if page_key in ("vocab_review", "grammar_review", "sentence_review"):
-            if not getattr(self.session.state, "level", None):
-                self._show("setup")
-                return
-            if not getattr(self.session.state, "objective", None):
+        # Review pages reached via routing still need a full context.
+        if page_key in ("vocab_review", "grammar_review", "sentence_review", "listening_review"):
+            if not getattr(self.session.state, "level", None) or not getattr(self.session.state, "objective", None):
                 self._show("setup")
                 return
             self._show(self._practice_page_key())
-            return
-
-        if page_key == "listening_review":
-            if not getattr(self.session.state, "level", None):
-                self._show("setup")
-                return
-            self._show("listening_review")
             return
 
         self._show(page_key)

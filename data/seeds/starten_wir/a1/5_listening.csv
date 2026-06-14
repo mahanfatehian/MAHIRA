@@ -1,2 +1,51 @@
-text,question,answer,distractor1,distractor2,distractor3,translation,tip
-"Hallo! Ich heiße Anna. Ich komme aus Berlin und ich bin Studentin. Ich lerne Deutsch und ein bisschen Englisch.","Woher kommt Anna?","Aus Berlin","Aus Hamburg","Aus München","Aus Köln","Hello! My name is Anna. I come from Berlin and I am a student. I learn German and a little English.","Listen for the name of the city."
+text	question	answer	distractor1	distractor2	distractor3	translation	tip
+Entschuldigung, wie spät ist es? - Es ist Viertel nach acht.	Wie spät ist es?	08:15	08:45	07:45	08:30	Excuse me, what time is it? - It is quarter past eight.	'Viertel nach' means 15 minutes past the hour.
+Der Deutschkurs beginnt um halb zehn.	Wann beginnt der Kurs?	09:30	10:30	09:00	10:00	The German course starts at half past nine.	'halb zehn' means 9:30, not 10:30!
+Ich stehe jeden Morgen um Viertel vor sieben auf.	Wann steht die Person auf?	06:45	07:15	07:45	06:15	I get up every morning at quarter to seven.	'Viertel vor' means 15 minutes to the hour.
+Der Zug fährt um 14 Uhr 20 ab.	Wann fährt der Zug ab?	14:20 Uhr	14:12 Uhr	16:20 Uhr	14:02 Uhr	The train departs at 14:20.	Listen carefully to the official time format.
+Wann fängt der Film an? - Um zehn nach acht.	Wann fängt der Film an?	08:10	08:50	07:50	08:15	When does the movie start? - At ten past eight.	'zehn nach' means 10 minutes past the hour.
+Es ist jetzt genau zwölf Uhr mittags.	Wie spät ist es?	12:00 Uhr	00:00 Uhr	12:30 Uhr	11:00 Uhr	It is exactly twelve noon right now.	'Mittags' means at noon.
+Wir treffen uns um fünf vor halb vier am Café.	Wann treffen sie sich?	15:25	15:35	16:25	14:25	We are meeting at five to half past three at the café.	'fünf vor halb vier' is 3:25 PM (15:25).
+Wie spät ist es? - Es ist kurz nach drei.	Wie spät ist es ungefähr?	Ein paar Minuten nach 3	Genau 3 Uhr	Kurz vor 3	Halb 4	What time is it? - It is shortly after three.	'Kurz nach' means slightly after the hour.
+Ich räume heute die Wohnung auf.	Was macht die Person?	Sie räumt auf.	Sie schläft.	Sie kocht.	Sie arbeitet.	I am tidying up the apartment today.	'Aufräumen' is a separable verb meaning to tidy up.
+Am Abend sehe ich oft fern.	Was macht die Person am Abend?	Fernsehen	Lesen	Musik hören	Schlafen	In the evening I often watch TV.	'Fernsehen' is a separable verb (ich sehe... fern).
+Wann kaufst du im Supermarkt ein? - Nach der Arbeit.	Was macht die Person nach der Arbeit?	Einkaufen	Aufräumen	Fernsehen	Spazieren gehen	When do you shop in the supermarket? - After work.	'Einkaufen' means to shop.
+Ich rufe meine Mutter am Wochenende an.	Wen ruft die Person an?	Die Mutter	Den Vater	Den Bruder	Die Schwester	I am calling my mother on the weekend.	'Anrufen' means to call on the phone.
+Um wie viel Uhr gehst du schlafen? - Meistens um 23 Uhr.	Wann geht die Person schlafen?	Um 23 Uhr	Um 22 Uhr	Um 24 Uhr	Um 20 Uhr	At what time do you go to sleep? - Usually at 11 PM.	'Schlafen gehen' means to go to sleep.
+Von 8 bis 17 Uhr arbeite ich im Büro.	Wie lange arbeitet die Person?	Von 8 bis 17 Uhr	Von 7 bis 16 Uhr	Von 9 bis 18 Uhr	Nur am Vormittag	From 8 to 17 I work in the office.	Listen to the time frame 'von ... bis ...'.
+Um 13 Uhr mache ich eine Mittagspause.	Wann ist die Mittagspause?	Um 13 Uhr	Um 12 Uhr	Um 14 Uhr	Um 15 Uhr	At 1 PM I take a lunch break.	'Mittagspause' is the lunch break.
+Ich trinke morgens immer einen Kaffee.	Was trinkt die Person morgens?	Kaffee	Tee	Wasser	Saft	In the morning I always drink a coffee.	'Morgens' means in the mornings.
+Am Montag habe ich leider keine Zeit.	An welchem Tag hat die Person keine Zeit?	Am Montag	Am Dienstag	Am Mittwoch	Am Wochenende	On Monday I unfortunately have no time.	'Montag' is Monday.
+Was machst du am Wochenende? - Ich spiele Fußball.	Wann spielt die Person Fußball?	Am Wochenende	Am Montag	Jeden Tag	Am Abend	What are you doing on the weekend? - I play soccer.	'Wochenende' is the weekend.
+Dienstag und Donnerstag gehe ich in den Sprachkurs.	An welchen Tagen ist der Sprachkurs?	Dienstag und Donnerstag	Montag und Mittwoch	Freitag und Samstag	Nur am Dienstag	Tuesday and Thursday I go to the language course.	Listen for the two specific weekdays.
+Am Freitagabend gehen wir zusammen ins Kino.	Wann gehen sie ins Kino?	Am Freitagabend	Am Freitagmorgen	Am Samstagabend	Am Donnerstagabend	On Friday evening we are going to the cinema together.	'Freitagabend' is Friday evening.
+Sonntags schlafe ich sehr lange.	Was macht die Person sonntags?	Lange schlafen	Früh aufstehen	Arbeiten	Sport machen	On Sundays I sleep very late.	'Sonntags' means on Sundays.
+Der Kurs fängt um 18 Uhr an.	Wann beginnt der Kurs?	Um 18 Uhr	Um 19 Uhr	Um 8 Uhr	Um 20 Uhr	The course starts at 6 PM.	'Anfangen' is a synonym for 'beginnen'.
+Kommst du heute Abend zurück? - Ja, gegen 20 Uhr.	Was fragt die erste Person?	Ob die Person zurückkommt.	Ob die Person weggeht.	Wann der Zug abfährt.	Ob sie ins Kino gehen.	Are you coming back tonight? - Yes, around 8 PM.	'Zurückkommen' means to come back.
+Machst du bitte das Fenster auf? Mir ist warm.	Was soll die Person machen?	Das Fenster aufmachen	Die Tür zumachen	Das Licht anmachen	Den Fernseher ausmachen	Can you please open the window? I am warm.	'Aufmachen' means to open.
+Zum Frühstück esse ich meistens ein Brötchen mit Marmelade.	Was isst die Person zum Frühstück?	Brötchen mit Marmelade	Müsli mit Milch	Eier und Speck	Nichts	For breakfast I mostly eat a bread roll with jam.	Listen for the food items mentioned.
+Nach der Arbeit gehe ich direkt nach Hause.	Wohin geht die Person nach der Arbeit?	Nach Hause	In den Supermarkt	Ins Café	Zum Sport	After work I go directly home.	'Nach Hause' means (to) home.
+Heute ist Mittwoch. Morgen ist Donnerstag.	Welcher Tag ist morgen?	Donnerstag	Dienstag	Freitag	Mittwoch	Today is Wednesday. Tomorrow is Thursday.	'Morgen' means tomorrow.
+Gestern war Sonntag, also ist heute Montag.	Welcher Tag ist heute?	Montag	Sonntag	Dienstag	Samstag	Yesterday was Sunday, so today is Monday.	'Gestern' means yesterday.
+Gehen wir zusammen spazieren? Das Wetter ist schön.	Was möchte die Person machen?	Spazieren gehen	Fahrrad fahren	Einkaufen	Fernsehen	Shall we go for a walk together? The weather is nice.	'Spazieren gehen' means to go for a walk.
+Ich mache gerne Sport. Ich spiele Tennis.	Welchen Sport macht die Person?	Tennis	Fußball	Schwimmen	Basketball	I like doing sports. I play tennis.	Listen to the specific sport mentioned.
+Liest du gern Bücher? - Ja, jeden Abend im Bett.	Wann liest die Person?	Jeden Abend	Jeden Morgen	Am Wochenende	Nie	Do you like reading books? - Yes, every evening in bed.	'Jeden Abend' means every evening.
+Musik hören ist mein größtes Hobby.	Was ist das Hobby der Person?	Musik hören	Bücher lesen	Kochen	Fotografieren	Listening to music is my biggest hobby.	'Musik hören' means to listen to music.
+Wir kochen heute Abend zusammen eine Suppe.	Was machen sie heute Abend?	Eine Suppe kochen	Eine Pizza bestellen	Ins Restaurant gehen	Ein Buch lesen	We are cooking a soup together tonight.	'kochen' means to cook.
+Schwimmst du oft im Schwimmbad? - Nein, ich schwimme lieber im See.	Wo schwimmt die Person lieber?	Im See	Im Schwimmbad	Im Meer	Im Pool	Do you swim in the pool often? - No, I prefer swimming in the lake.	'See' means lake.
+Ich spiele Klavier seit fünf Jahren.	Welches Instrument spielt die Person?	Klavier	Gitarre	Geige	Schlagzeug	I have been playing the piano for five years.	'Klavier' means piano.
+Treffen wir uns morgen im Café am Bahnhof?	Wo wollen sie sich treffen?	Im Café am Bahnhof	Im Restaurant	Im Kino	Im Supermarkt	Shall we meet tomorrow in the café at the train station?	'Sich treffen' means to meet.
+Ich fotografiere sehr gern. Das ist mein Hobby.	Was macht die Person gern?	Fotografieren	Malen	Tanzen	Singen	I really like taking photos. That is my hobby.	'Fotografieren' means to take photos.
+Er tanzt jedes Wochenende in einem Club.	Was macht er am Wochenende?	Tanzen	Singen	Trinken	Schlafen	He dances every weekend in a club.	'Tanzen' means to dance.
+Singst du im Chor? - Ja, jeden Mittwoch.	Was macht die Person am Mittwoch?	Im Chor singen	Klavier spielen	Tanzen gehen	Fußball spielen	Do you sing in the choir? - Yes, every Wednesday.	'Singen' means to sing.
+Fährst du gern Fahrrad? - Ja, zur Arbeit.	Wie kommt die Person zur Arbeit?	Mit dem Fahrrad	Mit dem Auto	Mit dem Zug	Zu Fuß	Do you like riding a bike? - Yes, to work.	'Fahrrad fahren' means to ride a bicycle.
+Sie malt ein Bild für ihre Mutter.	Was macht sie für ihre Mutter?	Ein Bild malen	Ein Lied singen	Einen Kuchen backen	Ein Geschenk kaufen	She is painting a picture for her mother.	'Malen' means to paint.
+Der Film ist um Viertel vor elf zu Ende.	Wann ist der Film zu Ende?	10:45	11:15	11:45	10:15	The movie finishes at quarter to eleven.	'Viertel vor elf' is 10:45.
+Am Nachmittag spiele ich mit meinen Freunden.	Wann spielt die Person mit Freunden?	Am Nachmittag	Am Vormittag	Am Abend	In der Nacht	In the afternoon I play with my friends.	'Am Nachmittag' means in the afternoon.
+Wann stehst du am Wochenende auf? - Erst um zehn.	Wann steht die Person am Wochenende auf?	Um zehn Uhr	Um acht Uhr	Um neun Uhr	Um sieben Uhr	When do you get up on the weekend? - Not until ten.	'Erst um zehn' means not until 10.
+Wir bereiten das Mittagessen vor.	Was machen die Personen?	Das Mittagessen vorbereiten	Das Frühstück essen	Die Küche aufräumen	Den Tisch abräumen	We are preparing the lunch.	'Vorbereiten' is a separable verb meaning to prepare.
+Dauert die Fahrt lange? - Nur zwanzig Minuten.	Wie lange dauert die Fahrt?	20 Minuten	12 Minuten	2 Stunden	30 Minuten	Does the trip take long? - Only twenty minutes.	'Zwanzig' is 20.
+Um zwanzig vor acht fährt mein Bus.	Wann fährt der Bus?	07:40	08:20	07:20	08:40	My bus leaves at twenty to eight.	'Zwanzig vor acht' is 7:40.
+Ich lade meine Freunde zum Essen ein.	Was macht die Person?	Freunde einladen	Freunde anrufen	Essen gehen	Essen bestellen	I am inviting my friends to dinner.	'Einladen' is a separable verb meaning to invite.
+Machst du das Licht aus? Ich möchte schlafen.	Was soll die Person machen?	Das Licht ausmachen	Das Fenster zumachen	Das Licht anmachen	Die Tür aufmachen	Will you turn the light off? I want to sleep.	'Ausmachen' means to turn off (lights/electronics).
+Mein Wecker klingelt jeden Tag um sechs Uhr dreißig.	Wann klingelt der Wecker?	Um 6:30 Uhr	Um 6:00 Uhr	Um 7:30 Uhr	Um 7:00 Uhr	My alarm rings every day at six thirty.	'Wecker klingelt' means alarm rings.

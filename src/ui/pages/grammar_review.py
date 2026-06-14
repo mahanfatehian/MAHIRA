@@ -293,6 +293,7 @@ class GrammarReviewPage(QWidget):
 
     def on_show(self) -> None:
         self.special_kbd.set_language("de")
+        self.page_subtitle.setText(self.session.context_label() or "Focused fill-the-blank practice")
 
         try:
             deck_id = self.session.active_deck_id()

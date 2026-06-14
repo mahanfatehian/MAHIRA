@@ -440,6 +440,22 @@ class SessionService:
         """Returns (total_answered_this_session, next_milestone_target) for the counter."""
         return self.study_answered, self.study_next_milestone
 
+    def context_label(self) -> str:
+        """Human-readable "CEFR · Book · Lektion" path for the current context,
+        shown on the review pages so the learner always knows what they are
+        practicing. Missing parts are simply omitted."""
+        parts: list[str] = []
+        lvl = (getattr(self.state, "level", "") or "").upper().strip()
+        if lvl:
+            parts.append(lvl)
+        book = (getattr(self.state, "book_slug", "") or "").strip()
+        if book:
+            parts.append(" ".join(w.capitalize() for w in book.replace("-", "_").split("_")))
+        n = int(getattr(self.state, "lektion_number", 0) or 0)
+        if n:
+            parts.append(f"Lektion {n}")
+        return "  ·  ".join(parts)
+
     # -----------------------------------------------------------------
     # Picker wrappers
     # -----------------------------------------------------------------
@@ -1209,15 +1225,19 @@ class SessionService:
         was_skipped: bool,
         response_ms: int | None,
         replay_count: int = 0,
+        rating: int | None = None,
     ) -> dict:
         st = self.repo.ensure_listening_state(item.id)
         res = self.check_listening(item, chosen)
 
-        # MCQ has no manual self-rating: correctness drives the schedule.
-        # Correct -> Good (2); wrong/skipped -> Again (0).
+        # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),
+        # exactly like the other review tabs. When no manual rating is given we
+        # default to Good, so correctness still drives the schedule. A wrong or
+        # skipped answer is always capped to Again by _effective_binary_rating.
+        user_rating = 2 if rating is None else int(rating)
         effective_rating = _effective_binary_rating(
             ok=bool(res["ok"]),
-            user_rating=2,
+            user_rating=user_rating,
             used_help=False,
             was_checked=was_checked,
             was_skipped=was_skipped,

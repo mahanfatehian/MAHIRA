@@ -190,6 +190,7 @@ class SentenceReviewPage(QWidget):
         self._update_counter()
 
     def on_show(self) -> None:
+        self.page_subtitle.setText(self.session.context_label() or "Interactive language construction")
         if self.session.remaining() == 0:
             self._start_session()
             return
