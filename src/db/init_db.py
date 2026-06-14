@@ -127,7 +127,7 @@ def init_db(db_path: str | Path, schema_path: str | Path | None = None) -> None:
 
         # FSRS memory model columns. Added in-place (no reset) on existing DBs;
         # left NULL so the scheduler migrates each item lazily on its next review.
-        for _tbl in ("vocab_states", "grammar_states", "sentence_states"):
+        for _tbl in ("vocab_states", "grammar_states", "sentence_states", "listening_states"):
             _ensure_column(conn, _tbl, "stability", "REAL")
             _ensure_column(conn, _tbl, "difficulty", "REAL")
 

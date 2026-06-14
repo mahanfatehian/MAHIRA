@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
-from db.repo import Repo, VocabItem, GrammarItem, SentenceItem
+from db.repo import Repo, VocabItem, GrammarItem, SentenceItem, ListeningItem
 from core.srs import schedule_next
 from core.ml.sklearn_ranker import SklearnRanker
 
@@ -549,6 +549,15 @@ class SessionService:
         except Exception:
             return []
 
+    def _all_listening_ids_for_deck(self, deck_id: int) -> list[int]:
+        try:
+            with self.repo._conn() as conn:
+                rows = conn.execute("SELECT id FROM listening WHERE deck_id=?", (deck_id,)).fetchall()
+
+            return [int(r["id"]) for r in rows if r and r["id"] is not None]
+        except Exception:
+            return []
+
     def _top_up_with_random_from_full_deck(
         self,
         picked: list[int],
@@ -616,6 +625,8 @@ class SessionService:
                         getattr(self.ml, "rank_grammar_ids", None)),
             "sentences": (self._all_sentence_ids_for_deck, "sentences", "sentence_states", "sentence_id",
                           getattr(self.ml, "rank_sentence_ids", None)),
+            "listening": (self._all_listening_ids_for_deck, "listening", "listening_states", "listening_id",
+                          getattr(self.ml, "rank_listening_ids", None)),
         }
 
         spec = specs.get(objective)
@@ -766,6 +777,9 @@ class SessionService:
 
         if obj == "sentences":
             return self.next_sentence_item()
+
+        if obj == "listening":
+            return self.next_listening_item()
 
         return self.next_vocab_item()
 
@@ -1129,6 +1143,110 @@ class SessionService:
                     effective_rating=effective_rating,
                     tip_used=tip_used,
                     translation_used=translation_used,
+                    was_checked=was_checked,
+                    was_skipped=was_skipped,
+                    response_ms=response_ms,
+                    level=getattr(self.state, "level", None),
+                )
+            except Exception:
+                pass
+
+        res["effective_rating"] = effective_rating
+        return res
+
+    # -----------------------------------------------------------------
+    # Listening (multiple choice over a hidden, read-aloud passage)
+    # -----------------------------------------------------------------
+    def next_listening_item(self) -> Optional[ListeningItem]:
+        if not self._queue:
+            return None
+
+        lid = self._queue.pop()
+        return self.repo.get_listening_by_id(lid)
+
+    def listening_options(self, item: ListeningItem, *, count: int = 4) -> list[str]:
+        """Return the shuffled multiple-choice options for a listening item.
+
+        The correct answer is always included; distractors fill the rest. The
+        list is reshuffled every call so the same item never shows the same
+        A/B/C/D ordering twice.
+        """
+        answer = (getattr(item, "answer", "") or "").strip()
+
+        seen = {answer.strip().lower()}
+        distractors: list[str] = []
+        for d in (getattr(item, "distractors", None) or []):
+            d = (str(d) or "").strip()
+            if not d:
+                continue
+            k = d.lower()
+            if k in seen:
+                continue
+            seen.add(k)
+            distractors.append(d)
+
+        self.rng.shuffle(distractors)
+        chosen = distractors[: max(0, int(count) - 1)]
+
+        options = [answer] + chosen
+        self.rng.shuffle(options)
+        return options
+
+    def check_listening(self, item: ListeningItem, chosen: str) -> dict:
+        answer = (getattr(item, "answer", "") or "").strip()
+        ok = (str(chosen) or "").strip().lower() == answer.lower()
+        return {
+            "ok": ok,
+            "answer": answer,
+            "chosen": chosen,
+        }
+
+    def submit_listening(
+        self,
+        item: ListeningItem,
+        chosen: str,
+        was_checked: bool,
+        was_skipped: bool,
+        response_ms: int | None,
+        replay_count: int = 0,
+    ) -> dict:
+        st = self.repo.ensure_listening_state(item.id)
+        res = self.check_listening(item, chosen)
+
+        # MCQ has no manual self-rating: correctness drives the schedule.
+        # Correct -> Good (2); wrong/skipped -> Again (0).
+        effective_rating = _effective_binary_rating(
+            ok=bool(res["ok"]),
+            user_rating=2,
+            used_help=False,
+            was_checked=was_checked,
+            was_skipped=was_skipped,
+        )
+
+        correct = 1 if bool(res["ok"]) else 0
+
+        self.repo.insert_listening_review(
+            listening_id=item.id,
+            chosen=(chosen or None),
+            correct=correct,
+            replay_count=int(replay_count or 0),
+            was_checked=1 if was_checked else 0,
+            was_skipped=1 if was_skipped else 0,
+            rating=effective_rating,
+            response_ms=response_ms,
+        )
+
+        st2 = schedule_next(st, effective_rating)
+        self.repo.update_listening_state(st2)
+
+        ml = getattr(self, "ml", None)
+        if ml is not None and hasattr(ml, "update_listening"):
+            try:
+                ml.update_listening(
+                    item=item,
+                    state_before=st,
+                    review_result=res,
+                    effective_rating=effective_rating,
                     was_checked=was_checked,
                     was_skipped=was_skipped,
                     response_ms=response_ms,

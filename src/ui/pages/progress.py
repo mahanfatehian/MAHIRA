@@ -497,6 +497,60 @@ class ProgressPage(QWidget):
             blended = (seen_pct * 0.4) + (success_pct * 0.6)
             return int(min(100, max(0, blended)))
 
+    # ----- listening helpers -----
+    def _listening_total(self, deck_id: int) -> int:
+        repo = self.session.repo
+        if hasattr(repo, "deck_listening_count"):
+            return int(repo.deck_listening_count(deck_id))
+        with self._conn() as conn:
+            row = conn.execute("SELECT COUNT(*) AS c FROM listening WHERE deck_id=?", (deck_id,)).fetchone()
+            return int(row["c"]) if row else 0
+
+    def _listening_reviews_total(self, deck_id: int) -> int:
+        with self._conn() as conn:
+            row = conn.execute("""
+                SELECT COUNT(*) AS c
+                FROM listening_reviews r
+                JOIN listening l ON r.listening_id = l.id
+                WHERE l.deck_id = ?
+            """, (deck_id,)).fetchone()
+            return int(row["c"]) if row else 0
+
+    def _calculate_listening_mastery(self, deck_id: int, total_cards: int) -> int:
+        if total_cards <= 0:
+            return 0
+        with self._conn() as conn:
+            reviewed_row = conn.execute("""
+                SELECT COUNT(DISTINCT l.id) AS reviewed_count
+                FROM listening l
+                JOIN listening_reviews r ON r.listening_id = l.id
+                WHERE l.deck_id = ?
+            """, (deck_id,)).fetchone()
+            reviewed_count = int(reviewed_row["reviewed_count"]) if reviewed_row else 0
+            seen_pct = (reviewed_count / total_cards) * 100
+
+            stats = conn.execute("""
+                SELECT
+                    COUNT(*) AS app,
+                    SUM(CASE WHEN r.correct = 1 THEN 1 ELSE 0 END) AS ok
+                FROM listening_reviews r
+                JOIN listening l ON r.listening_id = l.id
+                WHERE l.deck_id = ?
+            """, (deck_id,)).fetchone()
+
+            if not stats:
+                return int(min(100, max(0, seen_pct)))
+
+            app = int(stats["app"] or 0)
+            ok = int(stats["ok"] or 0)
+
+            if app <= 0:
+                return int(min(100, max(0, seen_pct)))
+
+            success_pct = (ok / app) * 100
+            blended = (seen_pct * 0.4) + (success_pct * 0.6)
+            return int(min(100, max(0, blended)))
+
     # ---------- UI ----------
     def _set_empty(self, msg: str) -> None:
         self.due_card.set_value(0, "")
@@ -528,6 +582,39 @@ class ProgressPage(QWidget):
 
         obj = self._normalized_objective()
         is_grammar = (obj == "grammar")
+
+        if obj == "listening":
+            total = self._listening_total(deck_id)
+            if total == 0:
+                self._set_empty("This deck is empty.")
+                return
+
+            total_due = self.session.repo.listening_due_count(deck_id)
+            reviewed_today = self.session.repo.listening_reviewed_last_24h(deck_id)
+            unseen = self.session.repo.listening_unseen_count(deck_id)
+            total_reviews = self._listening_reviews_total(deck_id)
+            mastery = self._calculate_listening_mastery(deck_id, total)
+
+            self.due_card.set_value(total_due, "items waiting")
+            self.reviewed_today_card.set_value(reviewed_today, "reviews in 24h")
+            self.reviewed_total_card.set_value(total_reviews, "all-time reviews")
+            self.unseen_card.set_value(unseen, "new to learn")
+            self.total_card.set_value(total, "cards in deck")
+            self.mastery_card.set_value(f"{mastery}%", "mastery level")
+
+            learned = total - unseen
+            learned_percent = (learned / total) * 100 if total else 0
+            due_percent = (total_due / total) * 100 if total else 0
+            reviewed_percent = (reviewed_today / total) * 100 if total else 0
+
+            self.performance_label.setText(
+                "<p><b>Progress Overview</b></p>"
+                f"<p>Learned: <span style='color:#66E39A; font-weight:900;'>{learned_percent:.1f}%</span> ({learned}/{total})</p>"
+                f"<p>Due now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
+                f"<p>Reviewed (24h): <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
+                f"<p>Mastery: <span style='color:#FFFFFF; font-weight:900;'>{mastery}%</span></p>"
+            )
+            return
 
         if obj == "sentences":
             total = self._sentence_total(deck_id)

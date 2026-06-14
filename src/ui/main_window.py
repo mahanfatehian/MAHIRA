@@ -17,6 +17,7 @@ from ui.pages.setup import SetupPage
 from ui.pages.vocab_review import VocabReviewPage
 from ui.pages.grammar_review import GrammarReviewPage
 from ui.pages.sentence_review import SentenceReviewPage
+from ui.pages.listening_review import ListeningReviewPage
 from ui.pages.progress import ProgressPage
 from ui.pages.learn import LearnPage
 
@@ -25,6 +26,7 @@ PAGE_KEYS = [
     "vocab_review",
     "grammar_review",
     "sentence_review",
+    "listening_review",
     "progress",
     "learn",
 ]
@@ -83,6 +85,7 @@ class MainWindow(QMainWindow):
             "vocab_review": make(VocabReviewPage),
             "grammar_review": make(GrammarReviewPage),
             "sentence_review": make(SentenceReviewPage),
+            "listening_review": make(ListeningReviewPage),
             "progress": make(ProgressPage),
             "learn": make(LearnPage),
         }
@@ -107,6 +110,8 @@ class MainWindow(QMainWindow):
             self.pages["grammar_review"].go_progress.connect(lambda: self.go("progress"))
         if hasattr(self.pages["sentence_review"], "go_progress"):
             self.pages["sentence_review"].go_progress.connect(lambda: self.go("progress"))
+        if hasattr(self.pages["listening_review"], "go_progress"):
+            self.pages["listening_review"].go_progress.connect(lambda: self.go("progress"))
 
         if hasattr(self.pages["progress"], "go_learn"):
             self.pages["progress"].go_learn.connect(lambda: self.go("practice"))
@@ -127,6 +132,8 @@ class MainWindow(QMainWindow):
             return "grammar_review"
         if obj == "sentences":
             return "sentence_review"
+        if obj == "listening":
+            return "listening_review"
         return "vocab_review"
 
     def _go_from_objective(self) -> None:
@@ -135,6 +142,8 @@ class MainWindow(QMainWindow):
     def _nav_key_for_page(self, page_key: str) -> str:
         if page_key in ("vocab_review", "grammar_review", "sentence_review"):
             return "practice"
+        if page_key == "listening_review":
+            return "listening"
         if page_key == "setup":
             return "setup"
         if page_key == "learn":
@@ -165,6 +174,16 @@ class MainWindow(QMainWindow):
     def go(self, page_key: str) -> None:
         if page_key == "practice":
             page_key = self._practice_page_key()
+        elif page_key == "listening":
+            # Dedicated Listening tab: it's always the listening objective.
+            if not getattr(self.session.state, "level", None):
+                self._show("setup")
+                return
+            try:
+                self.session.state.objective = "listening"
+            except Exception:
+                pass
+            page_key = "listening_review"
         elif page_key == "setup":
             page_key = "setup"
         elif page_key == "learn":
@@ -191,6 +210,13 @@ class MainWindow(QMainWindow):
                 self._show("setup")
                 return
             self._show(self._practice_page_key())
+            return
+
+        if page_key == "listening_review":
+            if not getattr(self.session.state, "level", None):
+                self._show("setup")
+                return
+            self._show("listening_review")
             return
 
         self._show(page_key)

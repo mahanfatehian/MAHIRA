@@ -240,3 +240,62 @@ CREATE TABLE IF NOT EXISTS sentence_reviews (
 
 CREATE INDEX IF NOT EXISTS idx_sentence_reviews_item ON sentence_reviews(sentence_id);
 CREATE INDEX IF NOT EXISTS idx_sentence_reviews_created ON sentence_reviews(created_at);
+
+-- =========================
+-- Listening
+-- A listening item is a passage (read aloud by the offline TTS, hidden from the
+-- learner) plus a multiple-choice question about it. `distractors_json` holds
+-- the wrong options; the correct option is `answer`. Options are shuffled at
+-- display time, so the same item never shows the same A/B/C/D ordering.
+-- =========================
+CREATE TABLE IF NOT EXISTS listening (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deck_id INTEGER NOT NULL,
+  text TEXT NOT NULL,              -- the passage read aloud (hidden until answered)
+  question TEXT NOT NULL,          -- the question shown to the learner
+  answer TEXT NOT NULL,            -- the correct option
+  distractors_json TEXT,           -- JSON list of wrong options
+  translation TEXT,                -- optional translation of the passage (reveal)
+  tip TEXT,                        -- optional hint
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  UNIQUE(deck_id, question, text),
+  FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_listening_deck ON listening(deck_id);
+
+CREATE TABLE IF NOT EXISTS listening_states (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  listening_id INTEGER NOT NULL,
+  ease REAL NOT NULL DEFAULT 2.5,
+  interval_days REAL NOT NULL DEFAULT 0.0,
+  reps INTEGER NOT NULL DEFAULT 0,
+  lapses INTEGER NOT NULL DEFAULT 0,
+  due_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  last_review_at INTEGER,
+  -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
+  stability REAL,
+  difficulty REAL,
+  UNIQUE(listening_id),
+  FOREIGN KEY(listening_id) REFERENCES listening(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_listening_states_due
+ON listening_states(due_at);
+
+CREATE TABLE IF NOT EXISTS listening_reviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  listening_id INTEGER NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  chosen TEXT,
+  correct INTEGER,
+  replay_count INTEGER NOT NULL DEFAULT 0,
+  was_checked INTEGER NOT NULL DEFAULT 0,
+  was_skipped INTEGER NOT NULL DEFAULT 0,
+  rating INTEGER,
+  response_ms INTEGER,
+  FOREIGN KEY(listening_id) REFERENCES listening(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_listening_reviews_item ON listening_reviews(listening_id);
+CREATE INDEX IF NOT EXISTS idx_listening_reviews_created ON listening_reviews(created_at);

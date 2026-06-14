@@ -48,6 +48,28 @@ def _fmt_int(n: int) -> str:
 _ACCENT_VOCAB     = "#66E39A"
 _ACCENT_GRAMMAR   = "#B983FF"
 _ACCENT_SENTENCES = "#FFB020"
+_ACCENT_LISTENING = "#34D2E0"
+_ACCENT_DONE      = "#7AE582"   # "fully reviewed" tick (matches milestone green)
+
+
+def _make_check_badge(diameter: int = 20) -> "QLabel":
+    """A small circular green ✓ badge marking 'all entries reviewed'.
+
+    Stealth by design: it just appears next to a card's title — no popup, no
+    blocking. Hidden until set visible by the caller.
+    """
+    from PySide6.QtWidgets import QLabel  # local import keeps the helper self-contained
+    b = QLabel("✓")
+    b.setAlignment(Qt.AlignCenter)
+    b.setFixedSize(diameter, diameter)
+    b.setFont(QFont("Segoe UI", max(8, diameter // 2), QFont.Weight.Black))
+    b.setStyleSheet(
+        f"QLabel {{ color:#0B0B0B; background:{_ACCENT_DONE}; "
+        f"border-radius:{diameter // 2}px; font-weight:900; border:none; }}"
+    )
+    b.setToolTip("All entries reviewed")
+    b.hide()
+    return b
 
 # Stable accent palette for book cards (varied so books are visually distinct)
 _BOOK_ACCENTS = ["#6B9FFF", "#66E39A", "#FFD166", "#FF6B9A", "#B983FF", "#4DD0E1", "#FFA07A"]
@@ -197,7 +219,10 @@ class ObjectiveSelectCard(QFrame):
             }
         """)
 
+        self.check_badge = _make_check_badge(18)
+
         top_row.addWidget(self.title_lbl, 0)
+        top_row.addWidget(self.check_badge, 0)
         top_row.addStretch(1)
         top_row.addWidget(self.meta_badge, 0)
 
@@ -234,6 +259,9 @@ class ObjectiveSelectCard(QFrame):
     def set_meta(self, text: str):
         self.meta_badge.setText(text or "")
         self.meta_badge.setVisible(bool(text and text.strip()))
+
+    def set_completed(self, completed: bool):
+        self.check_badge.setVisible(bool(completed))
 
     def set_enabled(self, enabled: bool):
         self.start_btn.setEnabled(enabled)
@@ -277,7 +305,7 @@ class _ClickCard(QFrame):
 
 
 class BookCard(_ClickCard):
-    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, accent, selected, on_click, icon_path=None):
+    def __init__(self, *, title, level, lektion_count, vocab_n, grammar_n, sentences_n, accent, selected, on_click, icon_path=None, completed=False):
         super().__init__(on_click)
         self._accent = accent
         self._selected = selected
@@ -342,10 +370,13 @@ class BookCard(_ClickCard):
             f"QLabel {{ color:#0B0B0B; background:{accent}; border-radius:9px; "
             f"padding:3px 10px; font-weight:900; }}"
         )
+        self._check_badge = _make_check_badge(20)
         title_row.addWidget(title_lbl, 0)
         title_row.addWidget(lvl_badge, 0)
+        title_row.addWidget(self._check_badge, 0)
         title_row.addStretch(1)
         mid.addLayout(title_row)
+        self._check_badge.setVisible(bool(completed))
 
         lek_word = "Lektion" if lektion_count == 1 else "Lektionen"
         subtitle = QLabel(f"German {(level or '').upper()} course • {lektion_count} {lek_word}")
@@ -407,7 +438,7 @@ class BookCard(_ClickCard):
 class LektionCard(_ClickCard):
     _ACCENT = "#6B9FFF"
 
-    def __init__(self, *, number, title, topic, vocab_n, grammar_n, sentences_n, selected, on_click):
+    def __init__(self, *, number, title, topic, vocab_n, grammar_n, sentences_n, selected, on_click, completed=False):
         super().__init__(on_click)
         self._selected = selected
         self.setObjectName("LektionCard")
@@ -460,6 +491,10 @@ class LektionCard(_ClickCard):
 
         text_col.addStretch(1)
         lay.addLayout(text_col, 1)
+
+        self._check_badge = _make_check_badge(20)
+        lay.addWidget(self._check_badge, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._check_badge.setVisible(bool(completed))
 
         self._apply_style()
 
@@ -636,6 +671,7 @@ class SetupPage(QWidget):
                 "vocab": "Vocabulary",
                 "grammar": "Grammar",
                 "sentences": "Sentences",
+                "listening": "Listening",
             }.get(self.objective, self.objective)
             parts.append(label)
         self.breadcrumb.setText("  •  ".join(parts) if parts else " ")
@@ -664,6 +700,46 @@ class SetupPage(QWidget):
             return int(row["c"]) if row else 0
         except Exception:
             return 0
+
+    # ---- Completion ("fully reviewed") helpers ---------------------------
+    def _seen_map(self, book_id: int, level: str) -> dict:
+        try:
+            return self.session.repo.lektion_seen_map(book_id, level)
+        except Exception:
+            return {}
+
+    @staticmethod
+    def _is_complete(total: int, seen: int) -> bool:
+        return int(total) > 0 and int(seen) >= int(total)
+
+    def _book_complete(self, book_id: int, level: str) -> bool:
+        """A book/level is fully reviewed when every item across all of its
+        lektions and objectives has been seen at least once."""
+        sm = self._seen_map(book_id, level)
+        if not sm:
+            return False
+        total = sum(t for (t, _s) in sm.values())
+        seen = sum(s for (_t, s) in sm.values())
+        return self._is_complete(total, seen)
+
+    def _deck_complete(self, deck_id: Optional[int], objective: str, total: int) -> bool:
+        """A single objective deck is fully reviewed when it has items and none
+        of them are still unseen."""
+        if deck_id is None or int(total) <= 0:
+            return False
+        repo = self.session.repo
+        try:
+            unseen_fn = {
+                "vocab": repo.unseen_count,
+                "grammar": repo.grammar_unseen_count,
+                "sentences": repo.sentence_unseen_count,
+                "listening": repo.listening_unseen_count,
+            }.get(objective)
+            if unseen_fn is None:
+                return False
+            return int(unseen_fn(deck_id)) <= 0
+        except Exception:
+            return False
 
     def _current_lektion_id(self) -> Optional[int]:
         if not self.book_slug or not self.lektion_number:
@@ -709,7 +785,7 @@ class SetupPage(QWidget):
             with self.session.repo._conn() as conn:
                 rows = conn.execute(
                     """
-                    SELECT l.number AS number, l.title AS title, l.description AS topic,
+                    SELECT l.id AS lektion_id, l.number AS number, l.title AS title, l.description AS topic,
                         (SELECT COUNT(*) FROM vocab v JOIN decks d ON v.deck_id=d.id
                          WHERE d.lektion_id=l.id AND d.level=?) AS vocab_n,
                         (SELECT COUNT(*) FROM grammar g JOIN decks d ON g.deck_id=d.id
@@ -890,6 +966,7 @@ class SetupPage(QWidget):
                 selected=(book.slug == self.book_slug),
                 on_click=lambda slug=book.slug: self._choose_book(slug),
                 icon_path=_book_icon_path(book.slug, self.level),
+                completed=self._book_complete(book.id, self.level),
             )
             self.book_layout.addWidget(card)
 
@@ -960,6 +1037,7 @@ class SetupPage(QWidget):
             book_id = self.session.repo.get_book_id(self.book_slug)
             rows = self._lektion_summaries(book_id, self.level) if book_id else []
         except Exception:
+            book_id = None
             rows = []
 
         if not rows:
@@ -968,7 +1046,10 @@ class SetupPage(QWidget):
             self.lektion_grid.addWidget(lbl, 0, 0, 1, 2)
             return
 
+        seen_map = self._seen_map(book_id, self.level) if book_id else {}
+
         for i, r in enumerate(rows):
+            total, seen = seen_map.get(int(r["lektion_id"]), (0, 0))
             card = LektionCard(
                 number=int(r["number"]),
                 title=str(r["title"]),
@@ -978,6 +1059,7 @@ class SetupPage(QWidget):
                 sentences_n=int(r["sentences_n"] or 0),
                 selected=(int(r["number"]) == self.lektion_number),
                 on_click=lambda n=int(r["number"]): self._choose_lektion(n),
+                completed=self._is_complete(total, seen),
             )
             self.lektion_grid.addWidget(card, i // 2, i % 2, Qt.AlignmentFlag.AlignTop)
 
@@ -1034,10 +1116,16 @@ class SetupPage(QWidget):
             accent=_ACCENT_SENTENCES,
             on_start=lambda: self._choose_objective("sentences"),
         )
+        self.card_listening = ObjectiveSelectCard(
+            title="Listening",
+            accent=_ACCENT_LISTENING,
+            on_start=lambda: self._choose_objective("listening"),
+        )
 
         inner.addWidget(self.card_vocab, 0)
         inner.addWidget(self.card_grammar, 0)
         inner.addWidget(self.card_sentences, 0)
+        inner.addWidget(self.card_listening, 0)
         inner.addStretch(1)
 
         lay.addWidget(group, 0)
@@ -1046,12 +1134,10 @@ class SetupPage(QWidget):
 
     def _refresh_objectives(self):
         if not self.level or not self.book_slug or not self.lektion_number:
-            self.card_vocab.set_meta("")
-            self.card_vocab.set_enabled(False)
-            self.card_grammar.set_meta("")
-            self.card_grammar.set_enabled(False)
-            self.card_sentences.set_meta("")
-            self.card_sentences.set_enabled(False)
+            for c in (self.card_vocab, self.card_grammar, self.card_sentences, self.card_listening):
+                c.set_meta("")
+                c.set_enabled(False)
+                c.set_completed(False)
             return
 
         lektion_id = self._current_lektion_id()
@@ -1059,19 +1145,28 @@ class SetupPage(QWidget):
         dv = self._deck_id(self.level, "vocab", lektion_id)
         dg = self._deck_id(self.level, "grammar", lektion_id)
         ds = self._deck_id(self.level, "sentences", lektion_id)
+        dl = self._deck_id(self.level, "listening", lektion_id)
 
         vocab_n  = self._count_table("vocab",     dv) if dv is not None else 0
         gram_n   = self._count_table("grammar",   dg) if dg is not None else 0
         sent_n   = self._count_table("sentences", ds) if ds is not None else 0
+        listen_n = self._count_table("listening", dl) if dl is not None else 0
 
         self.card_vocab.set_enabled(dv is not None)
         self.card_vocab.set_meta(f"{_fmt_int(vocab_n)} items" if dv is not None else "")
+        self.card_vocab.set_completed(self._deck_complete(dv, "vocab", vocab_n))
 
         self.card_grammar.set_enabled(dg is not None)
         self.card_grammar.set_meta(f"{_fmt_int(gram_n)} items" if dg is not None else "")
+        self.card_grammar.set_completed(self._deck_complete(dg, "grammar", gram_n))
 
         self.card_sentences.set_enabled(ds is not None)
         self.card_sentences.set_meta(f"{_fmt_int(sent_n)} items" if ds is not None else "")
+        self.card_sentences.set_completed(self._deck_complete(ds, "sentences", sent_n))
+
+        self.card_listening.set_enabled(dl is not None)
+        self.card_listening.set_meta(f"{_fmt_int(listen_n)} items" if dl is not None else "")
+        self.card_listening.set_completed(self._deck_complete(dl, "listening", listen_n))
 
     def _choose_objective(self, key: str):
         if not self.level or not self.book_slug or not self.lektion_number:

@@ -53,19 +53,22 @@ class NavBar(QWidget):
 
         self.btn_setup = QPushButton("Setup")
         self.btn_practice = QPushButton("Practice")
+        self.btn_listening = QPushButton("Listening")
         self.btn_learn = QPushButton("Learn")
         self.btn_progress = QPushButton("Progress")
 
-        for b in (self.btn_setup, self.btn_practice, self.btn_learn, self.btn_progress):
+        for b in (self.btn_setup, self.btn_practice, self.btn_listening, self.btn_learn, self.btn_progress):
             b.setStyleSheet(self._btn_style)
 
         self.btn_setup.clicked.connect(lambda: self.go.emit("setup"))
         self.btn_practice.clicked.connect(lambda: self.go.emit("practice"))
+        self.btn_listening.clicked.connect(lambda: self.go.emit("listening"))
         self.btn_learn.clicked.connect(lambda: self.go.emit("learn"))
         self.btn_progress.clicked.connect(lambda: self.go.emit("progress"))
 
         layout.addWidget(self.btn_setup)
         layout.addWidget(self.btn_practice)
+        layout.addWidget(self.btn_listening)
         layout.addWidget(self.btn_learn)
         layout.addWidget(self.btn_progress)
 
@@ -81,6 +84,7 @@ class NavBar(QWidget):
         mapping = {
             "setup": self.btn_setup,
             "practice": self.btn_practice,
+            "listening": self.btn_listening,
             "learn": self.btn_learn,
             "progress": self.btn_progress,
         }
