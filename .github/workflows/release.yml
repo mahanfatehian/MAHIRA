@@ -101,6 +101,7 @@ jobs:
         with:
           name: windows-installers
           path: dist/artifacts/*
+          retention-days: 1   # keep storage under the 500 MB free-tier cap
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -183,6 +184,7 @@ jobs:
         with:
           name: macos-installers
           path: dist/artifacts/*
+          retention-days: 1   # keep storage under the 500 MB free-tier cap
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -196,9 +198,10 @@ jobs:
         with:
           path: artifacts
 
-      - name: Publish GitHub Release (draft)
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false              # publish straight to the Releases tab on a vX.Y.Z tag
           generate_release_notes: true
+          fail_on_unmatched_files: true   # don't publish an empty release if artifacts are missing
           files: artifacts/**/*
