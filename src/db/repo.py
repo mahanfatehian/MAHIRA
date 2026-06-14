@@ -1284,6 +1284,37 @@ class Repo:
             ).fetchone()
             return int(row["c"]) if row else 0
 
+    def daily_review_counts(self, since_ts: int) -> dict[str, int]:
+        """Total reviews per LOCAL calendar day across every objective
+        (vocab + grammar + sentences + listening), for created_at >= since_ts.
+
+        Returns {'YYYY-MM-DD': count}. Powers the activity heatmap, so it is
+        global (not scoped to a deck) — it reflects all interaction with the app.
+        A missing review table (very old DB) is skipped rather than fatal.
+        """
+        tables = ("reviews", "grammar_reviews", "sentence_reviews", "listening_reviews")
+        out: dict[str, int] = {}
+        with self._conn() as conn:
+            for table in tables:  # table names are fixed constants, not user input
+                try:
+                    rows = conn.execute(
+                        f"""
+                        SELECT date(created_at, 'unixepoch', 'localtime') AS day,
+                               COUNT(*) AS c
+                          FROM {table}
+                         WHERE created_at >= ?
+                         GROUP BY day
+                        """,
+                        (int(since_ts),),
+                    ).fetchall()
+                except Exception:
+                    continue
+                for r in rows:
+                    day = r["day"]
+                    if day:
+                        out[day] = out.get(day, 0) + int(r["c"])
+        return out
+
     def unseen_count(self, deck_id: int) -> int:
         with self._conn() as conn:
             row = conn.execute(

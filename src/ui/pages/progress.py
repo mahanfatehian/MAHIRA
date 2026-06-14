@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import time
+import datetime as _dt
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton,
-    QHBoxLayout, QGridLayout, QGroupBox
+    QHBoxLayout, QGridLayout, QGroupBox, QFrame
 )
 
 from core.session import SessionService
+from ui.widgets.activity_heatmap import ActivityHeatmap
+
+# Reviews/day that lights a heatmap square to its brightest level and counts as
+# "goal reached" for the day. A sensible fixed default; no settings UI yet.
+DAILY_GOAL = 20
+_ACCENT_GREEN = "#66E39A"   # mint accent, matches the heatmap's brightest level
 
 
 class ProgressCard(QGroupBox):
@@ -20,8 +27,8 @@ class ProgressCard(QGroupBox):
                 color: #FFFFFF;
                 border: 1px solid #2E2E2E;
                 border-radius: 12px;
-                margin-top: 10px;
-                padding-top: 12px;
+                margin-top: 8px;
+                padding-top: 8px;
                 background-color: #151515;
             }
             QGroupBox::title {
@@ -32,13 +39,13 @@ class ProgressCard(QGroupBox):
         """)
 
         self.layout = QVBoxLayout(self)
-        self.layout.setSpacing(6)
-        self.layout.setContentsMargins(12, 16, 12, 12)
+        self.layout.setSpacing(2)
+        self.layout.setContentsMargins(12, 8, 12, 8)
 
         self.value_label = QLabel("0")
         self.value_label.setStyleSheet("""
             QLabel {
-                font-size: 26px;
+                font-size: 21px;
                 font-weight: 900;
                 color: #FFFFFF;
                 qproperty-alignment: AlignCenter;
@@ -80,8 +87,8 @@ class ProgressPage(QWidget):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(24, 24, 24, 24)
-        main_layout.setSpacing(14)
+        main_layout.setContentsMargins(20, 12, 20, 12)
+        main_layout.setSpacing(9)
 
         header_layout = QHBoxLayout()
         self.title = QLabel("Progress")
@@ -148,12 +155,40 @@ class ProgressPage(QWidget):
         session_layout.addWidget(self.book_label, 0, 1)
         session_layout.addWidget(self.objective_label, 1, 0)
 
+        # ---- Activity: streak chips + GitHub-style heatmap (global, all decks) ----
+        activity_group = QGroupBox("Activity")
+        activity_group.setStyleSheet(session_group.styleSheet())
+
+        activity_layout = QVBoxLayout(activity_group)
+        activity_layout.setSpacing(8)
+        activity_layout.setContentsMargins(12, 10, 12, 8)
+
+        strip = QHBoxLayout()
+        strip.setSpacing(10)
+        chip_streak, self.streak_value, _ = self._streak_chip("current streak", accent=_ACCENT_GREEN)
+        chip_longest, self.longest_value, _ = self._streak_chip("longest streak")
+        chip_today, self.today_value, self.today_caption = self._streak_chip("today vs goal")
+        strip.addWidget(chip_streak)
+        strip.addWidget(chip_longest)
+        strip.addWidget(chip_today)
+        strip.addStretch(1)
+        activity_layout.addLayout(strip)
+
+        self.heatmap = ActivityHeatmap()
+        activity_layout.addWidget(self.heatmap)
+
+        self.activity_caption = QLabel("")
+        self.activity_caption.setStyleSheet(
+            "QLabel { font-size:11px; color:#7E7E7E; background:transparent; border:none; }"
+        )
+        activity_layout.addWidget(self.activity_caption)
+
         stats_group = QGroupBox("Statistics")
         stats_group.setStyleSheet(session_group.styleSheet())
 
         stats_layout = QGridLayout(stats_group)
-        stats_layout.setSpacing(14)
-        stats_layout.setContentsMargins(12, 16, 12, 12)
+        stats_layout.setSpacing(9)
+        stats_layout.setContentsMargins(12, 10, 12, 10)
 
         self.due_card = ProgressCard("Due Now")
         self.reviewed_today_card = ProgressCard("Reviewed (24h)")
@@ -183,9 +218,111 @@ class ProgressPage(QWidget):
 
         main_layout.addLayout(header_layout)
         main_layout.addWidget(session_group)
+        main_layout.addWidget(activity_group)
         main_layout.addWidget(stats_group)
         main_layout.addWidget(perf_group)
         main_layout.addStretch(1)
+
+    # --------- Activity (heatmap + streaks) ----------
+    def _streak_chip(self, caption_text: str, accent: str = "#FFFFFF"):
+        """A compact stat tile: big value + small caption. Returns
+        (frame, value_label, caption_label)."""
+        frame = QFrame()
+        frame.setMinimumWidth(120)
+        frame.setStyleSheet(
+            "QFrame { background-color:#101010; border:1px solid #2A2A2A; border-radius:10px; }"
+        )
+        lay = QVBoxLayout(frame)
+        lay.setContentsMargins(14, 9, 14, 9)
+        lay.setSpacing(1)
+        value = QLabel("0")
+        value.setStyleSheet(
+            f"QLabel {{ font-size:22px; font-weight:900; color:{accent}; "
+            f"background:transparent; border:none; }}"
+        )
+        caption = QLabel(caption_text)
+        caption.setStyleSheet(
+            "QLabel { font-size:11px; color:#9AA0A6; background:transparent; border:none; }"
+        )
+        lay.addWidget(value)
+        lay.addWidget(caption)
+        return frame, value, caption
+
+    @staticmethod
+    def _compute_streaks(counts: dict, today: _dt.date) -> tuple[int, int, int]:
+        """Return (current_streak, longest_streak, total_active_days).
+
+        The current streak counts consecutive active days ending today; if today
+        has no reviews yet it counts the run ending yesterday, so an unfinished
+        day never looks like a broken streak.
+        """
+        active = {d for d, c in counts.items() if int(c) > 0}
+        total_active = len(active)
+
+        cur = 0
+        d = today
+        if d.isoformat() not in active:
+            d = d - _dt.timedelta(days=1)
+        while d.isoformat() in active:
+            cur += 1
+            d -= _dt.timedelta(days=1)
+
+        longest = 0
+        if active:
+            days_sorted = sorted(_dt.date.fromisoformat(x) for x in active)
+            run = 1
+            longest = 1
+            for i in range(1, len(days_sorted)):
+                if (days_sorted[i] - days_sorted[i - 1]).days == 1:
+                    run += 1
+                else:
+                    run = 1
+                if run > longest:
+                    longest = run
+        return cur, longest, total_active
+
+    def _refresh_activity(self) -> None:
+        today = _dt.date.today()
+        since = int(time.time()) - 372 * 86400  # ~53 weeks back
+        try:
+            counts = self.session.repo.daily_review_counts(since)
+        except Exception:
+            counts = {}
+
+        self.heatmap.set_data(counts, DAILY_GOAL, today)
+
+        cur, longest, active_days = self._compute_streaks(counts, today)
+        today_count = int(counts.get(today.isoformat(), 0))
+        year_total = sum(int(v) for v in counts.values())
+
+        self.streak_value.setText(str(cur))
+        self.longest_value.setText(str(longest))
+        self.today_value.setText(f"{today_count} / {DAILY_GOAL}")
+
+        if today_count >= DAILY_GOAL:
+            self.today_value.setStyleSheet(
+                f"QLabel {{ font-size:22px; font-weight:900; color:{_ACCENT_GREEN}; "
+                f"background:transparent; border:none; }}"
+            )
+            self.today_caption.setText("goal reached!")
+            self.today_caption.setStyleSheet(
+                f"QLabel {{ font-size:11px; color:{_ACCENT_GREEN}; font-weight:800; "
+                f"background:transparent; border:none; }}"
+            )
+        else:
+            self.today_value.setStyleSheet(
+                "QLabel { font-size:22px; font-weight:900; color:#FFFFFF; "
+                "background:transparent; border:none; }"
+            )
+            self.today_caption.setText("today vs goal")
+            self.today_caption.setStyleSheet(
+                "QLabel { font-size:11px; color:#9AA0A6; background:transparent; border:none; }"
+            )
+
+        plural = "review" if year_total == 1 else "reviews"
+        self.activity_caption.setText(
+            f"{year_total:,} {plural} in the last year  ·  {active_days} active days"
+        )
 
     # --------- DB helpers ----------
     def _conn(self):
@@ -562,6 +699,9 @@ class ProgressPage(QWidget):
         self.performance_label.setText(msg)
 
     def on_show(self):
+        # Global activity first — independent of any deck selection.
+        self._refresh_activity()
+
         deck_id = None
         if hasattr(self.session, "active_deck_id"):
             deck_id = self.session.active_deck_id()
