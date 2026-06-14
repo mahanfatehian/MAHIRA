@@ -105,6 +105,31 @@ class SentenceState:
     difficulty: Optional[float] = None
 
 
+@dataclass(frozen=True)
+class ListeningItem:
+    id: int
+    deck_id: int
+    text: str            # passage read aloud (hidden until answered)
+    question: str
+    answer: str          # correct option
+    distractors: list[str]
+    translation: Optional[str]
+    tip: Optional[str]
+
+
+@dataclass(frozen=True)
+class ListeningState:
+    listening_id: int
+    ease: float
+    interval_days: float
+    reps: int
+    lapses: int
+    due_at: int
+    last_review_at: Optional[int]
+    stability: Optional[float] = None
+    difficulty: Optional[float] = None
+
+
 class Repo:
     def __init__(self, db_path: Path):
         self.db_path = db_path
@@ -945,6 +970,291 @@ class Repo:
                     ),
                 )
 
+    # ======================
+    # Listening
+    # ======================
+    def deck_listening_count(self, deck_id: int) -> int:
+        with self._conn() as conn:
+            row = conn.execute("SELECT COUNT(*) AS c FROM listening WHERE deck_id=?", (deck_id,)).fetchone()
+            return int(row["c"]) if row else 0
+
+    def clear_listening_deck(self, deck_id: int) -> None:
+        with self._conn() as conn:
+            conn.execute("DELETE FROM listening WHERE deck_id=?", (deck_id,))
+
+    def insert_listening(
+        self,
+        deck_id: int,
+        text: str,
+        question: str,
+        answer: str,
+        distractors_json: str | None,
+        translation: str | None,
+        tip: str | None,
+    ) -> int:
+        now = int(time.time())
+        text_n = (text or "").strip()
+        q_n = (question or "").strip()
+        a_n = (answer or "").strip()
+        with self._conn() as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO listening(deck_id,text,question,answer,distractors_json,translation,tip,created_at)
+                VALUES(?,?,?,?,?,?,?,?)
+                """,
+                (
+                    deck_id,
+                    text_n,
+                    q_n,
+                    a_n,
+                    distractors_json or None,
+                    (translation or "").strip() or None,
+                    (tip or "").strip() or None,
+                    now,
+                ),
+            )
+            row = conn.execute(
+                "SELECT id FROM listening WHERE deck_id=? AND question=? AND text=?",
+                (deck_id, q_n, text_n),
+            ).fetchone()
+            return int(row["id"])
+
+    def get_listening_by_id(self, listening_id: int) -> ListeningItem | None:
+        with self._conn() as conn:
+            row = conn.execute("SELECT * FROM listening WHERE id=?", (listening_id,)).fetchone()
+            return self._row_to_listening(row) if row else None
+
+    def pick_session_listening_ids(self, deck_id: int, limit: int, mode: str = "mixed", cooldown_hours: float = 12.0) -> list[int]:
+        mode = (mode or "mixed").strip().lower()
+        now = int(time.time())
+        cooldown_since = now - int(float(cooldown_hours) * 3600)
+
+        ids: list[int] = []
+
+        with self._conn() as conn:
+            if mode in ("mixed", "due_only"):
+                due = conn.execute(
+                    """
+                    SELECT l.id
+                    FROM listening l
+                    JOIN listening_states st ON st.listening_id = l.id
+                    WHERE l.deck_id = ?
+                      AND st.due_at <= ?
+                      AND (st.last_review_at IS NULL OR st.last_review_at <= ?)
+                    ORDER BY st.due_at ASC
+                    LIMIT ?
+                    """,
+                    (deck_id, now, cooldown_since, int(limit)),
+                ).fetchall()
+                ids.extend([int(r["id"]) for r in due])
+
+            if len(ids) < limit and mode == "mixed":
+                unseen = conn.execute(
+                    """
+                    SELECT l.id
+                    FROM listening l
+                    LEFT JOIN listening_states st ON st.listening_id = l.id
+                    WHERE l.deck_id = ?
+                      AND st.id IS NULL
+                    ORDER BY l.id ASC
+                    LIMIT ?
+                    """,
+                    (deck_id, int(limit - len(ids))),
+                ).fetchall()
+                ids.extend([int(r["id"]) for r in unseen])
+
+            if len(ids) < limit and mode in ("mixed", "random_only"):
+                rows = conn.execute(
+                    """
+                    SELECT l.id
+                    FROM listening l
+                    LEFT JOIN listening_states st ON st.listening_id = l.id
+                    WHERE l.deck_id = ?
+                      AND (st.last_review_at IS NULL OR st.last_review_at <= ?)
+                    """,
+                    (deck_id, cooldown_since),
+                ).fetchall()
+                pool = [int(r["id"]) for r in rows if int(r["id"]) not in set(ids)]
+                random.shuffle(pool)
+                ids.extend(pool[: (limit - len(ids))])
+
+            if not ids:
+                rows2 = conn.execute(
+                    "SELECT id FROM listening WHERE deck_id=? LIMIT ?",
+                    (deck_id, int(limit)),
+                ).fetchall()
+                ids = [int(r["id"]) for r in rows2]
+
+        random.shuffle(ids)
+        return ids[: int(limit)]
+
+    def ensure_listening_state(self, listening_id: int) -> ListeningState:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM listening_states WHERE listening_id=?",
+                (listening_id,),
+            ).fetchone()
+            if row:
+                return self._row_to_listening_state(row)
+
+            now = int(time.time())
+            conn.execute(
+                "INSERT INTO listening_states(listening_id, due_at) VALUES (?, ?)",
+                (listening_id, now),
+            )
+            row2 = conn.execute(
+                "SELECT * FROM listening_states WHERE listening_id=?",
+                (listening_id,),
+            ).fetchone()
+            return self._row_to_listening_state(row2)
+
+    def update_listening_state(self, state: ListeningState) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """
+                UPDATE listening_states
+                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?, last_review_at=?,
+                       stability=?, difficulty=?
+                 WHERE listening_id=?
+                """,
+                (
+                    state.ease,
+                    state.interval_days,
+                    state.reps,
+                    state.lapses,
+                    state.due_at,
+                    state.last_review_at,
+                    state.stability,
+                    state.difficulty,
+                    state.listening_id,
+                ),
+            )
+
+    def insert_listening_review(
+        self,
+        listening_id: int,
+        chosen: str | None,
+        correct: int | None,
+        replay_count: int = 0,
+        was_checked: int = 0,
+        was_skipped: int = 0,
+        rating: int | None = None,
+        response_ms: int | None = None,
+    ) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO listening_reviews(
+                    listening_id, chosen, correct, replay_count,
+                    was_checked, was_skipped, rating, response_ms
+                )
+                VALUES(?,?,?,?,?,?,?,?)
+                """,
+                (
+                    listening_id,
+                    chosen,
+                    correct,
+                    int(replay_count or 0),
+                    int(was_checked),
+                    int(was_skipped),
+                    rating,
+                    response_ms,
+                ),
+            )
+
+    def listening_due_count(self, deck_id: int) -> int:
+        now = int(time.time())
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                  FROM listening l
+                  JOIN listening_states st ON st.listening_id=l.id
+                 WHERE l.deck_id=? AND st.due_at<=?
+                """,
+                (deck_id, now),
+            ).fetchone()
+            return int(row["c"]) if row else 0
+
+    def listening_reviewed_last_24h(self, deck_id: int) -> int:
+        since = int(time.time()) - 24 * 3600
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                  FROM listening_reviews r
+                  JOIN listening l ON l.id=r.listening_id
+                 WHERE l.deck_id=? AND r.created_at>=?
+                """,
+                (deck_id, since),
+            ).fetchone()
+            return int(row["c"]) if row else 0
+
+    def listening_unseen_count(self, deck_id: int) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                  FROM listening l
+                  LEFT JOIN listening_states st ON st.listening_id=l.id
+                 WHERE l.deck_id=? AND st.id IS NULL
+                """,
+                (deck_id,),
+            ).fetchone()
+            return int(row["c"]) if row else 0
+
+    # ---------- Completion (review coverage) ----------
+    def lektion_seen_map(self, book_id: int, level: str) -> dict[int, tuple[int, int]]:
+        """Per-lektion (total_items, seen_items) for a book at a level, aggregated
+        across ALL objectives (vocab + grammar + sentences + listening).
+
+        An item is "seen" once it has a state row (reviewed/interacted with at
+        least once). Only lektions that actually have items appear in the map.
+        Powers the recursive "fully reviewed" ticks in the selection UI.
+        """
+        level = (level or "").upper().strip()
+        sql = """
+            WITH items(lek, sid) AS (
+                SELECT d.lektion_id, vs.id
+                  FROM vocab v JOIN decks d ON v.deck_id=d.id
+                  LEFT JOIN vocab_states vs ON vs.vocab_id=v.id
+                 WHERE d.level=?
+                UNION ALL
+                SELECT d.lektion_id, gs.id
+                  FROM grammar g JOIN decks d ON g.deck_id=d.id
+                  LEFT JOIN grammar_states gs ON gs.grammar_id=g.id
+                 WHERE d.level=?
+                UNION ALL
+                SELECT d.lektion_id, ss.id
+                  FROM sentences s JOIN decks d ON s.deck_id=d.id
+                  LEFT JOIN sentence_states ss ON ss.sentence_id=s.id
+                 WHERE d.level=?
+                UNION ALL
+                SELECT d.lektion_id, ls.id
+                  FROM listening l JOIN decks d ON l.deck_id=d.id
+                  LEFT JOIN listening_states ls ON ls.listening_id=l.id
+                 WHERE d.level=?
+            )
+            SELECT lek,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN sid IS NOT NULL THEN 1 ELSE 0 END) AS seen
+              FROM items
+             WHERE lek IN (SELECT id FROM lektions WHERE book_id=? AND level=?)
+             GROUP BY lek
+        """
+        try:
+            with self._conn() as conn:
+                rows = conn.execute(
+                    sql, (level, level, level, level, book_id, level)
+                ).fetchall()
+            return {
+                int(r["lek"]): (int(r["total"] or 0), int(r["seen"] or 0))
+                for r in rows
+                if r["lek"] is not None
+            }
+        except Exception:
+            return {}
+
     # ---------- Progress helpers ----------
     def due_count(self, deck_id: int) -> int:
         now = int(time.time())
@@ -1194,6 +1504,49 @@ class Repo:
     def _row_to_sentence_state(r: sqlite3.Row) -> SentenceState:
         return SentenceState(
             sentence_id=int(r["sentence_id"]),
+            ease=float(r["ease"]),
+            interval_days=float(r["interval_days"]),
+            reps=int(r["reps"]),
+            lapses=int(r["lapses"]),
+            due_at=int(r["due_at"]),
+            last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
+            stability=Repo._opt_float(r, "stability"),
+            difficulty=Repo._opt_float(r, "difficulty"),
+        )
+
+    @staticmethod
+    def _row_to_listening(r: sqlite3.Row) -> ListeningItem:
+        keys = set(r.keys())
+
+        distractors: list[str] = []
+        raw = r["distractors_json"] if "distractors_json" in keys else None
+        if raw:
+            try:
+                arr = json.loads(str(raw))
+                if isinstance(arr, list):
+                    distractors = [str(x).strip() for x in arr if str(x).strip()]
+            except Exception:
+                s = str(raw).strip()
+                if "|" in s:
+                    distractors = [t.strip() for t in s.split("|") if t.strip()]
+                elif s:
+                    distractors = [s]
+
+        return ListeningItem(
+            id=int(r["id"]),
+            deck_id=int(r["deck_id"]),
+            text=str(r["text"] or ""),
+            question=str(r["question"] or ""),
+            answer=str(r["answer"] or ""),
+            distractors=distractors,
+            translation=str(r["translation"]) if r["translation"] is not None else None,
+            tip=str(r["tip"]) if ("tip" in keys and r["tip"] is not None) else None,
+        )
+
+    @staticmethod
+    def _row_to_listening_state(r: sqlite3.Row) -> ListeningState:
+        return ListeningState(
+            listening_id=int(r["listening_id"]),
             ease=float(r["ease"]),
             interval_days=float(r["interval_days"]),
             reps=int(r["reps"]),

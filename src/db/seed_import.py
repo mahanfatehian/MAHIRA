@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 CEFR_LEVELS = {"a1", "a2", "b1", "b2", "c1", "c2"}
-ALLOWED_OBJECTIVES = {"vocab", "grammar", "sentences"}
+ALLOWED_OBJECTIVES = {"vocab", "grammar", "sentences", "listening"}
 
 _TOKEN_RE = re.compile(
     r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"""„‚''…–—-]"
@@ -349,5 +349,88 @@ def import_seed_csv(
                     translation=translation,
                     tip=tip,
                     words_json=json.dumps(words, ensure_ascii=False),
+                )
+        return
+
+    # ---------- LISTENING ----------
+    if objective == "listening":
+        if not changed and repo.deck_listening_count(deck_id) > 0:
+            return
+        repo.clear_listening_deck(deck_id)
+
+        def _get(row: dict, *names: str) -> str:
+            for n in names:
+                n = (n or "").strip().lower()
+                for k in row.keys():
+                    kk = (k or "").strip().lower().lstrip("﻿")
+                    if kk == n:
+                        return (row.get(k) or "").strip()
+            return ""
+
+        def _distractors(row: dict, answer: str) -> list[str]:
+            """Collect wrong options from either numbered columns
+            (distractor1, distractor2, ... / wrong1, option_b ...) or a single
+            pipe/semicolon-separated 'distractors' column. The correct answer is
+            never included as its own distractor."""
+            out: list[str] = []
+            seen = {(_norm_key(answer))}
+
+            combined = _get(row, "distractors", "wrong", "options", "choices")
+            parts: list[str] = []
+            if combined:
+                if "|" in combined:
+                    parts = [p.strip() for p in combined.split("|")]
+                elif ";" in combined:
+                    parts = [p.strip() for p in combined.split(";")]
+                else:
+                    parts = [combined.strip()]
+
+            for i in range(1, 7):
+                v = _get(row, f"distractor{i}", f"wrong{i}", f"option{i}", f"choice{i}")
+                if v:
+                    parts.append(v)
+
+            for p in parts:
+                p = (p or "").strip()
+                if not p:
+                    continue
+                k = _norm_key(p)
+                if k in seen:
+                    continue
+                seen.add(k)
+                out.append(p)
+            return out
+
+        seen: set[tuple[str, ...]] = set()
+
+        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames:
+                return
+
+            for row in reader:
+                text = _get(row, "text", "passage", "transcript", "story", "dialogue", "audio_text")
+                question = _get(row, "question", "q", "prompt")
+                answer = _get(row, "answer", "correct", "correct_answer", "a")
+                if not text or not question or not answer:
+                    continue
+
+                key = _norm_key(question, text)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                distractors = _distractors(row, answer)
+                translation = _get(row, "translation", "translation_en", "en") or None
+                tip = _get(row, "tip", "hint") or None
+
+                repo.insert_listening(
+                    deck_id=deck_id,
+                    text=text,
+                    question=question,
+                    answer=answer,
+                    distractors_json=json.dumps(distractors, ensure_ascii=False),
+                    translation=translation,
+                    tip=tip,
                 )
         return
