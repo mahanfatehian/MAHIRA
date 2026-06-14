@@ -5,7 +5,6 @@ import html
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
-    QGraphicsBlurEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -14,6 +13,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from ui.widgets.redact import mask_hidden
 
 
 def _card_style(border: str = "#2A2A2A", bg: str = "#141414", radius: int = 16) -> str:
@@ -62,9 +63,11 @@ class GrammarCardWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._meaning_blur: QGraphicsBlurEffect | None = None
-        self._hint_blur: QGraphicsBlurEffect | None = None
-        self._grammar_blur: QGraphicsBlurEffect | None = None
+        # While hidden these hold the REAL text (truthy = still masked); on
+        # reveal we swap the masked bullets back to this and clear the slot.
+        self._meaning_blur: str | None = None
+        self._hint_blur: str | None = None
+        self._grammar_blur: str | None = None
         self._hint_label_raw: str | None = None
         self._hint_detail: str | None = None
         self._recommended_rating: int | None = None
@@ -421,16 +424,13 @@ class GrammarCardWidget(QWidget):
         text = (text or "").strip()
         if not text:
             self.meaning_label.setText("No meaning available")
-            self.meaning_label.setGraphicsEffect(None)
             self._meaning_blur = None
             self.btn_reveal_meaning.setEnabled(False)
             self.btn_reveal_meaning.setVisible(False)
             return
 
-        self.meaning_label.setText(text)
-        self._meaning_blur = QGraphicsBlurEffect()
-        self._meaning_blur.setBlurRadius(6.0)
-        self.meaning_label.setGraphicsEffect(self._meaning_blur)
+        self._meaning_blur = text
+        self.meaning_label.setText(mask_hidden(text))
         self.btn_reveal_meaning.setText("Reveal")
         self.btn_reveal_meaning.setEnabled(True)
         self.btn_reveal_meaning.setVisible(True)
@@ -446,16 +446,13 @@ class GrammarCardWidget(QWidget):
 
         if not display:
             self.hint_label.setText("No hint available")
-            self.hint_label.setGraphicsEffect(None)
             self._hint_blur = None
             self.btn_reveal_hint.setEnabled(False)
             self.btn_reveal_hint.setVisible(False)
             return
 
-        self.hint_label.setText(display)
-        self._hint_blur = QGraphicsBlurEffect()
-        self._hint_blur.setBlurRadius(6.0)
-        self.hint_label.setGraphicsEffect(self._hint_blur)
+        self._hint_blur = display
+        self.hint_label.setText(mask_hidden(display))
         self.btn_reveal_hint.setText("Reveal")
         self.btn_reveal_hint.setEnabled(True)
         self.btn_reveal_hint.setVisible(True)
@@ -464,16 +461,13 @@ class GrammarCardWidget(QWidget):
         text = (text or "").strip()
         if not text:
             self.grammar_tip_label.setText("No grammar tip available")
-            self.grammar_tip_label.setGraphicsEffect(None)
             self._grammar_blur = None
             self.btn_reveal_grammar.setEnabled(False)
             self.btn_reveal_grammar.setVisible(False)
             return
 
-        self.grammar_tip_label.setText(text)
-        self._grammar_blur = QGraphicsBlurEffect()
-        self._grammar_blur.setBlurRadius(6.0)
-        self.grammar_tip_label.setGraphicsEffect(self._grammar_blur)
+        self._grammar_blur = text
+        self.grammar_tip_label.setText(mask_hidden(text))
         self.btn_reveal_grammar.setText("Reveal")
         self.btn_reveal_grammar.setEnabled(True)
         self.btn_reveal_grammar.setVisible(True)
@@ -599,7 +593,7 @@ class GrammarCardWidget(QWidget):
 
     def _reveal_meaning(self) -> None:
         if self._meaning_blur:
-            self.meaning_label.setGraphicsEffect(None)
+            self.meaning_label.setText(self._meaning_blur)
             self._meaning_blur = None
             self.btn_reveal_meaning.setText("Shown")
             self.btn_reveal_meaning.setEnabled(False)
@@ -607,17 +601,15 @@ class GrammarCardWidget(QWidget):
 
     def _reveal_hint(self) -> None:
         if self._hint_blur:
-            self.hint_label.setGraphicsEffect(None)
+            self.hint_label.setText(self._hint_blur)
             self._hint_blur = None
-            if self._hint_label_raw and self._hint_detail:
-                self.hint_label.setText(f"{self._hint_label_raw} — {self._hint_detail}")
             self.btn_reveal_hint.setText("Shown")
             self.btn_reveal_hint.setEnabled(False)
             self.hint_clicked.emit()
 
     def _reveal_grammar(self) -> None:
         if self._grammar_blur:
-            self.grammar_tip_label.setGraphicsEffect(None)
+            self.grammar_tip_label.setText(self._grammar_blur)
             self._grammar_blur = None
             self.btn_reveal_grammar.setText("Shown")
             self.btn_reveal_grammar.setEnabled(False)

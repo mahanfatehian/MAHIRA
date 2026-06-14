@@ -7,7 +7,6 @@ from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QFrame,
-    QGraphicsBlurEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -18,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.widgets.audio_button import AudioButton
+from ui.widgets.redact import mask_hidden
 
 
 @dataclass
@@ -125,9 +125,11 @@ class CardWidget(QWidget):
         super().__init__(parent)
 
         self._accent = accent
-        self._meaning_blur: QGraphicsBlurEffect | None = None
-        self._example_blur: QGraphicsBlurEffect | None = None
-        self._gender_tip_blur: QGraphicsBlurEffect | None = None
+        # While hidden these hold the REAL text (truthy = still masked); on
+        # reveal we swap the masked bullets back to this and clear the slot.
+        self._meaning_blur: str | None = None
+        self._example_blur: str | None = None
+        self._gender_tip_blur: str | None = None
         self._gender_tip_text: str | None = None
         self._recommended_rating: int | None = None
         self._active_input: QLineEdit | None = None
@@ -646,16 +648,13 @@ class CardWidget(QWidget):
 
         if not text:
             self.meaning_tip_label.setText("No meaning available")
-            self.meaning_tip_label.setGraphicsEffect(None)
             self._meaning_blur = None
             self.btn_reveal_meaning.setEnabled(False)
             self.btn_reveal_meaning.setVisible(False)
             return
 
-        self.meaning_tip_label.setText(text)
-        self._meaning_blur = QGraphicsBlurEffect()
-        self._meaning_blur.setBlurRadius(6.0)
-        self.meaning_tip_label.setGraphicsEffect(self._meaning_blur)
+        self._meaning_blur = text
+        self.meaning_tip_label.setText(mask_hidden(text))
         self.btn_reveal_meaning.setText("Reveal")
         self.btn_reveal_meaning.setEnabled(True)
         self.btn_reveal_meaning.setVisible(True)
@@ -671,16 +670,13 @@ class CardWidget(QWidget):
 
         if not display:
             self.example_tip_label.setText("No example available")
-            self.example_tip_label.setGraphicsEffect(None)
             self._example_blur = None
             self.btn_reveal_example.setEnabled(False)
             self.btn_reveal_example.setVisible(False)
             return
 
-        self.example_tip_label.setText(display)
-        self._example_blur = QGraphicsBlurEffect()
-        self._example_blur.setBlurRadius(6.0)
-        self.example_tip_label.setGraphicsEffect(self._example_blur)
+        self._example_blur = display
+        self.example_tip_label.setText(mask_hidden(display))
         self.btn_reveal_example.setText("Reveal")
         self.btn_reveal_example.setEnabled(True)
         self.btn_reveal_example.setVisible(True)
@@ -695,16 +691,13 @@ class CardWidget(QWidget):
 
         if not self._gender_tip_text:
             self.gender_tip_label.setText("No gender tip available")
-            self.gender_tip_label.setGraphicsEffect(None)
             self._gender_tip_blur = None
             self.btn_reveal_gender_tip.setEnabled(False)
             self.btn_reveal_gender_tip.setVisible(False)
             return
 
-        self.gender_tip_label.setText(self._gender_tip_text)
-        self._gender_tip_blur = QGraphicsBlurEffect()
-        self._gender_tip_blur.setBlurRadius(6.0)
-        self.gender_tip_label.setGraphicsEffect(self._gender_tip_blur)
+        self._gender_tip_blur = self._gender_tip_text
+        self.gender_tip_label.setText(mask_hidden(self._gender_tip_text))
         self.btn_reveal_gender_tip.setText("Reveal")
         self.btn_reveal_gender_tip.setEnabled(True)
         self.btn_reveal_gender_tip.setVisible(True)
@@ -821,19 +814,16 @@ class CardWidget(QWidget):
         self.in_plural.clear()
 
         self.meaning_tip_label.setText("No meaning available")
-        self.meaning_tip_label.setGraphicsEffect(None)
         self._meaning_blur = None
         self.btn_reveal_meaning.setEnabled(False)
         self.btn_reveal_meaning.setVisible(False)
 
         self.example_tip_label.setText("No example available")
-        self.example_tip_label.setGraphicsEffect(None)
         self._example_blur = None
         self.btn_reveal_example.setEnabled(False)
         self.btn_reveal_example.setVisible(False)
 
         self.gender_tip_label.setText("No gender tip available")
-        self.gender_tip_label.setGraphicsEffect(None)
         self._gender_tip_blur = None
         self._gender_tip_text = None
         self.btn_reveal_gender_tip.setEnabled(False)
@@ -919,21 +909,21 @@ class CardWidget(QWidget):
 
     def _on_reveal_meaning(self) -> None:
         if self._meaning_blur:
-            self.meaning_tip_label.setGraphicsEffect(None)
+            self.meaning_tip_label.setText(self._meaning_blur)
             self._meaning_blur = None
             self.btn_reveal_meaning.setEnabled(False)
             self.tip_clicked.emit()
 
     def _on_reveal_example(self) -> None:
         if self._example_blur:
-            self.example_tip_label.setGraphicsEffect(None)
+            self.example_tip_label.setText(self._example_blur)
             self._example_blur = None
             self.btn_reveal_example.setEnabled(False)
             self.tip_clicked.emit()
 
     def _on_reveal_gender_tip(self) -> None:
         if self._gender_tip_blur and self._gender_tip_text:
-            self.gender_tip_label.setGraphicsEffect(None)
+            self.gender_tip_label.setText(self._gender_tip_text)
             self._gender_tip_blur = None
             self.btn_reveal_gender_tip.setEnabled(False)
             self.gender_tip_clicked.emit()
