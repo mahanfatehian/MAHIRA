@@ -1,2 +1,51 @@
-text,question,answer,distractor1,distractor2,distractor3,translation,tip
-"Hallo! Ich heiße Anna. Ich komme aus Berlin und ich bin Studentin. Ich lerne Deutsch und ein bisschen Englisch.","Woher kommt Anna?","Aus Berlin","Aus Hamburg","Aus München","Aus Köln","Hello! My name is Anna. I come from Berlin and I am a student. I learn German and a little English.","Listen for the name of the city."
+text	question	answer	distractor1	distractor2	distractor3	translation	tip
+Ich will am Wochenende Fußball spielen.	Was will die Person am Wochenende machen?	Fußball spielen	Ins Kino gehen	Ein Buch lesen	Arbeiten	I want to play soccer on the weekend.	'wollen' means to want.
+Was wollt ihr heute unternehmen? - Wir wollen einen Ausflug machen.	Was wollen sie machen?	Einen Ausflug	Ein Picknick	Eine Party	Eine Pause	What do you want to do today? - We want to take an excursion.	'Ausflug' is a trip/excursion.
+Er will nach Deutschland reisen.	Wohin will er reisen?	Nach Deutschland	Nach Spanien	Nach Österreich	In die Schweiz	He wants to travel to Germany.	Listen for the country.
+Magst du klassische Musik? - Ja, sehr.	Was mag die Person?	Klassische Musik	Popmusik	Jazz	Rockmusik	Do you like classical music? - Yes, very much.	'mögen' means to like.
+Ich mag dieses Restaurant nicht. Das Essen ist kalt.	Wie findet die Person das Restaurant?	Sie mag es nicht.	Sie findet es super.	Sie liebt das Essen.	Sie findet es billig.	I do not like this restaurant. The food is cold.	Pay attention to 'nicht'.
+Mögt ihr Gemüse? - Nein, wir mögen nur Fleisch.	Was mögen sie?	Nur Fleisch	Gemüse	Obst	Fisch	Do you guys like vegetables? - No, we only like meat.	'nur' means only.
+Ich möchte etwas essen. Ich habe großen Hunger.	Warum möchte die Person etwas essen?	Sie hat Hunger.	Sie hat Durst.	Sie ist müde.	Sie hat Zeit.	I would like to eat something. I am very hungry.	'Hunger' means hunger.
+Wir gehen zusammen auf den Flohmarkt.	Wohin gehen sie?	Auf den Flohmarkt	In den Supermarkt	Ins Kino	Auf das Konzert	We are going to the flea market together.	'Flohmarkt' is flea market.
+Sie lernt einen Text auswendig.	Was macht sie mit dem Text?	Auswendig lernen	Schreiben	Lesen	Löschen	She is learning a text by heart.	'auswendig lernen' means to memorize.
+Wir verabreden uns für morgen um 10 Uhr.	Für wann verabreden sie sich?	Für morgen um 10 Uhr	Für heute um 10 Uhr	Für morgen um 8 Uhr	Für heute um 8 Uhr	We are arranging to meet for tomorrow at 10 o'clock.	'sich verabreden' is to arrange a meeting.
+Leider habe ich keine Zeit. Ich muss arbeiten.	Warum hat die Person keine Zeit?	Sie muss arbeiten.	Sie ist krank.	Sie ist müde.	Sie muss lernen.	Unfortunately I have no time. I have to work.	'leider' means unfortunately.
+Vielleicht komme ich später zur Party.	Kommt die Person zur Party?	Vielleicht später	Ja, pünktlich	Nein, gar nicht	Ja, aber nur kurz	Maybe I will come to the party later.	'Vielleicht' means maybe.
+Gehen wir zusammen essen? - Das ist eine tolle Idee!	Was findet die zweite Person toll?	Die Idee, essen zu gehen	Den Film	Das Buch	Das Restaurant	Shall we go out to eat together? - That is a great idea!	'Idee' means idea.
+Wir haben großen Durst. Wir möchten ein Glas Wasser.	Was möchten sie trinken?	Wasser	Kaffee	Tee	Cola	We are very thirsty. We would like a glass of water.	'Durst' means thirst.
+Ich trinke einen Espresso, bitte.	Was bestellt die Person?	Einen Espresso	Einen Cappuccino	Einen Milchkaffee	Einen Tee	I'll drink an espresso, please.	Listen to the specific coffee order.
+Das macht zusammen zwanzig Euro.	Wie viel macht das?	20 Euro	12 Euro	2 Euro	22 Euro	That makes twenty euros altogether.	'zwanzig' is 20.
+Zahlen Sie zusammen oder getrennt? - Zusammen, bitte.	Wie zahlen sie?	Zusammen	Getrennt	Mit Karte	Gar nicht	Are you paying together or separately? - Together, please.	'Zusammen' means together.
+Ich zahle mit Karte. Haben Sie ein Gerät?	Wie zahlt die Person?	Mit Karte	Bar	Mit einem Scheck	Mit dem Handy	I am paying with a card. Do you have a machine?	'Mit Karte' is by card.
+Das Geschäft ist bis 18 Uhr geöffnet.	Wie lange ist das Geschäft geöffnet?	Bis 18 Uhr	Bis 8 Uhr	Bis 20 Uhr	Bis 19 Uhr	The shop is open until 6 PM.	'geöffnet' means open.
+Wir kaufen online ein. Das ist praktisch.	Wo kaufen sie ein?	Online	Im Supermarkt	Auf dem Flohmarkt	Im Geschäft	We shop online. That is practical.	'online einkaufen' means to shop online.
+Er hat sein Geld vergessen. Er kann nicht zahlen.	Was ist das Problem?	Er hat sein Geld vergessen.	Er hat keine Karte.	Das Essen ist zu teuer.	Das Geschäft ist zu.	He forgot his money. He cannot pay.	'vergessen' means forgot.
+Plötzlich fängt es an zu regnen.	Was passiert plötzlich?	Es regnet.	Es schneit.	Die Sonne scheint.	Es blitzt.	Suddenly it starts to rain.	'Plötzlich' means suddenly.
+Alles ist klar. Wir haben den Plan verstanden.	Haben sie den Plan verstanden?	Ja, alles ist klar.	Nein, nichts ist klar.	Nur ein bisschen.	Sie haben keinen Plan.	Everything is clear. We understood the plan.	'Alles ist klar' means everything is understood.
+Wir sehen uns bald wieder.	Was sagen die Personen?	Sie sehen sich bald wieder.	Sie sehen sich nie wieder.	Sie verabschieden sich für immer.	Sie wollen sich nicht treffen.	We will see each other again soon.	'bald wieder' means soon again.
+Der Ausflug in die Berge war sehr erfolgreich.	Wie war der Ausflug?	Erfolgreich	Langweilig	Gefährlich	Kalt	The excursion to the mountains was very successful.	'erfolgreich' means successful.
+Ich fotografiere gern. Das ist mein neuer Fotoapparat.	Was macht die Person gern?	Fotografieren	Malen	Singen	Kochen	I like taking pictures. This is my new camera.	'Fotoapparat' is a camera.
+Meine Lieblingsaktivität ist Yoga.	Was ist ihre Lieblingsaktivität?	Yoga	Fußball	Joggen	Schwimmen	My favorite activity is yoga.	'Lieblingsaktivität' means favorite activity.
+Die Maschine ist leider kaputt.	Was ist mit der Maschine?	Sie ist kaputt.	Sie ist neu.	Sie ist teuer.	Sie funktioniert gut.	The machine is unfortunately broken.	'kaputt' means broken.
+Er baut ein Netzwerk für sein Projekt auf.	Was baut er auf?	Ein Netzwerk	Ein Haus	Ein Zelt	Einen Tisch	He is building a network for his project.	'Netzwerk' means network.
+Wir helfen den Flüchtlingen im Zentrum.	Wem helfen sie?	Den Flüchtlingen	Den Studenten	Den Touristen	Den Kindern	We help the refugees in the center.	'Flüchtlinge' means refugees.
+Die Suppenküche bietet heute warmes Essen.	Was bietet die Suppenküche?	Warmes Essen	Kalte Getränke	Kleidung	Geld	The soup kitchen offers warm food today.	'Suppenküche' is a soup kitchen.
+Die Situation ist im Moment sehr schwierig.	Wie ist die Situation?	Schwierig	Einfach	Lustig	Langweilig	The situation is very difficult at the moment.	'schwierig' means difficult.
+Der Konnektor "und" verbindet zwei Sätze.	Was verbindet Sätze?	Ein Konnektor	Ein Nomen	Ein Verb	Ein Adjektiv	The connector "and" connects two sentences.	Grammar vocabulary: Konnektor.
+Das ist ein absolutes Muss für Touristen!	Wie findet die Person diese Aktivität?	Ein absolutes Muss	Langweilig	Zu teuer	Gefährlich	That is an absolute must for tourists!	'Ein Muss' means a must-do.
+Mein Fuß tut weh nach dem langen Spaziergang.	Was tut weh?	Der Fuß	Der Kopf	Der Arm	Das Bein	My foot hurts after the long walk.	'Fuß' is foot.
+Hast du gute Vorsätze für das neue Jahr?	Was fragt die Person?	Nach guten Vorsätzen	Nach Urlaubsplänen	Nach dem Alter	Nach dem Wetter	Do you have good resolutions for the new year?	'Vorsätze' means resolutions.
+Das ist der pure Wahnsinn! Das Ticket kostet 200 Euro!	Wie findet er den Preis?	Der pure Wahnsinn (zu teuer)	Sehr günstig	Normal	Ein gutes Angebot	That is pure madness! The ticket costs 200 euros!	'Wahnsinn' means madness/crazy.
+Die Aufgaben in der Gruppe sind gut verteilt.	Wie sind die Aufgaben?	Gut verteilt	Nicht klar	Zu schwer	Zu einfach	The tasks in the group are well distributed.	'verteilt' means distributed.
+Wer bringt heute die Getränke zur Party mit?	Was soll jemand mitbringen?	Die Getränke	Das Essen	Die Musik	Die Geschenke	Who is bringing the drinks to the party today?	'Getränke' means drinks.
+Die App ist echt genial und einfach zu bedienen.	Wie findet die Person die App?	Genial und einfach	Kompliziert	Teuer	Langweilig	The app is really brilliant and easy to use.	'genial' means brilliant.
+Ich möchte ein Steak mit Pommes, bitte.	Was bestellt der Gast?	Steak mit Pommes	Pizza	Salat	Fisch	I would like a steak with fries, please.	'Steak' is a meat dish.
+Als Nachspeise nehme ich ein Eis.	Was nimmt die Person als Nachspeise?	Ein Eis	Einen Kuchen	Einen Kaffee	Einen Apfel	For dessert I will have an ice cream.	'Nachspeise' means dessert.
+Wir jobben beide im Supermarkt.	Wo jobben sie?	Im Supermarkt	Im Café	In der Bank	Im Museum	We both work casual jobs in the supermarket.	'jobben' means to work a casual/student job.
+Sie arbeitet als Angestellte in einem Büro.	Was ist sie von Beruf?	Angestellte	Chefin	Lehrerin	Praktikantin	She works as an employee in an office.	'Angestellte' means employee.
+Erklären Sie mir bitte diesen Fragesatz.	Was soll erklärt werden?	Der Fragesatz	Das Wort	Der Text	Die Antwort	Please explain this question sentence to me.	'Fragesatz' means question (sentence).
+Das Buch ist nicht neu, es ist secondhand.	Ist das Buch neu?	Nein, es ist secondhand.	Ja, es ist ganz neu.	Nein, es ist kaputt.	Es ist ein E-Book.	The book is not new, it is secondhand.	'secondhand' means used.
+Mein Lieblingsrestaurant bietet tolle italienische Spezialitäten.	Was bietet das Restaurant?	Italienische Spezialitäten	Griechisches Essen	Deutsche Küche	Asiatische Gerichte	My favorite restaurant offers great Italian specialties.	'Spezialitäten' means specialties.
+Im Winter fahre ich am liebsten Ski.	Was macht die Person im Winter am liebsten?	Ski fahren	Schlittschuh laufen	Schwimmen	Im Bett bleiben	In winter I like to ski best.	'Ski fahren' means to ski.
+Sie lernen abwechselnd Englisch und Deutsch.	Wie lernen sie die Sprachen?	Abwechselnd	Nur Englisch	Nur Deutsch	Gleichzeitig	They learn English and German alternately.	'abwechselnd' means alternately/taking turns.
+Wir bleiben auf jeden Fall in Kontakt!	Was wollen die Personen machen?	In Kontakt bleiben	Sich nie wieder sehen	Die Nummer löschen	Sich streiten	We will definitely stay in touch!	'In Kontakt bleiben' means to stay in touch.
