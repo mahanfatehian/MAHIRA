@@ -10,11 +10,9 @@ name: Build & Release
 # Targets (GitHub-hosted runners):
 #   - Windows: windows-latest  (x64)            -> Inno Setup installer + portable zip
 #   - macOS:   macos-14 (Apple Silicon / arm64) -> arm64 .dmg + .zip
-#   - macOS:   macos-13 (Intel / x86_64)        -> x86_64 .dmg + .zip
-# An arm64 app cannot run on an Intel Mac (Rosetta only goes Intel->arm64), so we
-# build BOTH architectures and ship a DMG for each. NOTE: GitHub is winding down
-# the Intel `macos-13` runner; when it is finally retired, either keep an Intel
-# build via a self-hosted runner or accept arm64-only.
+# Apple Silicon only by choice: an arm64 build finishes in ~6 min, vs the slow
+# Intel (macos-13) runner. Intel Macs are not supported. If you ever need x86_64
+# again, add a `macos-13` matrix entry back.
 
 on:
   push:
@@ -109,16 +107,9 @@ jobs:
 
   # ---------------------------------------------------------------------------
   build-macos:
-    # Build once per architecture so both Apple Silicon and Intel Macs are covered.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14   # Apple Silicon
-            arch: arm64
-          - runner: macos-13   # Intel
-            arch: x86_64
-    runs-on: ${{ matrix.runner }}
+    # Apple Silicon only. macos-14 is the latest stable macOS runner (arm64);
+    # Intel (macos-13) is intentionally dropped so releases build in ~6 min.
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -189,12 +180,12 @@ jobs:
           cp -R "dist/MAHIRA.app" dist/dmg/
           ln -s /Applications dist/dmg/Applications
           hdiutil create -volname "MAHIRA" -srcfolder dist/dmg -ov -format UDZO \
-            "dist/artifacts/MAHIRA-$VERSION-macos-${{ matrix.arch }}.dmg"
-          ditto -c -k --keepParent "dist/MAHIRA.app" "dist/artifacts/MAHIRA-$VERSION-macos-${{ matrix.arch }}.zip"
+            "dist/artifacts/MAHIRA-$VERSION-macos-arm64.dmg"
+          ditto -c -k --keepParent "dist/MAHIRA.app" "dist/artifacts/MAHIRA-$VERSION-macos-arm64.zip"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-installers-${{ matrix.arch }}   # v4 requires unique artifact names
+          name: macos-installers
           path: dist/artifacts/*
           retention-days: 1   # keep storage under the 500 MB free-tier cap
           if-no-files-found: error
