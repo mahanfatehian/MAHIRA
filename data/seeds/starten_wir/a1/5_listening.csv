@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 text	question	answer	distractor1	distractor2	distractor3	translation	tip
 Entschuldigung, wie spät ist es? - Es ist Viertel nach acht.	Wie spät ist es?	08:15	08:45	07:45	08:30	Excuse me, what time is it? - It is quarter past eight.	'Viertel nach' means 15 minutes past the hour.
 Der Deutschkurs beginnt um halb zehn.	Wann beginnt der Kurs?	09:30	10:30	09:00	10:00	The German course starts at half past nine.	'halb zehn' means 9:30, not 10:30!
@@ -50,7 +49,3 @@ Um zwanzig vor acht fährt mein Bus.	Wann fährt der Bus?	07:40	08:20	07:20	08:4
 Ich lade meine Freunde zum Essen ein.	Was macht die Person?	Freunde einladen	Freunde anrufen	Essen gehen	Essen bestellen	I am inviting my friends to dinner.	'Einladen' is a separable verb meaning to invite.
 Machst du das Licht aus? Ich möchte schlafen.	Was soll die Person machen?	Das Licht ausmachen	Das Fenster zumachen	Das Licht anmachen	Die Tür aufmachen	Will you turn the light off? I want to sleep.	'Ausmachen' means to turn off (lights/electronics).
 Mein Wecker klingelt jeden Tag um sechs Uhr dreißig.	Wann klingelt der Wecker?	Um 6:30 Uhr	Um 6:00 Uhr	Um 7:30 Uhr	Um 7:00 Uhr	My alarm rings every day at six thirty.	'Wecker klingelt' means alarm rings.
-=======
-text,question,answer,distractor1,distractor2,distractor3,translation,tip
-"Hallo! Ich heiße Anna. Ich komme aus Berlin und ich bin Studentin. Ich lerne Deutsch und ein bisschen Englisch.","Woher kommt Anna?","Aus Berlin","Aus Hamburg","Aus München","Aus Köln","Hello! My name is Anna. I come from Berlin and I am a student. I learn German and a little English.","Listen for the name of the city."
->>>>>>> 6a33bad3b46e0c28eae8413e4bcfc99f7d0edd1e
