@@ -1,4 +1,4 @@
-text	question	answer	distractor1	distractor2	distractor3	translation	tip
+text,question,answer,distractor1,distractor2,distractor3,translation,tip
 Guten Tag, Herr Doktor. Mein Kopf tut weh.	Was tut der Person weh?	Der Kopf	Der Bauch	Das Bein	Der Arm	Hello, Doctor. My head hurts.	'Kopf' means head. 'wehtun' means to hurt.
 Sie haben Fieber. Sie sollen im Bett bleiben.	Was soll der Patient machen?	Im Bett bleiben	Sport machen	Arbeiten gehen	Fernsehen	You have a fever. You should stay in bed.	'sollen' means should / supposed to.
 Darf ich morgen schwimmen gehen? - Nein, das dürfen Sie nicht.	Was darf der Patient NICHT machen?	Schwimmen gehen	Schlafen	Ein Buch lesen	Wasser trinken	May I go swimming tomorrow? - No, you are not allowed to do that.	'dürfen' means may / allowed to.

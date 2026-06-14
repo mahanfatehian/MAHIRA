@@ -1,4 +1,4 @@
-text	question	answer	distractor1	distractor2	distractor3	translation	tip
+text,question,answer,distractor1,distractor2,distractor3,translation,tip
 Entschuldigung, wo ist der Bahnhof? - Gehen Sie immer geradeaus.	Wo ist der Bahnhof?	Immer geradeaus	Die erste Straße links	Die zweite Straße rechts	Neben der Post	Excuse me, where is the train station? - Go straight ahead.	'geradeaus' means straight ahead.
 Ich fahre jeden Tag mit dem Fahrrad zur Arbeit.	Wie fährt die Person zur Arbeit?	Mit dem Fahrrad	Mit dem Auto	Mit dem Bus	Zu Fuß	I ride my bike to work every day.	'Fahrrad' means bicycle.
 Der Zug nach München fährt auf Gleis vier ab.	Auf welchem Gleis fährt der Zug ab?	Gleis 4	Gleis 14	Gleis 24	Gleis 40	The train to Munich departs on track four.	'Gleis' means track or platform.

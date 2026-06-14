@@ -1,4 +1,4 @@
-text	question	answer	distractor1	distractor2	distractor3	translation	tip
+text,question,answer,distractor1,distractor2,distractor3,translation,tip
 Wie ist das Wetter heute? - Es regnet leider.	Wie ist das Wetter?	Es regnet.	Es scheint die Sonne.	Es schneit.	Es ist windig.	How is the weather today? - It is unfortunately raining.	'Es regnet' means it is raining.
 Die Sonne scheint und es ist sehr warm.	Wie ist das Wetter?	Sonnig und warm	Kalt und bewölkt	Regnerisch und windig	Sonnig und kalt	The sun is shining and it is very warm.	'Sonne scheint' means sunny.
 Im Winter schneit es oft in den Bergen.	Was passiert im Winter in den Bergen?	Es schneit oft.	Es regnet oft.	Die Sonne scheint immer.	Es ist sehr heiß.	In winter it often snows in the mountains.	'schneit' comes from Schnee (snow).

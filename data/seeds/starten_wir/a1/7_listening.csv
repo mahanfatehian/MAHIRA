@@ -1,4 +1,4 @@
-text	question	answer	distractor1	distractor2	distractor3	translation	tip
+text,question,answer,distractor1,distractor2,distractor3,translation,tip
 Entschuldigung, wo finde ich die Milch? - Im Kühlregal, gleich links.	Wo ist die Milch?	Im Kühlregal	An der Kasse	Beim Gemüse	Beim Bäcker	Excuse me, where can I find the milk? - In the refrigerated section, just to the left.	'Kühlregal' means refrigerated section.
 Ich brauche zwei Kilo Kartoffeln und ein Pfund Tomaten.	Wie viele Kartoffeln braucht die Person?	Zwei Kilo	Ein Kilo	Ein Pfund	Zwei Pfund	I need two kilos of potatoes and half a kilo of tomatoes.	'Zwei Kilo' is 2 kilograms.
 Was kostet ein Liter Apfelsaft? - Ein Euro zwanzig.	Wie viel kostet der Apfelsaft?	1,20 Euro	1,12 Euro	2,10 Euro	12,00 Euro	How much does a liter of apple juice cost? - One euro twenty.	Listen to the exact numbers 'ein Euro zwanzig'.

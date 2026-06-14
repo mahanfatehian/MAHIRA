@@ -1,4 +1,4 @@
-text	question	answer	distractor1	distractor2	distractor3	translation	tip
+text,question,answer,distractor1,distractor2,distractor3,translation,tip
 Entschuldigung, wie spät ist es? - Es ist Viertel nach acht.	Wie spät ist es?	08:15	08:45	07:45	08:30	Excuse me, what time is it? - It is quarter past eight.	'Viertel nach' means 15 minutes past the hour.
 Der Deutschkurs beginnt um halb zehn.	Wann beginnt der Kurs?	09:30	10:30	09:00	10:00	The German course starts at half past nine.	'halb zehn' means 9:30, not 10:30!
 Ich stehe jeden Morgen um Viertel vor sieben auf.	Wann steht die Person auf?	06:45	07:15	07:45	06:15	I get up every morning at quarter to seven.	'Viertel vor' means 15 minutes to the hour.

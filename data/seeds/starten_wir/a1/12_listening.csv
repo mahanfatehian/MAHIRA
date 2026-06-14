@@ -1,4 +1,4 @@
-text	question	answer	distractor1	distractor2	distractor3	translation	tip
+text,question,answer,distractor1,distractor2,distractor3,translation,tip
 Was sind Sie von Beruf? - Ich arbeite als Architekt.	Was ist die Person von Beruf?	Architekt	Arzt	Pilot	Lehrer	What is your profession? - I work as an architect.	'Architekt' means architect.
 Mein Chef ist heute leider nicht im Büro.	Wer ist heute nicht im Büro?	Der Chef	Der Kollege	Der Praktikant	Der Kunde	My boss is unfortunately not in the office today.	'Chef' means boss.
 Sie macht eine Ausbildung zur Köchin in einem Restaurant.	Was macht die Frau?	Eine Ausbildung zur Köchin	Ein Praktikum als Ärztin	Ein Studium an der Uni	Einen Sprachkurs	She is doing an apprenticeship to become a cook in a restaurant.	'Ausbildung' means apprenticeship/training.
