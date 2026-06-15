@@ -129,6 +129,73 @@ def test_wrong_meaning_marked_incorrect(repo):
     assert res["meaning_ok"] is False
 
 
+def test_skip_is_not_logged_as_a_review(repo):
+    """A skipped card must not create a review row, so it stays out of every
+    'reviewed' count / heatmap / accuracy stat — but the card is still
+    rescheduled so it comes back. A genuine attempt IS logged."""
+    s = _session(repo)
+    s.start_new_session()
+    item = s.next_vocab_item()
+    assert item is not None
+
+    before = repo.reviewed_last_24h(item.deck_id)
+
+    # Skip: forced to Again and rescheduled, but NOT recorded as a review.
+    s.submit_vocab(
+        item,
+        typed_meaning="",
+        typed_gender="",
+        typed_plural="",
+        rating=2,
+        tip_used=False,
+        gender_tip_used=False,
+        was_checked=False,
+        was_skipped=True,
+        response_ms=800,
+    )
+    assert repo.reviewed_last_24h(item.deck_id) == before, "a skip must not count as a review"
+    assert repo.ensure_state(item.id).due_at is not None, "skip should still reschedule the card"
+
+    # A genuine attempt on the same card IS logged.
+    meaning = (item.meaning or "").split(";")[0].split("/")[0].strip()
+    s.submit_vocab(
+        item,
+        typed_meaning=meaning,
+        typed_gender=(item.gender or ""),
+        typed_plural=(item.plural or ""),
+        rating=2,
+        tip_used=False,
+        gender_tip_used=False,
+        was_checked=True,
+        was_skipped=False,
+        response_ms=1200,
+    )
+    assert repo.reviewed_last_24h(item.deck_id) == before + 1, "a real attempt must be logged"
+
+
+def test_accept_override_counts_meaning_correct(repo):
+    """'Accept my answer' forces a model-rejected meaning to count as correct."""
+    s = _session(repo)
+    s.start_new_session()
+    item = s.next_vocab_item()
+    assert item is not None
+
+    res = s.submit_vocab(
+        item,
+        typed_meaning="definitely-not-the-listed-gloss",
+        typed_gender=(item.gender or ""),
+        typed_plural=(item.plural or ""),
+        rating=2,
+        tip_used=False,
+        gender_tip_used=False,
+        was_checked=True,
+        was_skipped=False,
+        response_ms=1200,
+        accept_override=True,
+    )
+    assert res["meaning_ok"] is True
+
+
 def test_migration_adds_fsrs_columns_to_legacy_db(tmp_path):
     """An old DB whose *_states tables lack stability/difficulty must gain them
     in-place, with no data loss."""

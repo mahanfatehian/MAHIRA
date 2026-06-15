@@ -59,6 +59,7 @@ class GrammarCardWidget(QWidget):
     meaning_tip_clicked = Signal()
     hint_clicked = Signal()
     grammar_tip_clicked = Signal()
+    accepted = Signal()  # "Accept my answer" override
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -203,6 +204,13 @@ class GrammarCardWidget(QWidget):
         self.feedback.setStyleSheet(self._feedback_style(ok=None))
         root.addWidget(self.feedback)
 
+        # "Accept my answer" override — shown only when the answer was wrong.
+        self.accept_btn = QPushButton("✓  Accept my answer")
+        self.accept_btn.setMinimumHeight(34)
+        self.accept_btn.setVisible(False)
+        self.accept_btn.setStyleSheet(self._accept_btn_style())
+        root.addWidget(self.accept_btn)
+
         rating_frame = QFrame()
         rating_frame.setObjectName("RatingCard")
         rating_frame.setStyleSheet(_card_style(border="#2A2A2A", bg="#141414", radius=18))
@@ -304,6 +312,21 @@ class GrammarCardWidget(QWidget):
             QPushButton:hover { background-color: #1B4B78; border: 1px solid #FFFFFF; }
             QPushButton:pressed { background-color: #123050; }
             QPushButton:disabled { background-color: #1A1A1A; color: #6B6B6B; border: 1px solid #252525; }
+        """
+
+    def _accept_btn_style(self) -> str:
+        return """
+            QPushButton {
+                background-color: #17314A;
+                color: #BBD7FF;
+                border: 1px solid #2F567E;
+                border-radius: 12px;
+                padding: 7px 12px;
+                font-weight: 900;
+                font-size: 12px;
+            }
+            QPushButton:hover { background-color: #1D3E5E; border: 1px solid #6B9FFF; color: #FFFFFF; }
+            QPushButton:pressed { background-color: #15293D; }
         """
 
     def _reveal_btn_style(self) -> str:
@@ -465,6 +488,22 @@ class GrammarCardWidget(QWidget):
                 f"Incorrect.\n\nYour answer: {typed_display}\nCorrect answer: {expected_display}"
             )
 
+        self.accept_btn.setVisible(not ok)
+
+        for rating, button in self._rating_buttons:
+            button.setStyleSheet(
+                self._rating_style(
+                    rating,
+                    recommended=(rating == self._recommended_rating),
+                )
+            )
+
+    def mark_accepted(self) -> None:
+        """Flip the result to correct after the learner overrides."""
+        self._recommended_rating = 2
+        self.feedback.setStyleSheet(self._feedback_style(ok=True))
+        self.feedback.setText("Accepted ✓  (counted as correct)")
+        self.accept_btn.setVisible(False)
         for rating, button in self._rating_buttons:
             button.setStyleSheet(
                 self._rating_style(
@@ -488,6 +527,7 @@ class GrammarCardWidget(QWidget):
             )
 
     def lock_for_empty_state(self) -> None:
+        self.accept_btn.setVisible(False)
         self.in_blank.setEnabled(False)
         self.btn_check.setEnabled(False)
         self.btn_skip.setEnabled(False)
@@ -498,6 +538,7 @@ class GrammarCardWidget(QWidget):
 
     def reset_for_next(self) -> None:
         self._recommended_rating = None
+        self.accept_btn.setVisible(False)
         self.feedback.setVisible(False)
         self.feedback.setText(" ")
         self.feedback.setStyleSheet(self._feedback_style(ok=None))
@@ -532,6 +573,8 @@ class GrammarCardWidget(QWidget):
         self.btn_hard.clicked.connect(lambda: self.rated.emit(1))
         self.btn_good.clicked.connect(lambda: self.rated.emit(2))
         self.btn_easy.clicked.connect(lambda: self.rated.emit(3))
+
+        self.accept_btn.clicked.connect(self.accepted.emit)
 
         self.btn_reveal_meaning.clicked.connect(self._reveal_meaning)
         self.btn_reveal_hint.clicked.connect(self._reveal_hint)

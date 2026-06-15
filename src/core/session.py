@@ -847,9 +847,16 @@ class SessionService:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
+        accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_state(item.id)
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
+
+        # Learner override ("Accept my answer"): they assert their meaning was a
+        # valid gloss the key didn't list, so count meaning as correct.
+        if accept_override:
+            res = dict(res)
+            res["meaning_ok"] = True
 
         effective_rating = _effective_vocab_rating(
             result=res,
@@ -864,21 +871,26 @@ class SessionService:
         gender_correct_bool = None if res["gender_ok"] is None else bool(res["gender_ok"])
         plural_correct_bool = None if res["plural_ok"] is None else bool(res["plural_ok"])
 
-        self.repo.insert_review(
-            vocab_id=item.id,
-            typed_meaning=typed_meaning or None,
-            typed_gender=typed_gender or None,
-            typed_plural=typed_plural or None,
-            meaning_correct=1 if meaning_correct_bool else 0,
-            gender_correct=None if gender_correct_bool is None else (1 if gender_correct_bool else 0),
-            plural_correct=None if plural_correct_bool is None else (1 if plural_correct_bool else 0),
-            tip_used=1 if tip_used else 0,
-            gender_tip_used=1 if gender_tip_used else 0,
-            was_checked=1 if was_checked else 0,
-            was_skipped=1 if was_skipped else 0,
-            rating=effective_rating,
-            response_ms=response_ms,
-        )
+        # A skip is not a real review attempt, so it is NOT logged. That keeps
+        # skips out of every "reviewed" count, the activity heatmap, mastery and
+        # accuracy — they all read the reviews table. The card is still
+        # rescheduled below (Again) so it comes back.
+        if not was_skipped:
+            self.repo.insert_review(
+                vocab_id=item.id,
+                typed_meaning=typed_meaning or None,
+                typed_gender=typed_gender or None,
+                typed_plural=typed_plural or None,
+                meaning_correct=1 if meaning_correct_bool else 0,
+                gender_correct=None if gender_correct_bool is None else (1 if gender_correct_bool else 0),
+                plural_correct=None if plural_correct_bool is None else (1 if plural_correct_bool else 0),
+                tip_used=1 if tip_used else 0,
+                gender_tip_used=1 if gender_tip_used else 0,
+                was_checked=1 if was_checked else 0,
+                was_skipped=1 if was_skipped else 0,
+                rating=effective_rating,
+                response_ms=response_ms,
+            )
 
         st2 = schedule_next(st, effective_rating)
         self.repo.update_state(st2)
@@ -936,9 +948,15 @@ class SessionService:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
+        accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_grammar_state(item.id)
         res = self.check_grammar(item, typed_blank)
+
+        # Learner override ("Accept my answer"): count the answer as correct.
+        if accept_override:
+            res = dict(res)
+            res["ok"] = True
 
         used_help = bool(meaning_tip_used or hint_used or grammar_tip_used)
 
@@ -952,18 +970,20 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        self.repo.insert_grammar_review(
-            grammar_id=item.id,
-            typed_blank=(typed_blank or None),
-            correct=correct,
-            meaning_tip_used=(1 if meaning_tip_used else 0),
-            hint_used=(1 if hint_used else 0),
-            grammar_tip_used=(1 if grammar_tip_used else 0),
-            was_checked=(1 if was_checked else 0),
-            was_skipped=(1 if was_skipped else 0),
-            rating=effective_rating,
-            response_ms=response_ms,
-        )
+        # Skips are not logged (see submit_vocab) so they never count as reviews.
+        if not was_skipped:
+            self.repo.insert_grammar_review(
+                grammar_id=item.id,
+                typed_blank=(typed_blank or None),
+                correct=correct,
+                meaning_tip_used=(1 if meaning_tip_used else 0),
+                hint_used=(1 if hint_used else 0),
+                grammar_tip_used=(1 if grammar_tip_used else 0),
+                was_checked=(1 if was_checked else 0),
+                was_skipped=(1 if was_skipped else 0),
+                rating=effective_rating,
+                response_ms=response_ms,
+            )
 
         st2 = schedule_next(st, effective_rating)
         self.repo.update_grammar_state(st2)
@@ -1088,22 +1108,24 @@ class SessionService:
         typed = (typed_text or "").strip() or None
         got_toks = _tokenize(typed_text)
 
-        self.repo.insert_sentence_review(
-            sentence_id=item.id,
-            typed_text=typed,
-            correct=correct,
-            tip_used=int(tip_used),
-            translation_used=int(translation_used),
-            was_checked=int(was_checked),
-            was_skipped=int(was_skipped),
-            rating=effective_rating,
-            response_ms=response_ms,
-            bank_size=len(getattr(item, "words", []) or []),
-            tokens_used=len(got_toks),
-            mismatch_count=int(res.get("mismatch_count") or 0),
-            cap_errors=int(res.get("cap_errors") or 0),
-            punct_errors=int(res.get("punct_errors") or 0),
-        )
+        # Skips are not logged (see submit_vocab) so they never count as reviews.
+        if not was_skipped:
+            self.repo.insert_sentence_review(
+                sentence_id=item.id,
+                typed_text=typed,
+                correct=correct,
+                tip_used=int(tip_used),
+                translation_used=int(translation_used),
+                was_checked=int(was_checked),
+                was_skipped=int(was_skipped),
+                rating=effective_rating,
+                response_ms=response_ms,
+                bank_size=len(getattr(item, "words", []) or []),
+                tokens_used=len(got_toks),
+                mismatch_count=int(res.get("mismatch_count") or 0),
+                cap_errors=int(res.get("cap_errors") or 0),
+                punct_errors=int(res.get("punct_errors") or 0),
+            )
 
         st2 = schedule_next(st, effective_rating)
         self.repo.update_sentence_state(st2)
@@ -1204,16 +1226,18 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        self.repo.insert_listening_review(
-            listening_id=item.id,
-            chosen=(chosen or None),
-            correct=correct,
-            replay_count=int(replay_count or 0),
-            was_checked=1 if was_checked else 0,
-            was_skipped=1 if was_skipped else 0,
-            rating=effective_rating,
-            response_ms=response_ms,
-        )
+        # Skips are not logged (see submit_vocab) so they never count as reviews.
+        if not was_skipped:
+            self.repo.insert_listening_review(
+                listening_id=item.id,
+                chosen=(chosen or None),
+                correct=correct,
+                replay_count=int(replay_count or 0),
+                was_checked=1 if was_checked else 0,
+                was_skipped=1 if was_skipped else 0,
+                rating=effective_rating,
+                response_ms=response_ms,
+            )
 
         st2 = schedule_next(st, effective_rating)
         self.repo.update_listening_state(st2)
