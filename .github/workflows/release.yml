@@ -63,10 +63,12 @@ jobs:
       - name: Verify LFS assets are real (not pointers)
         shell: pwsh
         run: |
-          $m = Get-ChildItem assets/audio/models/*.onnx -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $m) { Write-Error "Voice model missing"; exit 1 }
-          if ($m.Length -lt 1MB) { Write-Error "Voice model is an LFS pointer ($($m.Length) bytes). Checkout did not pull LFS."; exit 1 }
-          Write-Host "Voice model OK: $([math]::Round($m.Length/1MB,1)) MB"
+          $models = Get-ChildItem -Path assets/models -Recurse -Filter *.onnx -ErrorAction SilentlyContinue
+          if (-not $models) { Write-Error "No model files found under assets/models"; exit 1 }
+          foreach ($m in $models) {
+            if ($m.Length -lt 1MB) { Write-Error "$($m.Name) is an LFS pointer ($($m.Length) bytes). Checkout did not pull LFS."; exit 1 }
+            Write-Host "$($m.Name) OK: $([math]::Round($m.Length/1MB,1)) MB"
+          }
 
       - name: Install dependencies
         shell: pwsh
@@ -129,11 +131,14 @@ jobs:
 
       - name: Verify LFS assets are real (not pointers)
         run: |
-          m=$(ls assets/audio/models/*.onnx 2>/dev/null | head -1)
-          if [ -z "$m" ]; then echo "Voice model missing"; exit 1; fi
-          sz=$(stat -f%z "$m")
-          if [ "$sz" -lt 1000000 ]; then echo "Voice model is an LFS pointer ($sz bytes). Checkout did not pull LFS."; exit 1; fi
-          echo "Voice model OK: $sz bytes"
+          found=0
+          for m in $(find assets/models -name '*.onnx'); do
+            found=1
+            sz=$(stat -f%z "$m")
+            if [ "$sz" -lt 1000000 ]; then echo "$(basename "$m") is an LFS pointer ($sz bytes). Checkout did not pull LFS."; exit 1; fi
+            echo "$(basename "$m") OK: $sz bytes"
+          done
+          if [ "$found" -eq 0 ]; then echo "No model files found under assets/models"; exit 1; fi
 
       - name: Install dependencies
         run: |

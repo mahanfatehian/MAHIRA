@@ -13,7 +13,7 @@ class PiperModelManager:
         self._project_root = self._detect_project_root()
 
     def _detect_project_root(self) -> Path:
-        # Voice models are read-only bundled resources under assets/audio/models.
+        # Voice models are read-only bundled resources under assets/models/piper.
         # Resolve via the shared resource root so it works both from source and
         # from a packaged (frozen) build.
         try:
@@ -35,8 +35,8 @@ class PiperModelManager:
         path = (
             self.project_root
             / "assets"
-            / "audio"
             / "models"
+            / "piper"
             / "de_DE-thorsten-high.onnx"
         )
         if not path.exists():

@@ -52,8 +52,9 @@ writable without admin rights.
 
 ## Git LFS (required)
 
-The Piper voice model (`assets/audio/models/*.onnx`, ~100 MB) is stored in
-**Git LFS**. The build bundles it, so LFS objects must be present:
+The model files (`assets/models/**/*.onnx` — the Piper voice + the meaning-match
+model) are stored in **Git LFS**. The build bundles them, so LFS objects must be
+present:
 
 ```bash
 git lfs install

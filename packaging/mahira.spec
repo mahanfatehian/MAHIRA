@@ -37,7 +37,7 @@ APP_VERSION = _raw_version.split("-")[0] or "0.1.0"
 # ---------------------------------------------------------------------------
 datas = [
     (str(ROOT / "data"), "data"),                       # seeds/ + pages/
-    (str(ROOT / "assets"), "assets"),                   # logo + piper voices + MiniLM model
+    (str(ROOT / "assets"), "assets"),                   # logo + piper voice + mpnet meaning model
     (str(ROOT / "src" / "db" / "schema.sql"), "src/db"),  # DB schema
 ]
 

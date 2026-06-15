@@ -2,18 +2,26 @@
 
 Replaces the old fuzzy/edit-distance meaning check (which wrongly accepted
 "eight" for "eighty") with a real meaning comparison: both the stored gloss and
-the learner's answer are embedded with a small sentence-embedding model
-(all-MiniLM-L6-v2, int8 ONNX, ~23 MB) and compared by cosine similarity.
+the learner's answer are embedded with a sentence-embedding model
+(all-mpnet-base-v2, int8 ONNX, ~105 MB) and compared by cosine similarity.
 
 Runs fully offline on the CPU via onnxruntime (already shipped for Piper TTS) +
 the HuggingFace `tokenizers` lib — no PyTorch. The model lives in
-assets/models/all-MiniLM-L6-v2/ and is bundled with the app.
+assets/models/all-mpnet-base-v2/ and is bundled with the app.
 
-Threshold note: MEANING_THRESHOLD is calibrated on this exact int8 model so that
-number confusions ("eighty"/"eight" ~0.61) and near-misses ("father"/"mother"
-~0.73) are rejected, while trivial variations ("to work"/"work" ~0.82,
-"family"/"the family" ~0.92) are accepted. Raise it to be stricter, lower it to
-accept looser synonyms. It is the single knob for tuning meaning matching.
+Model choice: mpnet is the most *discriminating* sentence model in its class —
+it keeps wrong answers far from right ones (numbers "eight"/"eighty" ~0.43,
+antonyms "buy"/"sell" ~0.69, near-misses "father"/"mother" ~0.69), which is what
+this task needs. The trade-off is that it also rates *loose* synonyms low
+("happy"/"glad" ~0.35), so those are rejected by design — precision over recall.
+
+Threshold note: MEANING_THRESHOLD is calibrated on this exact int8 model. At
+0.70, wrong answers (numbers, antonyms, father/mother) stay below it while strong
+synonyms clear it ("to purchase"/"to buy" ~0.80, "to begin"/"to start" ~0.79,
+"automobile"/"car" ~0.72). Raise it to be stricter; lower it to accept looser
+synonyms (but below ~0.69 you start accepting antonyms like buy/sell). It is the
+single knob for tuning meaning matching — and per-item phrasings can also be
+listed in the seed glosses for exact-match acceptance.
 """
 from __future__ import annotations
 
@@ -23,9 +31,9 @@ from pathlib import Path
 import numpy as np
 
 # Cosine-similarity cutoff for "same meaning". See module docstring.
-MEANING_THRESHOLD = 0.74
+MEANING_THRESHOLD = 0.70
 
-_MODEL_SUBPATH = ("assets", "models", "all-MiniLM-L6-v2")
+_MODEL_SUBPATH = ("assets", "models", "all-mpnet-base-v2")
 
 
 def _model_dir() -> Path:
