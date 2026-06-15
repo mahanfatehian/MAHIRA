@@ -196,6 +196,41 @@ def test_accept_override_counts_meaning_correct(repo):
     assert res["meaning_ok"] is True
 
 
+def test_accept_override_leaves_gender_and_plural_real(repo):
+    """Accept-my-answer forgives ONLY the meaning. A wrong gender/plural must
+    stay wrong, so the review row and the ML still see the real verdicts."""
+    s = _session(repo)
+    s.start_new_session()
+
+    # Find a gendered noun in the deck (its gender field drives the gender check).
+    item = None
+    it = s.next_vocab_item()
+    while it is not None:
+        if (getattr(it, "pos", "") or "").lower() == "noun" and it.gender:
+            item = it
+            break
+        it = s.next_vocab_item()
+    assert item is not None, "seed deck should contain a gendered noun"
+
+    res = s.submit_vocab(
+        item,
+        typed_meaning="definitely-not-the-listed-gloss",
+        typed_gender="x",          # wrong gender
+        typed_plural="zzz-wrong",  # wrong plural (only graded if the noun has one)
+        rating=3,
+        tip_used=False,
+        gender_tip_used=False,
+        was_checked=True,
+        was_skipped=False,
+        response_ms=1000,
+        accept_override=True,
+    )
+    assert res["meaning_ok"] is True, "meaning should be accepted via override"
+    assert res["gender_ok"] is False, "gender must NOT be auto-accepted by the override"
+    if item.plural:
+        assert res["plural_ok"] is False, "plural must NOT be auto-accepted by the override"
+
+
 def test_migration_adds_fsrs_columns_to_legacy_db(tmp_path):
     """An old DB whose *_states tables lack stability/difficulty must gain them
     in-place, with no data loss."""

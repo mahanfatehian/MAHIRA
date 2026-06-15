@@ -132,6 +132,11 @@ class CardWidget(QWidget):
         self._gender_tip_blur: str | None = None
         self._gender_tip_text: str | None = None
         self._recommended_rating: int | None = None
+        # Remember the LAST real gender/plural verdicts so "Accept my answer"
+        # (which forgives only the meaning) can still reflect them — gender and
+        # plural are never auto-accepted.
+        self._last_gender_ok: bool | None = None
+        self._last_plural_ok: bool | None = None
         self._active_input: QLineEdit | None = None
 
         self.setObjectName("CardWidget")
@@ -742,6 +747,11 @@ class CardWidget(QWidget):
             payload.expected_plural,
         )
 
+        # Keep the real gender/plural verdicts: "Accept my answer" forgives only
+        # the meaning, never these.
+        self._last_gender_ok = payload.gender_ok
+        self._last_plural_ok = payload.plural_ok
+
         self.tips_row_widget.setVisible(False)
         self.input_frame.setVisible(False)
         self.results_frame.setVisible(True)
@@ -768,8 +778,12 @@ class CardWidget(QWidget):
                 "<span style='color:#66E39A; font-weight:900;'>Accepted ✓</span>"
             )
         self.accept_btn.setVisible(False)
-        # Nudge the recommended rating up now that meaning counts as correct.
-        self.set_recommended_rating(2)
+        # Only the MEANING is forgiven. Re-derive the recommendation with the
+        # meaning correct but the REAL gender/plural verdicts, so a wrong or blank
+        # gender/plural still pulls it down (capped at Good). Gender and plural are
+        # never auto-accepted — the logged rating and the ML keep their real values.
+        rec = self._recommend_from_checks(True, self._last_gender_ok, self._last_plural_ok)
+        self.set_recommended_rating(min(2, rec))
 
     def set_recommended_rating(self, rating: int | None) -> None:
         self._recommended_rating = rating
