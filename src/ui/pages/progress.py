@@ -11,10 +11,11 @@ from PySide6.QtWidgets import (
 from core.session import SessionService
 from ui.widgets.activity_heatmap import ActivityHeatmap
 
-# Reviews/day that lights a heatmap square to its brightest level and counts as
-# "goal reached" for the day. A sensible fixed default; no settings UI yet.
+# Reviews/day that sets a heatmap day "on fire" and counts as "goal reached".
+# A sensible fixed default; no settings UI yet.
 DAILY_GOAL = 20
-_ACCENT_GREEN = "#66E39A"   # mint accent, matches the heatmap's brightest level
+_ACCENT_FIRE = "#FF7A2E"   # warm — a live streak / goal reached (fire)
+_ACCENT_COLD = "#6E7E8C"   # cold slate — broken streak / frozen
 
 
 class ProgressCard(QGroupBox):
@@ -165,7 +166,7 @@ class ProgressPage(QWidget):
 
         strip = QHBoxLayout()
         strip.setSpacing(10)
-        chip_streak, self.streak_value, _ = self._streak_chip("current streak", accent=_ACCENT_GREEN)
+        chip_streak, self.streak_value, _ = self._streak_chip("current streak", accent=_ACCENT_FIRE)
         chip_longest, self.longest_value, _ = self._streak_chip("longest streak")
         chip_today, self.today_value, self.today_caption = self._streak_chip("today vs goal")
         strip.addWidget(chip_streak)
@@ -295,18 +296,25 @@ class ProgressPage(QWidget):
         today_count = int(counts.get(today.isoformat(), 0))
         year_total = sum(int(v) for v in counts.values())
 
+        # Current streak: glows warm when the fire is alive, cold slate when broken.
         self.streak_value.setText(str(cur))
+        streak_color = _ACCENT_FIRE if cur > 0 else _ACCENT_COLD
+        self.streak_value.setStyleSheet(
+            f"QLabel {{ font-size:22px; font-weight:900; color:{streak_color}; "
+            f"background:transparent; border:none; }}"
+        )
+
         self.longest_value.setText(str(longest))
         self.today_value.setText(f"{today_count} / {DAILY_GOAL}")
 
         if today_count >= DAILY_GOAL:
             self.today_value.setStyleSheet(
-                f"QLabel {{ font-size:22px; font-weight:900; color:{_ACCENT_GREEN}; "
+                f"QLabel {{ font-size:22px; font-weight:900; color:{_ACCENT_FIRE}; "
                 f"background:transparent; border:none; }}"
             )
-            self.today_caption.setText("goal reached!")
+            self.today_caption.setText("on fire!")
             self.today_caption.setStyleSheet(
-                f"QLabel {{ font-size:11px; color:{_ACCENT_GREEN}; font-weight:800; "
+                f"QLabel {{ font-size:11px; color:{_ACCENT_FIRE}; font-weight:800; "
                 f"background:transparent; border:none; }}"
             )
         else:
@@ -319,10 +327,25 @@ class ProgressPage(QWidget):
                 "QLabel { font-size:11px; color:#9AA0A6; background:transparent; border:none; }"
             )
 
-        plural = "review" if year_total == 1 else "reviews"
         self.activity_caption.setText(
-            f"{year_total:,} {plural} in the last year  ·  {active_days} active days"
+            self._motivation_text(year_total, active_days, today_count, cur)
         )
+
+    @staticmethod
+    def _motivation_text(year_total: int, active_days: int, today_count: int, cur: int) -> str:
+        """Warm, motivating summary — frame missed days as ice to melt, not failure."""
+        reviews = f"{year_total:,} review" + ("" if year_total == 1 else "s") + " this year"
+        days = f"{active_days} active day" + ("" if active_days == 1 else "s")
+        if today_count > 0:
+            tail = "the fire is lit — keep it going tomorrow"
+            if cur > 1:
+                tail = f"{cur}-day streak — keep the fire alive"
+            return f"{reviews}  ·  {days}  ·  {tail}"
+        if cur > 0:
+            return f"{cur}-day streak  ·  today is still frozen — review now to keep the fire alive"
+        if year_total == 0:
+            return "Every day is frozen. Do one review to light the first spark."
+        return f"{reviews}  ·  most days are still frozen — start today and light the streak"
 
     # --------- DB helpers ----------
     def _conn(self):
