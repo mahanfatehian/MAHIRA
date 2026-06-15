@@ -106,9 +106,9 @@ def test_failed_review_enters_short_relearning_step(repo):
     assert st.stability is not None
 
 
-def test_accept_override_counts_meaning_correct(repo):
-    """'Accept my answer' makes a wrong-typed meaning count as correct, so the
-    rating isn't forced down to Again."""
+def test_wrong_meaning_marked_incorrect(repo):
+    """The semantic matcher rejects a clearly-wrong meaning (no manual override
+    exists anymore), so it is recorded as incorrect."""
     s = _session(repo)
     s.start_new_session()
     item = s.next_vocab_item()
@@ -125,14 +125,8 @@ def test_accept_override_counts_meaning_correct(repo):
         was_checked=True,
         was_skipped=False,
         response_ms=1200,
-        accept_override=True,
     )
-    assert res["meaning_ok"] is True
-    assert res["effective_rating"] == 2  # not capped to Again
-
-    # Without override, the same wrong meaning would be marked incorrect.
-    res_no = s.check_vocab_fields(item, "definitely-not-the-listed-gloss", "", "")
-    assert res_no["meaning_ok"] is False
+    assert res["meaning_ok"] is False
 
 
 def test_migration_adds_fsrs_columns_to_legacy_db(tmp_path):

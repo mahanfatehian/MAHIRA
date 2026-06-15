@@ -34,7 +34,6 @@ class GrammarReviewPage(QWidget):
         self.hint_used = False
         self.grammar_tip_used = False
         self.typed_blank = ""
-        self._accept_override = False
         self.card_started_at: float | None = None
 
         self.setObjectName("GrammarReviewPage")
@@ -199,7 +198,6 @@ class GrammarReviewPage(QWidget):
         self.special_kbd.char_clicked.connect(self.card.insert_special_char)
         self.card.check_clicked.connect(self._on_check)
         self.card.rated.connect(self._on_rated)
-        self.card.accepted.connect(self._on_accept_override)
         self.card.skipped.connect(self._on_skipped)
         self.card.meaning_tip_clicked.connect(self._on_meaning_tip)
         self.card.hint_clicked.connect(self._on_hint)
@@ -275,7 +273,6 @@ class GrammarReviewPage(QWidget):
         self.hint_used = False
         self.grammar_tip_used = False
         self.typed_blank = ""
-        self._accept_override = False
 
     def _on_meaning_tip(self) -> None:
         self.meaning_tip_used = True
@@ -413,11 +410,6 @@ class GrammarReviewPage(QWidget):
         self.card.set_result(res["ok"], res["expected"], res["typed"])
         self.card.lock_after_check()
 
-    def _on_accept_override(self) -> None:
-        """Learner asserts their answer was a valid form the key didn't list."""
-        self._accept_override = True
-        self.card.mark_accepted()
-
     def _on_rated(self, rating: int) -> None:
         if not self.current_item:
             return
@@ -438,7 +430,6 @@ class GrammarReviewPage(QWidget):
             was_checked=self.was_checked,
             was_skipped=self.was_skipped,
             response_ms=response_ms,
-            accept_override=self._accept_override,
         )
 
         milestone_hit = False

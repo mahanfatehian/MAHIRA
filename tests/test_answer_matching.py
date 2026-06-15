@@ -1,11 +1,11 @@
 """Answer matching: multi-separator alternatives, infinitive/article normalization,
-typo tolerance, and the precision guards."""
+and the grammar precision guard. (Vocab *meaning* matching is semantic now and is
+covered in test_semantic_match.py.)"""
 
 from types import SimpleNamespace
 
 from core.session import (
     _answer_matches,
-    _fuzzy_equal,
     _grammar_correct,
     _norm,
     _split_answers,
@@ -34,26 +34,20 @@ def test_split_answers_multi_separator():
 
 def test_blatt_partial_gloss_matches():
     accepted = _split_answers("leaf / paper")
-    assert _answer_matches("leaf", accepted, fuzzy=True) is True
-    assert _answer_matches("paper", accepted, fuzzy=True) is True
-    assert _answer_matches("leaf / paper", accepted, fuzzy=True) is True
+    assert _answer_matches("leaf", accepted) is True
+    assert _answer_matches("paper", accepted) is True
+    assert _answer_matches("leaf / paper", accepted) is True
 
 
 def test_arbeiten_infinitive_marker_matches():
     accepted = _split_answers("to work")
-    assert _answer_matches("work", accepted, fuzzy=True) is True
-    assert _answer_matches("to work", accepted, fuzzy=True) is True
-
-
-def test_fuzzy_forgives_typos_but_not_short_collisions():
-    assert _fuzzy_equal("arbeiten", "arbieten") is True   # transposition
-    assert _fuzzy_equal("ist", "isst") is False           # too short -> must be exact
-    assert _fuzzy_equal("work", "word") is False          # len 4 -> exact only
+    assert _answer_matches("work", accepted) is True
+    assert _answer_matches("to work", accepted) is True
 
 
 def test_unrelated_answer_rejected():
     accepted = _split_answers("leaf / paper")
-    assert _answer_matches("tree", accepted, fuzzy=True) is False
+    assert _answer_matches("tree", accepted) is False
 
 
 def test_grammar_uses_exact_any_match_no_fuzzy():
@@ -61,7 +55,7 @@ def test_grammar_uses_exact_any_match_no_fuzzy():
     assert _grammar_correct(item, "bist") is True
     assert _grammar_correct(item, "seid") is True
     assert _grammar_correct(item, "bin") is False
-    # No fuzzy for grammar: a near-miss form is NOT accepted.
+    # Grammar forms are exact: a near-miss form is NOT accepted.
     item2 = SimpleNamespace(answer="ist")
     assert _grammar_correct(item2, "isst") is False
 

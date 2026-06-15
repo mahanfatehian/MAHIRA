@@ -37,19 +37,19 @@ APP_VERSION = _raw_version.split("-")[0] or "0.1.0"
 # ---------------------------------------------------------------------------
 datas = [
     (str(ROOT / "data"), "data"),                       # seeds/ + pages/
-    (str(ROOT / "assets"), "assets"),                   # logo + piper voice models
+    (str(ROOT / "assets"), "assets"),                   # logo + piper voices + MiniLM model
     (str(ROOT / "src" / "db" / "schema.sql"), "src/db"),  # DB schema
 ]
 
 # Heavy / dynamically-imported packages need explicit collection.
 hiddenimports = []
-for pkg in ("sklearn", "scipy", "piper", "onnxruntime"):
+for pkg in ("sklearn", "scipy", "piper", "onnxruntime", "tokenizers"):
     try:
         hiddenimports += collect_submodules(pkg)
     except Exception:
         pass
 
-for pkg in ("sklearn", "piper", "onnxruntime"):
+for pkg in ("sklearn", "piper", "onnxruntime", "tokenizers"):
     try:
         datas += collect_data_files(pkg)
     except Exception:

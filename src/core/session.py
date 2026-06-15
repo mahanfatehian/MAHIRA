@@ -10,6 +10,7 @@ from typing import Any, Dict, Iterable, Optional
 from db.repo import Repo, VocabItem, GrammarItem, SentenceItem, ListeningItem
 from core.srs import schedule_next
 from core.ml.sklearn_ranker import SklearnRanker
+from core.semantic_match import get_matcher
 
 
 # ---------------------------------------------------------------------
@@ -55,45 +56,14 @@ def _split_answers(ans: str) -> list[str]:
     return out
 
 
-def _levenshtein(a: str, b: str) -> int:
-    if a == b:
-        return 0
-    if not a:
-        return len(b)
-    if not b:
-        return len(a)
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        cur = [i]
-        for j, cb in enumerate(b, 1):
-            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
-        prev = cur
-    return prev[-1]
-
-
-def _fuzzy_equal(a: str, b: str) -> bool:
-    """Tolerate small typos, scaled to length. Short words must match exactly
-    (avoids 'ist'=='isst'-style false positives)."""
-    if a == b:
-        return True
-    m = max(len(a), len(b))
-    if m <= 4 or abs(len(a) - len(b)) > 2:
-        return False
-    threshold = 1 if m <= 7 else 2
-    return _levenshtein(a, b) <= threshold
-
-
-def _answer_matches(typed: str, accepted: list[str], *, fuzzy: bool = False) -> bool:
-    """True if the typed answer matches any accepted gloss. `fuzzy` adds typo
-    tolerance (used for vocab meanings, NOT for precision-critical grammar)."""
+def _answer_matches(typed: str, accepted: list[str]) -> bool:
+    """True if the typed answer exactly matches any accepted gloss (after
+    normalization). Used for grammar forms, which must stay precise. Vocab
+    *meaning* matching is semantic and lives in core.semantic_match."""
     t = _norm(typed)
     if not t or not accepted:
         return False
-    if t in accepted:
-        return True
-    if fuzzy:
-        return any(_fuzzy_equal(t, a) for a in accepted)
-    return False
+    return t in accepted
 
 
 def _norm_gender(s: str) -> str:
@@ -117,8 +87,8 @@ def _render_blank(text: str) -> str:
 
 def _grammar_correct(item: GrammarItem, typed: str) -> bool:
     accepted = _split_answers(getattr(item, "answer", "") or "")
-    # No fuzzy matching for grammar: forms like "ist"/"isst" must stay distinct.
-    return _answer_matches(typed, accepted, fuzzy=False)
+    # Grammar forms must stay precise (e.g. "ist" vs "isst") — exact match only.
+    return _answer_matches(typed, accepted)
 
 
 def _norm_objective(obj: str) -> str:
@@ -832,7 +802,9 @@ class SessionService:
         typed_plural: str,
     ) -> dict:
         accepted = _split_answers(getattr(item, "meaning", "") or "")
-        meaning_ok = _answer_matches(typed_meaning, accepted, fuzzy=True)
+        # Semantic meaning match (offline embedding model) — understands that
+        # "work" == "to work" but "eight" != "eighty".
+        meaning_ok = get_matcher().matches(_norm(typed_meaning), accepted)
         expected_meaning = getattr(item, "meaning", "") or ""
 
         gender_ok: bool | None = None
@@ -875,16 +847,9 @@ class SessionService:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
-        accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_state(item.id)
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
-
-        # Learner override ("Accept my answer"): they assert their meaning was a
-        # valid gloss the key didn't list, so count meaning as correct.
-        if accept_override:
-            res = dict(res)
-            res["meaning_ok"] = True
 
         effective_rating = _effective_vocab_rating(
             result=res,
@@ -971,15 +936,9 @@ class SessionService:
         was_checked: bool,
         was_skipped: bool,
         response_ms: int | None,
-        accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_grammar_state(item.id)
         res = self.check_grammar(item, typed_blank)
-
-        # Learner override ("Accept my answer"): count the answer as correct.
-        if accept_override:
-            res = dict(res)
-            res["ok"] = True
 
         used_help = bool(meaning_tip_used or hint_used or grammar_tip_used)
 

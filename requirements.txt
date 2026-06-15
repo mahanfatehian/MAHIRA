@@ -27,3 +27,8 @@ piper-tts
 # universal2 (Intel & Apple Silicon), needs only numpy>=1.21.6, and satisfies
 # piper-tts's onnxruntime>=1,<2 constraint.
 onnxruntime==1.20.1
+
+# Semantic answer matching: tokenizer for the all-MiniLM-L6-v2 embedding model
+# (assets/models/all-MiniLM-L6-v2). Runs on the onnxruntime above — no PyTorch.
+# Rust-backed, tiny (~3 MB), ships cp312 wheels for win/macOS.
+tokenizers==0.21.0
