@@ -595,6 +595,12 @@ class SetupPage(QWidget):
         header.addWidget(self.breadcrumb, 0)
         root.addLayout(header)
 
+        # Launch-screen re-engagement cue (the app has no OS notifications, so
+        # this is the honest reason to come back): how many scheduled items are
+        # due now / ripen in the next 24h, across every deck.
+        self.due_strip = self._build_due_strip()
+        root.addWidget(self.due_strip)
+
         self.stack = QStackedWidget()
         self.stack.setStyleSheet("background: transparent;")
         self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -627,6 +633,7 @@ class SetupPage(QWidget):
         self._refresh_objectives()
         self._coerce_step_to_state()
         self._update_breadcrumb()
+        self._refresh_due_strip()
 
     def on_show(self):
         self._sync_from_state()
@@ -636,6 +643,77 @@ class SetupPage(QWidget):
         self._refresh_objectives()
         self._coerce_step_to_state()
         self._update_breadcrumb()
+        self._refresh_due_strip()
+
+    def _build_due_strip(self) -> QFrame:
+        # Shown at most once per app run — a single, dismissible nudge, never a
+        # banner that greets you on every visit to the selection screen.
+        self._due_strip_seen = False
+        strip = QFrame()
+        strip.setObjectName("DueStrip")
+        strip.setStyleSheet(
+            "QFrame#DueStrip { background:#15110C; border:1px solid #5A3A12; border-radius:12px; }"
+        )
+        lay = QHBoxLayout(strip)
+        lay.setContentsMargins(14, 9, 14, 9)
+        lay.setSpacing(10)
+        self.due_icon = QLabel("🔥")
+        self.due_icon.setStyleSheet("QLabel { background:transparent; border:none; font-size:15px; }")
+        self.due_lbl = QLabel("")
+        self.due_lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        self.due_lbl.setStyleSheet("QLabel { color:#FFD7A8; background:transparent; border:none; }")
+        due_dismiss = QPushButton("×")
+        due_dismiss.setFixedSize(22, 22)
+        due_dismiss.setCursor(QCursor(Qt.PointingHandCursor))
+        due_dismiss.setToolTip("Dismiss")
+        due_dismiss.setStyleSheet(
+            "QPushButton { background:#2A2018; color:#C8A878; border:1px solid #5A3A12; "
+            "border-radius:6px; font-size:13px; font-weight:800; }"
+            "QPushButton:hover { color:#FFFFFF; border-color:#8A5A22; }"
+        )
+        due_dismiss.clicked.connect(self._dismiss_due_strip)
+        lay.addWidget(self.due_icon, 0)
+        lay.addWidget(self.due_lbl, 1)
+        lay.addWidget(due_dismiss, 0)
+        strip.hide()
+        return strip
+
+    def _dismiss_due_strip(self) -> None:
+        self._due_strip_seen = True
+        self.due_strip.hide()
+
+    def _refresh_due_strip(self) -> None:
+        if not hasattr(self, "due_strip"):
+            return
+        # Already shown (or dismissed) this run — stay quiet.
+        if getattr(self, "_due_strip_seen", False):
+            self.due_strip.hide()
+            return
+        try:
+            c = self.session.repo.upcoming_due_counts(86400)
+        except Exception:
+            self.due_strip.hide()
+            return
+        now = int(c.get("due_now", 0) or 0)
+        soon = int(c.get("due_soon", 0) or 0)
+        if now <= 0 and soon <= 0:
+            self.due_strip.hide()
+            return
+
+        def _n(n: int) -> str:
+            return f"{n} card" if n == 1 else f"{n} cards"
+
+        if now > 0 and soon > 0:
+            self.due_icon.setText("🔥")
+            self.due_lbl.setText(f"{_n(now)} due now · {soon} more ripen in the next 24h")
+        elif now > 0:
+            self.due_icon.setText("🔥")
+            self.due_lbl.setText(f"{_n(now)} due now — keep your streak alive")
+        else:
+            self.due_icon.setText("⏳")
+            self.due_lbl.setText(f"{_n(soon)} ripen in the next 24h")
+        self._due_strip_seen = True  # one nudge per run; don't show it again
+        self.due_strip.show()
 
     def _goto(self, idx: int):
         self.stack.setCurrentIndex(idx)

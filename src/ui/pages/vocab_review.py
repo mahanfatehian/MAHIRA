@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal, Slot
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -50,15 +51,18 @@ class PronunciationWorker(QObject):
     finished = Signal(str, str)
     failed = Signal(str, str)
 
-    def __init__(self, service: PronunciationService, text: str) -> None:
+    def __init__(
+        self, service: PronunciationService, text: str, length_scale: float | None = None
+    ) -> None:
         super().__init__()
         self.service = service
         self.text = text
+        self.length_scale = length_scale
 
     @Slot()
     def run(self) -> None:
         try:
-            wav_path = self.service.generate_wav(self.text)
+            wav_path = self.service.generate_wav(self.text, length_scale=self.length_scale)
             self.finished.emit(self.text, str(wav_path))
         except Exception as e:
             self.failed.emit(self.text, str(e))
@@ -102,11 +106,43 @@ class VocabReviewPage(QWidget):
         self._audio_worker: PronunciationWorker | None = None
         self._current_audio_text: str = ""
         self._current_audio_path: str = ""
+        self._current_audio_ls: float | None = None  # speed of the cached clip
+        self._active_audio_btn: Any | None = None     # word vs. example speaker
+        self._speed: float = 1.0                      # 0.75 / 1.0 / 1.25
 
         self.setObjectName("VocabReviewPage")
         self.setStyleSheet("VocabReviewPage { background-color: #0E0E0E; }")
 
         self._build_ui()
+
+        self._undo_sc = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self._undo_sc.activated.connect(self._on_undo)
+
+        # Keyboard rating: 1/2/3/4 = Again/Hard/Good/Easy. Disabled until a card
+        # has been checked, so digits typed into the answer fields pass through.
+        self._rating_shortcuts: list[QShortcut] = []
+        for key, r in (("1", 0), ("2", 1), ("3", 2), ("4", 3)):
+            sc = QShortcut(QKeySequence(key), self)
+            sc.setEnabled(False)
+            sc.activated.connect(lambda rr=r: self._rate_via_key(rr))
+            self._rating_shortcuts.append(sc)
+
+    def _set_rating_keys_enabled(self, on: bool) -> None:
+        for sc in getattr(self, "_rating_shortcuts", []):
+            sc.setEnabled(bool(on))
+
+    def _rate_via_key(self, rating: int) -> None:
+        if self.current_item is None:
+            return
+        self._on_rated(int(rating))
+
+    def set_focus_mode(self, on: bool) -> None:
+        """Focus/Zen mode: hide this tab's own top bar (the side nav is hidden by
+        the main window)."""
+        try:
+            self.top_bar.setVisible(not bool(on))
+        except Exception:
+            pass
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
@@ -170,6 +206,7 @@ class VocabReviewPage(QWidget):
         top_bar_layout.addWidget(self.start_btn)
         top_bar_layout.addWidget(self.stats_btn)
 
+        self.top_bar = top_bar
         outer.addWidget(top_bar)
 
         # Milestone celebration banner (hidden by default)
@@ -231,6 +268,8 @@ class VocabReviewPage(QWidget):
         self.card.gender_tip_clicked.connect(self._on_gender_tip)
         self.card.skipped.connect(self._on_skipped)
         self.card.audio_clicked.connect(self._play_current_word_pronunciation)
+        self.card.example_audio_clicked.connect(self._play_example_audio)
+        self.card.speed_changed.connect(self._on_speed_changed)
 
         shell_layout.addWidget(self.card)
         outer.addWidget(self.main_shell)
@@ -497,15 +536,36 @@ class VocabReviewPage(QWidget):
 
         self._current_audio_text = ""
         self._current_audio_path = ""
+        self._current_audio_ls = None
+        if self._active_audio_btn is not None:
+            self._active_audio_btn.set_busy(False)
+            self._active_audio_btn.set_playing(False)
+        self._active_audio_btn = None
 
         self.card.set_audio_busy(False)
         self.card.set_audio_playing(False)
 
+    def _on_undo(self) -> None:
+        """Ctrl+Z: reverse the last submitted answer (restore its schedule + drop
+        its review row) and bring that card straight back to redo."""
+        try:
+            if not self.session.can_undo():
+                return
+            cur_id = getattr(self.current_item, "id", None)
+            item = self.session.undo_last(requeue_current=cur_id)
+        except Exception:
+            return
+        if item is not None:
+            self._load_next()
+
     def _load_next(self) -> None:
         self.playback_service.stop()
+        self._set_rating_keys_enabled(False)
 
         self._current_audio_text = ""
         self._current_audio_path = ""
+        self._current_audio_ls = None
+        self._active_audio_btn = None
 
         self._update_counter()
 
@@ -556,6 +616,7 @@ class VocabReviewPage(QWidget):
         self.card.set_audio_enabled(bool(word))
         self.card.set_audio_busy(False)
         self.card.set_audio_playing(False)
+        self.card.set_speed(self._speed)
 
         pos = (getattr(item, "pos", "") or "").lower()
 
@@ -662,6 +723,13 @@ class VocabReviewPage(QWidget):
 
         self.card.apply_check_results(payload)
         self.card.lock_after_check()
+        self._set_rating_keys_enabled(True)
+        try:
+            self.card.set_rating_intervals(
+                self.session.vocab_interval_labels(self.current_item)
+            )
+        except Exception:
+            pass
 
     def _on_accept_override(self) -> None:
         """Learner asserts their meaning was right (valid synonym not in the key)."""
@@ -708,43 +776,87 @@ class VocabReviewPage(QWidget):
         if milestone_hit:
             self._show_milestone_banner()
 
+    def _current_ls(self) -> float | None:
+        # Piper length_scale = 1 / speed; None at normal speed keeps the base key.
+        if abs(self._speed - 1.0) < 1e-6:
+            return None
+        return round(1.0 / self._speed, 3)
+
+    def _on_speed_changed(self, speed: float) -> None:
+        self._speed = float(speed)
+        self.card.set_speed(self._speed)
+        # Mirror the Listening tab: a speed tap re-plays the word at that speed.
+        if self.current_item is not None:
+            word = self._extract_word_for_audio(self.current_item)
+            if word:
+                self._play_audio_for(word, self.card.audio_btn)
+
     def _play_current_word_pronunciation(self) -> None:
         if not self.current_item:
             return
+        self._play_audio_for(self._extract_word_for_audio(self.current_item), self.card.audio_btn)
 
+    def _play_example_audio(self) -> None:
+        # Speak only the German example sentence (never the English gloss).
+        self._play_audio_for((self.example_de or "").strip(), self.card.example_audio_btn)
+
+    def _play_audio_for(self, text: str, button: Any) -> None:
+        """Synthesize (or reuse) `text` at the current speed and play it, driving
+        whichever speaker (word or example) was pressed."""
+        text = (text or "").strip()
+        if not text:
+            if button is not None:
+                button.set_available(False)
+                button.set_busy(False)
+                button.set_playing(False)
+            return
+
+        # Spam guard: ignore while a synthesis is in flight.
         if self._audio_thread is not None and self._audio_thread.isRunning():
             return
 
-        word = self._extract_word_for_audio(self.current_item)
+        ls = self._current_ls()
 
-        if not word:
-            self.card.set_audio_enabled(False)
-            self.card.set_audio_busy(False)
-            self.card.set_audio_playing(False)
+        # Re-idle the OTHER speaker so it never gets stuck mid-state when we
+        # interrupt its playback to speak from here.
+        prev = self._active_audio_btn
+        if prev is not None and prev is not button:
+            prev.set_busy(False)
+            prev.set_playing(False)
+
+        # Reuse the exact cached clip if we already have it at THIS speed.
+        if (self._current_audio_text == text and self._current_audio_ls == ls
+                and self._current_audio_path and Path(self._current_audio_path).exists()):
+            self.playback_service.stop()
+            self._active_audio_btn = button
+            if button is not None:
+                button.set_available(True)
+                button.set_busy(True)
+            self.playback_service.play_file(self._current_audio_path)
             return
 
-        if self._current_audio_text == word and self._current_audio_path:
-            cached_path = Path(self._current_audio_path)
-            if cached_path.exists():
-                self.playback_service.stop()
-                self.card.set_audio_busy(True)
-                self.card.set_audio_playing(False)
-                self.playback_service.play_file(cached_path)
-                return
+        # New render: drop the previous clip so switching word/example/speed
+        # doesn't orphan WAVs on disk.
+        if self._current_audio_path:
+            try:
+                self.pronunciation_service.delete_cached_file(self._current_audio_path)
+            except Exception:
+                pass
 
-        self._current_audio_text = word
+        self._current_audio_text = text
+        self._current_audio_ls = ls
         self._current_audio_path = ""
-
+        self._active_audio_btn = button
         self.playback_service.stop()
-
-        self.card.set_audio_enabled(True)
-        self.card.set_audio_busy(True)
-        self.card.set_audio_playing(False)
+        if button is not None:
+            button.set_available(True)
+            button.set_busy(True)
 
         self._audio_thread = QThread(self)
         self._audio_worker = PronunciationWorker(
             service=self.pronunciation_service,
-            text=word,
+            text=text,
+            length_scale=ls,
         )
         self._audio_worker.moveToThread(self._audio_thread)
 
@@ -766,25 +878,26 @@ class VocabReviewPage(QWidget):
 
     @Slot(str, str)
     def _on_audio_ready(self, text: str, wav_path: str) -> None:
+        btn = self._active_audio_btn
         if text != self._current_audio_text:
-            self.card.set_audio_busy(False)
-            self.card.set_audio_playing(False)
+            if btn is not None:
+                btn.set_busy(False)
+                btn.set_playing(False)
             return
 
         self._current_audio_path = wav_path
-
-        self.card.set_audio_enabled(True)
-        self.card.set_audio_busy(True)
-        self.card.set_audio_playing(False)
-
+        if btn is not None:
+            btn.set_available(True)
+            btn.set_busy(True)
         self.playback_service.play_file(wav_path)
 
     @Slot(str, str)
     def _on_audio_failed(self, text: str, message: str) -> None:
-        if text == self._current_audio_text:
-            self.card.set_audio_enabled(True)
-            self.card.set_audio_busy(False)
-            self.card.set_audio_playing(False)
+        btn = self._active_audio_btn
+        if text == self._current_audio_text and btn is not None:
+            btn.set_available(True)
+            btn.set_busy(False)
+            btn.set_playing(False)
 
         QMessageBox.warning(self, "Pronunciation Error", message)
 
@@ -795,18 +908,21 @@ class VocabReviewPage(QWidget):
 
     @Slot(str)
     def _on_playback_started(self, path: str) -> None:
-        self.card.set_audio_busy(False)
-        self.card.set_audio_playing(True)
+        if self._active_audio_btn is not None:
+            self._active_audio_btn.set_busy(False)
+            self._active_audio_btn.set_playing(True)
 
     @Slot()
     def _on_playback_finished(self) -> None:
-        self.card.set_audio_busy(False)
-        self.card.set_audio_playing(False)
+        if self._active_audio_btn is not None:
+            self._active_audio_btn.set_busy(False)
+            self._active_audio_btn.set_playing(False)
 
     @Slot(str)
     def _on_playback_failed(self, message: str) -> None:
-        self.card.set_audio_busy(False)
-        self.card.set_audio_playing(False)
+        if self._active_audio_btn is not None:
+            self._active_audio_btn.set_busy(False)
+            self._active_audio_btn.set_playing(False)
         QMessageBox.warning(self, "Playback Error", message)
 
     def closeEvent(self, event) -> None:

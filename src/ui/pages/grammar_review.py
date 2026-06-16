@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -41,6 +42,34 @@ class GrammarReviewPage(QWidget):
         self.setStyleSheet("GrammarReviewPage { background-color: #0E0E0E; }")
 
         self._build_ui()
+
+        self._undo_sc = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self._undo_sc.activated.connect(self._on_undo)
+
+        # Keyboard rating: 1/2/3/4 = Again/Hard/Good/Easy. Disabled until a card
+        # has been checked, so digits typed into the blank pass through.
+        self._rating_shortcuts: list[QShortcut] = []
+        for key, r in (("1", 0), ("2", 1), ("3", 2), ("4", 3)):
+            sc = QShortcut(QKeySequence(key), self)
+            sc.setEnabled(False)
+            sc.activated.connect(lambda rr=r: self._rate_via_key(rr))
+            self._rating_shortcuts.append(sc)
+
+    def _set_rating_keys_enabled(self, on: bool) -> None:
+        for sc in getattr(self, "_rating_shortcuts", []):
+            sc.setEnabled(bool(on))
+
+    def _rate_via_key(self, rating: int) -> None:
+        if self.current_item is None:
+            return
+        self._on_rated(int(rating))
+
+    def set_focus_mode(self, on: bool) -> None:
+        """Focus/Zen mode: hide this tab's own top bar."""
+        try:
+            self.top_bar.setVisible(not bool(on))
+        except Exception:
+            pass
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
@@ -144,6 +173,7 @@ class GrammarReviewPage(QWidget):
         top_bar_layout.addWidget(self.start_btn)
         top_bar_layout.addWidget(self.stats_btn)
 
+        self.top_bar = top_bar
         outer.addWidget(top_bar)
 
         # Milestone celebration banner (hidden by default)
@@ -369,7 +399,21 @@ class GrammarReviewPage(QWidget):
             "background:#1A1A1A; border:1px solid #2E2E2E; border-radius:8px; padding:6px 10px; }"
         )
 
+    def _on_undo(self) -> None:
+        """Ctrl+Z: reverse the last submitted answer (restore its schedule + drop
+        its review row) and bring that card straight back to redo."""
+        try:
+            if not self.session.can_undo():
+                return
+            cur_id = getattr(self.current_item, "id", None)
+            item = self.session.undo_last(requeue_current=cur_id)
+        except Exception:
+            return
+        if item is not None:
+            self._load_next()
+
     def _load_next(self) -> None:
+        self._set_rating_keys_enabled(False)
         self._update_counter()
         self.current_item = self.session.next_grammar_item()
 
@@ -412,6 +456,13 @@ class GrammarReviewPage(QWidget):
         res = self.session.check_grammar(self.current_item, self.typed_blank)
         self.card.set_result(res["ok"], res["expected"], res["typed"])
         self.card.lock_after_check()
+        self._set_rating_keys_enabled(True)
+        try:
+            self.card.set_rating_intervals(
+                self.session.grammar_interval_labels(self.current_item)
+            )
+        except Exception:
+            pass
 
     def _on_accept_override(self) -> None:
         """Learner asserts their answer was a valid form the key didn't list."""

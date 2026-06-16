@@ -3,21 +3,45 @@ from __future__ import annotations
 import random
 import re
 import time
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QThread, Qt, QTimer, Signal, Slot
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
 from ui.widgets.sentence_builder_widget import SentenceBuilderWidget
+
+
+class PronunciationWorker(QObject):
+    """Synthesizes the target sentence to a cached WAV off the UI thread."""
+
+    finished = Signal(str, str)
+    failed = Signal(str, str)
+
+    def __init__(self, service: PronunciationService, text: str) -> None:
+        super().__init__()
+        self.service = service
+        self.text = text
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            wav_path = self.service.generate_wav(self.text)
+            self.finished.emit(self.text, str(wav_path))
+        except Exception as e:  # noqa: BLE001 - surfaced to the UI
+            self.failed.emit(self.text, str(e))
 
 
 class SentenceReviewPage(QWidget):
@@ -35,10 +59,50 @@ class SentenceReviewPage(QWidget):
         self.was_skipped = False
         self.card_started_at = 0.0
 
+        # Audio: hear the correct German sentence once it's revealed.
+        self.model_manager = PiperModelManager()
+        self.pronunciation_service = PronunciationService(self.model_manager)
+        self.playback_service = PlaybackService(self)
+        self.playback_service.started.connect(self._on_playback_started)
+        self.playback_service.finished.connect(self._on_playback_finished)
+        self.playback_service.failed.connect(self._on_playback_failed)
+        self._audio_thread: QThread | None = None
+        self._audio_worker: PronunciationWorker | None = None
+        self._current_audio_text: str = ""
+        self._current_audio_path: str = ""
+
         self.setObjectName("SentenceReviewPage")
         self.setStyleSheet("SentenceReviewPage { background-color: #0E0E0E; }")
 
         self._build_ui()
+
+        self._undo_sc = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self._undo_sc.activated.connect(self._on_undo)
+
+        # Keyboard rating: 1/2/3/4 = Again/Hard/Good/Easy, active only after a
+        # sentence has been checked (the builder has no free-text input).
+        self._rating_shortcuts: list[QShortcut] = []
+        for key, r in (("1", 0), ("2", 1), ("3", 2), ("4", 3)):
+            sc = QShortcut(QKeySequence(key), self)
+            sc.setEnabled(False)
+            sc.activated.connect(lambda rr=r: self._rate_via_key(rr))
+            self._rating_shortcuts.append(sc)
+
+    def _set_rating_keys_enabled(self, on: bool) -> None:
+        for sc in getattr(self, "_rating_shortcuts", []):
+            sc.setEnabled(bool(on))
+
+    def _rate_via_key(self, rating: int) -> None:
+        if self.current_item is None:
+            return
+        self._on_rated(int(rating))
+
+    def set_focus_mode(self, on: bool) -> None:
+        """Focus/Zen mode: hide this tab's own top bar."""
+        try:
+            self.top_bar.setVisible(not bool(on))
+        except Exception:
+            pass
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
@@ -102,6 +166,7 @@ class SentenceReviewPage(QWidget):
         top_bar_layout.addWidget(self.start_btn)
         top_bar_layout.addWidget(self.stats_btn)
 
+        self.top_bar = top_bar
         outer.addWidget(top_bar)
 
         # Milestone celebration banner (hidden by default)
@@ -150,6 +215,7 @@ class SentenceReviewPage(QWidget):
         self.card.tip_clicked.connect(self._on_tip)
         self.card.translation_clicked.connect(self._on_translation)
         self.card.skipped.connect(self._on_skipped)
+        self.card.audio_clicked.connect(self._play_target_audio)
 
         shell_layout.addWidget(self.card)
 
@@ -289,7 +355,22 @@ class SentenceReviewPage(QWidget):
                 return str(value)
         return None
 
+    def _on_undo(self) -> None:
+        """Ctrl+Z: reverse the last submitted answer (restore its schedule + drop
+        its review row) and bring that card straight back to redo."""
+        try:
+            if not self.session.can_undo():
+                return
+            cur_id = getattr(self.current_item, "id", None)
+            item = self.session.undo_last(requeue_current=cur_id)
+        except Exception:
+            return
+        if item is not None:
+            self._load_next()
+
     def _load_next(self) -> None:
+        self._cleanup_audio(delete=True)
+        self._set_rating_keys_enabled(False)
         self._update_counter()
         self.current_item = self.session.next_sentence_item()
 
@@ -379,6 +460,13 @@ class SentenceReviewPage(QWidget):
             expected=expected_norm,
             details=" ".join(details),
         )
+        self._set_rating_keys_enabled(True)
+        try:
+            self.card.set_rating_intervals(
+                self.session.sentence_interval_labels(self.current_item)
+            )
+        except Exception:
+            pass
 
     def _on_rated(self, rating: int) -> None:
         if not self.current_item:
@@ -411,3 +499,120 @@ class SentenceReviewPage(QWidget):
 
         if milestone_hit:
             self._show_milestone_banner()
+
+    # ----------------------------------------------------------------- audio
+    def _play_target_audio(self) -> None:
+        if not self.current_item:
+            return
+        text = self._extract_expected_sentence(self.current_item)
+        if not text:
+            self.card.audio_btn.set_available(False)
+            return
+
+        # Spam guard: ignore while a synthesis is in flight.
+        if self._audio_thread is not None and self._audio_thread.isRunning():
+            return
+
+        # Reuse the exact cached clip if we already have it.
+        if (self._current_audio_text == text and self._current_audio_path
+                and Path(self._current_audio_path).exists()):
+            self.playback_service.stop()
+            self.card.audio_btn.set_busy(True)
+            self.playback_service.play_file(self._current_audio_path)
+            return
+
+        self._current_audio_text = text
+        self._current_audio_path = ""
+        self.playback_service.stop()
+        self.card.audio_btn.set_available(True)
+        self.card.audio_btn.set_busy(True)
+
+        self._audio_thread = QThread(self)
+        self._audio_worker = PronunciationWorker(self.pronunciation_service, text)
+        self._audio_worker.moveToThread(self._audio_thread)
+        self._audio_thread.started.connect(self._audio_worker.run)
+        self._audio_worker.finished.connect(self._on_audio_ready)
+        self._audio_worker.failed.connect(self._on_audio_failed)
+        self._audio_worker.finished.connect(self._audio_thread.quit)
+        self._audio_worker.failed.connect(self._audio_thread.quit)
+        self._audio_worker.finished.connect(self._audio_worker.deleteLater)
+        self._audio_worker.failed.connect(self._audio_worker.deleteLater)
+        self._audio_thread.finished.connect(self._on_audio_thread_finished)
+        self._audio_thread.finished.connect(self._audio_thread.deleteLater)
+        self._audio_thread.start()
+
+    @Slot(str, str)
+    def _on_audio_ready(self, text: str, wav_path: str) -> None:
+        if text != self._current_audio_text:
+            self.card.audio_btn.set_busy(False)
+            return
+        self._current_audio_path = wav_path
+        if not self.isVisible():
+            self.card.audio_btn.set_busy(False)
+            return
+        self.card.audio_btn.set_busy(True)
+        self.playback_service.play_file(wav_path)
+
+    @Slot(str, str)
+    def _on_audio_failed(self, text: str, message: str) -> None:
+        if text == self._current_audio_text:
+            self.card.audio_btn.set_busy(False)
+            self.card.audio_btn.set_playing(False)
+        QMessageBox.warning(self, "Pronunciation Error", message)
+
+    @Slot()
+    def _on_audio_thread_finished(self) -> None:
+        self._audio_thread = None
+        self._audio_worker = None
+
+    @Slot(str)
+    def _on_playback_started(self, path: str) -> None:
+        self.card.audio_btn.set_busy(False)
+        self.card.audio_btn.set_playing(True)
+
+    @Slot()
+    def _on_playback_finished(self) -> None:
+        self.card.audio_btn.set_busy(False)
+        self.card.audio_btn.set_playing(False)
+
+    @Slot(str)
+    def _on_playback_failed(self, message: str) -> None:
+        self.card.audio_btn.set_busy(False)
+        self.card.audio_btn.set_playing(False)
+
+    def _cleanup_audio(self, *, delete: bool) -> None:
+        self.playback_service.stop()
+        if delete:
+            if self._current_audio_path:
+                try:
+                    self.pronunciation_service.delete_cached_file(self._current_audio_path)
+                except Exception:
+                    pass
+            elif self._current_audio_text:
+                try:
+                    self.pronunciation_service.delete_cached_audio(self._current_audio_text)
+                except Exception:
+                    pass
+            self._current_audio_text = ""
+            self._current_audio_path = ""
+        try:
+            self.card.audio_btn.set_busy(False)
+            self.card.audio_btn.set_playing(False)
+        except Exception:
+            pass
+
+    def hideEvent(self, event) -> None:
+        try:
+            self.playback_service.stop()
+            self.card.audio_btn.set_busy(False)
+            self.card.audio_btn.set_playing(False)
+        except Exception:
+            pass
+        super().hideEvent(event)
+
+    def closeEvent(self, event) -> None:
+        try:
+            self._cleanup_audio(delete=True)
+        except Exception:
+            pass
+        super().closeEvent(event)

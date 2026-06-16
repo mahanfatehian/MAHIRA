@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 from core.session import SessionService
 from ui.navigation import NavBar
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QShortcut, QKeySequence
 from PySide6.QtWidgets import QApplication
 from ui.pages.setup import SetupPage
 from ui.pages.vocab_review import VocabReviewPage
@@ -101,6 +101,21 @@ class MainWindow(QMainWindow):
 
         self.nav.go.connect(self.go)
 
+        # Focus / Zen mode: F11 toggles a distraction-free view (hides the side
+        # nav and, where supported, the page's own chrome); Esc leaves it.
+        self._focus_mode = False
+        self._sc_f11 = QShortcut(QKeySequence("F11"), self)
+        self._sc_f11.activated.connect(self.toggle_focus_mode)
+        self._sc_esc = QShortcut(QKeySequence("Escape"), self)
+        self._sc_esc.activated.connect(self._exit_focus_mode)
+
+        # Keyboard help: ? or F1 opens a one-glance shortcut sheet.
+        self._help_dialog = None
+        self._sc_help = QShortcut(QKeySequence("?"), self)
+        self._sc_help.activated.connect(self._on_help_key)
+        self._sc_f1 = QShortcut(QKeySequence("F1"), self)
+        self._sc_f1.activated.connect(self._show_shortcuts_help)
+
         if hasattr(self.pages["setup"], "start_practice"):
             self.pages["setup"].start_practice.connect(self._go_from_objective)
 
@@ -129,6 +144,81 @@ class MainWindow(QMainWindow):
         if start not in self.pages:
             start = "setup"
         self.go(start)
+
+    def set_focus_mode(self, on: bool) -> None:
+        self._focus_mode = bool(on)
+        self.nav.setVisible(not self._focus_mode)
+        cur = self.stack.currentWidget()
+        if hasattr(cur, "set_focus_mode"):
+            try:
+                cur.set_focus_mode(self._focus_mode)
+            except Exception:
+                pass
+
+    def toggle_focus_mode(self) -> None:
+        self.set_focus_mode(not getattr(self, "_focus_mode", False))
+
+    def _exit_focus_mode(self) -> None:
+        if getattr(self, "_focus_mode", False):
+            self.set_focus_mode(False)
+
+    # ----------------------------------------------------------------- help
+    def _on_help_key(self) -> None:
+        # If the learner is typing, "?" is a literal character, not a help key.
+        from PySide6.QtWidgets import QLineEdit
+
+        app = QApplication.instance()
+        fw = app.focusWidget() if app is not None else None
+        if isinstance(fw, QLineEdit) and fw.isEnabled() and not fw.isReadOnly():
+            fw.insert("?")
+            return
+        self._show_shortcuts_help()
+
+    def _show_shortcuts_help(self) -> None:
+        dlg = self._help_dialog
+        if dlg is None:
+            dlg = self._build_shortcuts_dialog()
+            self._help_dialog = dlg
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+
+    def _build_shortcuts_dialog(self):
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
+
+        rows = [
+            ("1 / 2 / 3 / 4", "Rate Again / Hard / Good / Easy (after checking)"),
+            ("Enter", "Check your answer · then move to the next card"),
+            ("Ctrl + Z", "Undo the last answer and redo that card"),
+            ("F11", "Focus mode — hide the chrome and just study"),
+            ("Esc", "Leave Focus mode"),
+            ("? / F1", "Show this shortcut sheet"),
+        ]
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard shortcuts")
+        dlg.setMinimumWidth(420)
+        dlg.setStyleSheet("QDialog { background-color: #141414; }")
+
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(22, 20, 22, 20)
+        lay.setSpacing(10)
+
+        title = QLabel("Keyboard shortcuts")
+        title.setStyleSheet(
+            "QLabel { color:#FFFFFF; font-size:18px; font-weight:950; border:none; background:transparent; }"
+        )
+        lay.addWidget(title)
+
+        for keys, desc in rows:
+            row = QLabel(
+                f"<span style='color:#7AE582; font-weight:900;'>{keys}</span>"
+                f"&nbsp;&nbsp;<span style='color:#C8C8C8;'>{desc}</span>"
+            )
+            row.setStyleSheet("QLabel { font-size:13px; border:none; background:transparent; }")
+            lay.addWidget(row)
+
+        return dlg
 
     def _practice_page_key(self) -> str:
         obj = (getattr(self.session.state, "objective", "") or "").lower().strip()
@@ -192,6 +282,14 @@ class MainWindow(QMainWindow):
         w = self.pages[page_key]
         self.stack.setCurrentWidget(w)
         self.page_scroll.verticalScrollBar().setValue(0)
+
+        # Keep every page's chrome in sync with the current focus state — both
+        # ways, so a page shown after Focus mode is turned off gets its bar back.
+        if hasattr(w, "set_focus_mode"):
+            try:
+                w.set_focus_mode(getattr(self, "_focus_mode", False))
+            except Exception:
+                pass
 
         if hasattr(w, "on_show"):
             try:

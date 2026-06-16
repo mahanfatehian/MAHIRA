@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal, Slot
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -138,15 +139,16 @@ class PronunciationWorker(QObject):
     finished = Signal(str, str)
     failed = Signal(str, str)
 
-    def __init__(self, service: PronunciationService, text: str) -> None:
+    def __init__(self, service: PronunciationService, text: str, length_scale: float | None = None) -> None:
         super().__init__()
         self.service = service
         self.text = text
+        self.length_scale = length_scale
 
     @Slot()
     def run(self) -> None:
         try:
-            wav_path = self.service.generate_wav(self.text)
+            wav_path = self.service.generate_wav(self.text, length_scale=self.length_scale)
             self.finished.emit(self.text, str(wav_path))
         except Exception as e:  # noqa: BLE001 - surfaced to the UI as a status
             self.failed.emit(self.text, str(e))
@@ -201,13 +203,43 @@ class ListeningReviewPage(QWidget):
         self._audio_worker: PronunciationWorker | None = None
         self._audio_text: str = ""
         self._audio_path: str = ""
+        self._audio_ls: float | None = None  # speed of the cached clip
         self._audio_available = False
         self._replay_count: int = 0
+        self._speed: float = 1.0  # 0.75 / 1.0 / 1.25 (Piper length_scale = 1/speed)
 
         self.setObjectName("ListeningReviewPage")
         self.setStyleSheet("ListeningReviewPage { background-color: #0E0E0E; }")
 
         self._build_ui()
+
+        self._undo_sc = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self._undo_sc.activated.connect(self._on_undo)
+
+        # Keyboard rating: 1/2/3/4 = Again/Hard/Good/Easy, active only after the
+        # learner has answered (no text input on this tab).
+        self._rating_shortcuts: list[QShortcut] = []
+        for key, r in (("1", 0), ("2", 1), ("3", 2), ("4", 3)):
+            sc = QShortcut(QKeySequence(key), self)
+            sc.setEnabled(False)
+            sc.activated.connect(lambda rr=r: self._rate_via_key(rr))
+            self._rating_shortcuts.append(sc)
+
+    def _set_rating_keys_enabled(self, on: bool) -> None:
+        for sc in getattr(self, "_rating_shortcuts", []):
+            sc.setEnabled(bool(on))
+
+    def _rate_via_key(self, rating: int) -> None:
+        if not self._answered:
+            return
+        self._on_rated(int(rating))
+
+    def set_focus_mode(self, on: bool) -> None:
+        """Focus/Zen mode: hide this tab's own top bar."""
+        try:
+            self.top_bar.setVisible(not bool(on))
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------ UI
     def _build_ui(self) -> None:
@@ -215,7 +247,8 @@ class ListeningReviewPage(QWidget):
         outer.setContentsMargins(16, 14, 16, 16)
         outer.setSpacing(12)
 
-        outer.addWidget(self._build_top_bar())
+        self.top_bar = self._build_top_bar()
+        outer.addWidget(self.top_bar)
         outer.addWidget(self._build_milestone_bar())
 
         # ---- Content stack (cards hug the top; no giant full-height shell) ----
@@ -321,6 +354,25 @@ class ListeningReviewPage(QWidget):
         audio_row.addWidget(self.audio_btn, 0)
         audio_row.addWidget(self.audio_status, 1)
         lay.addLayout(audio_row)
+
+        # Speed control: a one-tap slow pass to catch a missed word, without
+        # ever revealing the transcript.
+        speed_row = QHBoxLayout()
+        speed_row.setSpacing(6)
+        speed_lbl = QLabel("Speed")
+        speed_lbl.setStyleSheet(STYLE_KICKER)
+        speed_row.addWidget(speed_lbl)
+        self.speed_btns: dict[float, QPushButton] = {}
+        for spd, txt in ((0.75, "0.75×"), (1.0, "1×"), (1.25, "1.25×")):
+            b = QPushButton(txt)
+            b.setMinimumHeight(28)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(lambda _=False, s=spd: self._set_speed(s))
+            self.speed_btns[spd] = b
+            speed_row.addWidget(b)
+        speed_row.addStretch(1)
+        lay.addLayout(speed_row)
+        self._update_speed_buttons()
 
         self.question_lbl = QLabel("")
         self.question_lbl.setWordWrap(True)
@@ -541,6 +593,19 @@ class ListeningReviewPage(QWidget):
             pass
         self._load_next()
 
+    def _on_undo(self) -> None:
+        """Ctrl+Z: reverse the last submitted answer (restore its schedule + drop
+        its review row) and bring that card straight back to redo."""
+        try:
+            if not self.session.can_undo():
+                return
+            cur_id = getattr(self.current_item, "id", None)
+            item = self.session.undo_last(requeue_current=cur_id)
+        except Exception:
+            return
+        if item is not None:
+            self._load_next()
+
     def _load_next(self) -> None:
         self._cleanup_audio(delete=True)
         self._update_counter()
@@ -605,6 +670,8 @@ class ListeningReviewPage(QWidget):
         for rating, button in self._rating_buttons:
             button.setEnabled(False)
             button.setStyleSheet(_rating_style(rating, recommended=False))
+        self._clear_rating_intervals()
+        self._set_rating_keys_enabled(False)
         self.skip_btn.show()
         self.skip_btn.setEnabled(True)
         self.next_btn.hide()
@@ -644,6 +711,11 @@ class ListeningReviewPage(QWidget):
         for rating, button in self._rating_buttons:
             button.setEnabled(True)
             button.setStyleSheet(_rating_style(rating, recommended=(rating == self._recommended)))
+        self._set_rating_keys_enabled(True)
+        try:
+            self._apply_rating_intervals()
+        except Exception:
+            pass
 
         self.skip_btn.hide()
         self.next_btn.show()
@@ -718,6 +790,48 @@ class ListeningReviewPage(QWidget):
         if milestone_hit:
             self._show_milestone_banner()
 
+    # ------------------------------------------------------------- speed + rating intervals
+    _SPEED_ACTIVE = (
+        "QPushButton { background-color:#244B36; color:#F4FFF7; border:1px solid #4CAF50; "
+        "border-radius:9px; padding:4px 11px; font-weight:900; font-size:11px; }"
+    )
+    _SPEED_IDLE = (
+        "QPushButton { background-color:#161616; color:#C8C8C8; border:1px solid #2E2E2E; "
+        "border-radius:9px; padding:4px 11px; font-weight:800; font-size:11px; }"
+        "QPushButton:hover { border:1px solid #4A4A4A; color:#FFFFFF; }"
+    )
+    _RATING_BASE = {0: "Again", 1: "Hard", 2: "Good", 3: "Easy"}
+
+    def _update_speed_buttons(self) -> None:
+        for spd, b in getattr(self, "speed_btns", {}).items():
+            b.setStyleSheet(self._SPEED_ACTIVE if abs(spd - self._speed) < 1e-6 else self._SPEED_IDLE)
+
+    def _current_ls(self) -> float | None:
+        # Piper length_scale = 1 / speed; None at normal speed keeps the base cache key.
+        if abs(self._speed - 1.0) < 1e-6:
+            return None
+        return round(1.0 / self._speed, 3)
+
+    def _set_speed(self, speed: float) -> None:
+        self._speed = float(speed)
+        self._update_speed_buttons()
+        # Instant slow/fast pass: re-render + play at the new speed if a passage is up.
+        if self.current_item is not None and (getattr(self.current_item, "text", "") or "").strip():
+            self._play_passage()
+
+    def _apply_rating_intervals(self) -> None:
+        labels = {}
+        if self.current_item is not None:
+            labels = self.session.listening_interval_labels(self.current_item) or {}
+        for rating, button in self._rating_buttons:
+            base = self._RATING_BASE.get(rating, "")
+            iv = labels.get(rating) or ""
+            button.setText(f"{base}\n{iv}" if iv else base)
+
+    def _clear_rating_intervals(self) -> None:
+        for rating, button in self._rating_buttons:
+            button.setText(self._RATING_BASE.get(rating, ""))
+
     # ----------------------------------------------------------------- audio
     def _set_audio_state(self, *, busy: bool, playing: bool, available: bool | None = None) -> None:
         if available is not None:
@@ -749,22 +863,32 @@ class ListeningReviewPage(QWidget):
             return
 
         self._replay_count += 1
+        ls = self._current_ls()
 
-        # Reuse the exact cached clip if we already have it (Repeat path).
-        if self._audio_text == text and self._audio_path and Path(self._audio_path).exists():
+        # Reuse the exact cached clip if we already have it at THIS speed.
+        if (self._audio_text == text and self._audio_ls == ls
+                and self._audio_path and Path(self._audio_path).exists()):
             self.playback_service.stop()
             self._set_audio_state(busy=True, playing=False)
             self.playback_service.play_file(self._audio_path)
             return
 
-        # Otherwise synthesize once, off-thread, then play.
+        # Otherwise synthesize once at this speed, off-thread, then play.
+        # Switching speed on the same passage: drop the previous variant clip so
+        # cycling 1x -> 0.75x -> 1.25x doesn't orphan WAVs on disk.
+        if self._audio_path:
+            try:
+                self.pronunciation_service.delete_cached_file(self._audio_path)
+            except Exception:
+                pass
         self._audio_text = text
+        self._audio_ls = ls
         self._audio_path = ""
         self.playback_service.stop()
         self._set_audio_state(busy=True, playing=False)
 
         self._audio_thread = QThread(self)
-        self._audio_worker = PronunciationWorker(self.pronunciation_service, text)
+        self._audio_worker = PronunciationWorker(self.pronunciation_service, text, length_scale=ls)
         self._audio_worker.moveToThread(self._audio_thread)
         self._audio_thread.started.connect(self._audio_worker.run)
         self._audio_worker.finished.connect(self._on_audio_ready)

@@ -35,34 +35,61 @@ class PronunciationService:
         text = re.sub(r"\s+", " ", text)
         return text
 
-    def _cache_key(self, text: str) -> str:
+    def _cache_key(self, text: str, length_scale: float | None = None) -> str:
         normalized = self._normalize_text(text)
         raw = f"de::{normalized}"
+        # A non-default speed gets its own cache slot so 0.75x / 1.25x renders
+        # never collide with the normal-speed file. length_scale=None keeps the
+        # original key, so existing caches and normal playback are unaffected.
+        if length_scale is not None:
+            raw = f"{raw}::ls{length_scale:.3f}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def get_cached_path(self, text: str) -> Path:
-        return self.cache_dir / f"{self._cache_key(text)}.wav"
+    def get_cached_path(self, text: str, length_scale: float | None = None) -> Path:
+        return self.cache_dir / f"{self._cache_key(text, length_scale)}.wav"
 
-    def has_cached_audio(self, text: str) -> bool:
+    def has_cached_audio(self, text: str, length_scale: float | None = None) -> bool:
         normalized = self._normalize_text(text)
         if not normalized:
             return False
-        return self.get_cached_path(normalized).exists()
+        return self.get_cached_path(normalized, length_scale).exists()
 
-    def generate_wav(self, text: str, force: bool = False) -> Path:
+    def generate_wav(
+        self,
+        text: str,
+        force: bool = False,
+        length_scale: float | None = None,
+    ) -> Path:
+        """Render `text` to a cached WAV.
+
+        length_scale controls speaking speed: 1.0 is normal, >1.0 is slower,
+        <1.0 is faster (it is Piper's duration multiplier, i.e. 1.0 / speed).
+        None means "use the model default" and keeps the original cache key.
+        """
         normalized = self._normalize_text(text)
         if not normalized:
             raise ValueError("Cannot generate pronunciation for empty text.")
 
-        out_path = self.get_cached_path(normalized)
+        out_path = self.get_cached_path(normalized, length_scale)
 
         if out_path.exists() and not force:
             return out_path
 
         voice = self.model_manager.get_german_voice()
 
+        syn_config = None
+        if length_scale is not None:
+            try:
+                from piper import SynthesisConfig
+                syn_config = SynthesisConfig(length_scale=float(length_scale))
+            except Exception:
+                syn_config = None  # older piper: fall back to default speed
+
         with wave.open(str(out_path), "wb") as wav_file:
-            voice.synthesize_wav(normalized, wav_file)
+            if syn_config is not None:
+                voice.synthesize_wav(normalized, wav_file, syn_config=syn_config)
+            else:
+                voice.synthesize_wav(normalized, wav_file)
 
         return out_path
 

@@ -140,6 +140,25 @@ def _rating_0_3(value: int | str | None) -> int:
     return max(0, min(3, value))
 
 
+def _fmt_interval(seconds: int) -> str:
+    """Compact human label for an SRS interval (rating-button preview)."""
+    s = max(0, int(seconds))
+    m = s // 60
+    h = m // 60
+    d = h // 24
+    if s < 90:
+        return "1m"
+    if m < 60:
+        return f"{m}m"
+    if h < 24:
+        return f"{h}h"
+    if d < 30:
+        return f"{d}d"
+    if d < 365:
+        return f"{max(1, round(d / 30))}mo"
+    return f"{max(1, round(d / 365))}y"
+
+
 def _effective_vocab_rating(
     *,
     result: dict,
@@ -835,6 +854,83 @@ class SessionService:
             "expected_plural": expected_plural,
         }
 
+    # -----------------------------------------------------------------
+    # Rating-button interval preview + one-deep undo
+    # -----------------------------------------------------------------
+    def rating_interval_labels(self, state) -> dict:
+        """For each rating 0-3, the interval FSRS would schedule from `state`
+        (e.g. {2: '9d'}). schedule_next is pure (no persistence), so this is a
+        safe forward-looking preview shown on the rating buttons."""
+        now = int(time.time())
+        out: dict = {}
+        for r in (0, 1, 2, 3):
+            try:
+                s2 = schedule_next(state, r, now=now)
+                out[r] = _fmt_interval(int(getattr(s2, "due_at", now)) - now)
+            except Exception:
+                out[r] = ""
+        return out
+
+    def vocab_interval_labels(self, item) -> dict:
+        return self.rating_interval_labels(self.repo.ensure_state(item.id))
+
+    def grammar_interval_labels(self, item) -> dict:
+        return self.rating_interval_labels(self.repo.ensure_grammar_state(item.id))
+
+    def sentence_interval_labels(self, item) -> dict:
+        return self.rating_interval_labels(self.repo.ensure_sentence_state(item.id))
+
+    def listening_interval_labels(self, item) -> dict:
+        return self.rating_interval_labels(self.repo.ensure_listening_state(item.id))
+
+    def can_undo(self) -> bool:
+        return getattr(self, "_undo", None) is not None
+
+    def undo_last(self, requeue_current=None):
+        """Reverse the most recent submission (one-deep): restore the pre-review
+        FSRS state and delete the logged review row, then re-queue the undone item
+        so it is served NEXT (and the card currently on screen, if passed via
+        requeue_current, right after it). Returns the undone item or None."""
+        snap = getattr(self, "_undo", None)
+        if not snap:
+            return None
+        obj = snap.get("objective")
+        prev = snap.get("prev_state")
+        iid = snap.get("item_id")
+        logged = bool(snap.get("logged"))
+        try:
+            if obj == "vocab":
+                self.repo.update_state(prev)
+                if logged:
+                    self.repo.delete_last_review(iid)
+            elif obj == "grammar":
+                self.repo.update_grammar_state(prev)
+                if logged:
+                    self.repo.delete_last_grammar_review(iid)
+            elif obj == "sentence":
+                self.repo.update_sentence_state(prev)
+                if logged:
+                    self.repo.delete_last_sentence_review(iid)
+            elif obj == "listening":
+                self.repo.update_listening_state(prev)
+                if logged:
+                    self.repo.delete_last_listening_review(iid)
+            else:
+                return None
+        except Exception:
+            return None  # keep the snapshot so the undo can be retried
+        self._undo = None  # one-deep: consume only after the DB reversal succeeded
+        try:
+            # Queue pops from the END, so append the current card first and the
+            # undone item last -> undone item is served NEXT, current right after.
+            if requeue_current is not None:
+                self._queue.append(int(requeue_current))
+            if iid is not None:
+                self._queue.append(int(iid))
+        except Exception:
+            pass
+        return snap.get("item")
+
     def submit_vocab(
         self,
         item: VocabItem,
@@ -850,6 +946,8 @@ class SessionService:
         accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_state(item.id)
+        self._undo = {"objective": "vocab", "item": item, "item_id": item.id,
+                      "prev_state": st, "logged": not was_skipped}
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
 
         # Learner override ("Accept my answer"): they assert their meaning was a
@@ -951,6 +1049,8 @@ class SessionService:
         accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_grammar_state(item.id)
+        self._undo = {"objective": "grammar", "item": item, "item_id": item.id,
+                      "prev_state": st, "logged": not was_skipped}
         res = self.check_grammar(item, typed_blank)
 
         # Learner override ("Accept my answer"): count the answer as correct.
@@ -1092,6 +1192,8 @@ class SessionService:
         response_ms: int | None,
     ) -> Dict[str, Any]:
         st = self.repo.ensure_sentence_state(item.id)
+        self._undo = {"objective": "sentence", "item": item, "item_id": item.id,
+                      "prev_state": st, "logged": not was_skipped}
         res = self.check_sentence(item, typed_text)
 
         used_help = bool(tip_used or translation_used)
@@ -1209,6 +1311,8 @@ class SessionService:
         rating: int | None = None,
     ) -> dict:
         st = self.repo.ensure_listening_state(item.id)
+        self._undo = {"objective": "listening", "item": item, "item_id": item.id,
+                      "prev_state": st, "logged": not was_skipped}
         res = self.check_listening(item, chosen)
 
         # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),

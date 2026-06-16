@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.widgets.audio_button import AudioButton
 from ui.widgets.flow_layout import FlowLayout
 
 
@@ -132,6 +133,7 @@ class SentenceBuilderWidget(QWidget):
     tip_clicked = Signal()
     translation_clicked = Signal()
     skipped = Signal()
+    audio_clicked = Signal()  # hear the correct German sentence (after checking)
 
     def __init__(self, accent: str = "#FFB020"):
         super().__init__()
@@ -401,6 +403,15 @@ class SentenceBuilderWidget(QWidget):
         feedback_layout.addWidget(self.result_lbl)
         feedback_layout.addWidget(self.details_lbl)
         feedback_layout.addWidget(self.expected_lbl)
+
+        audio_row = QHBoxLayout()
+        audio_row.addStretch(1)
+        self.audio_btn = AudioButton()
+        self.audio_btn.set_available(False)
+        audio_row.addWidget(self.audio_btn)
+        audio_row.addStretch(1)
+        feedback_layout.addLayout(audio_row)
+
         self.feedback_frame.hide()
         root.addWidget(self.feedback_frame)
 
@@ -458,6 +469,24 @@ class SentenceBuilderWidget(QWidget):
         self.btn_hard.clicked.connect(lambda: self.rated.emit(1))
         self.btn_good.clicked.connect(lambda: self.rated.emit(2))
         self.btn_easy.clicked.connect(lambda: self.rated.emit(3))
+        self.audio_btn.clicked.connect(self.audio_clicked.emit)
+
+    _RATING_LABELS = {0: "Again", 1: "Hard", 2: "Good", 3: "Easy"}
+
+    def _rating_button_map(self) -> dict:
+        return {0: self.btn_again, 1: self.btn_hard, 2: self.btn_good, 3: self.btn_easy}
+
+    def set_rating_intervals(self, labels: dict | None) -> None:
+        """Show the interval each rating would schedule next, e.g. 'Good\\n9d'."""
+        labels = labels or {}
+        for r, btn in self._rating_button_map().items():
+            base = self._RATING_LABELS[r]
+            iv = labels.get(r) or labels.get(str(r)) or ""
+            btn.setText(f"{base}\n{iv}" if iv else base)
+
+    def clear_rating_intervals(self) -> None:
+        for r, btn in self._rating_button_map().items():
+            btn.setText(self._RATING_LABELS[r])
 
     def reset_for_next(self) -> None:
         self._checked = False
@@ -478,6 +507,9 @@ class SentenceBuilderWidget(QWidget):
         self.tip_panel.hide()
         self.translation_panel.hide()
 
+        self.audio_btn.reset_state()
+        self.audio_btn.set_available(False)
+
         self.tip_btn.setText("Reveal tip")
         self.tr_btn.setText("Reveal translation")
 
@@ -493,6 +525,7 @@ class SentenceBuilderWidget(QWidget):
         self.btn_hard.setEnabled(False)
         self.btn_good.setEnabled(False)
         self.btn_easy.setEnabled(False)
+        self.clear_rating_intervals()
 
         self._clear_layout(self.bank_flow)
         self._clear_layout(self.built_flow)
@@ -575,6 +608,9 @@ class SentenceBuilderWidget(QWidget):
         self.btn_hard.setEnabled(True)
         self.btn_good.setEnabled(True)
         self.btn_easy.setEnabled(True)
+
+        # The correct sentence is now on screen — let the learner hear it.
+        self.audio_btn.set_available(True)
 
         self._refresh_answer_area_style()
 

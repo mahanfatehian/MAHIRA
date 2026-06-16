@@ -119,6 +119,8 @@ class CardWidget(QWidget):
     tip_clicked = Signal()
     gender_tip_clicked = Signal()
     audio_clicked = Signal()
+    example_audio_clicked = Signal()  # play the German example sentence aloud
+    speed_changed = Signal(float)     # 0.75 / 1.0 / 1.25 playback speed
     accepted = Signal()  # "Accept my answer" override
 
     def __init__(self, accent: str = "#66E39A", parent=None):
@@ -129,6 +131,7 @@ class CardWidget(QWidget):
         # reveal we swap the masked bullets back to this and clear the slot.
         self._meaning_blur: str | None = None
         self._example_blur: str | None = None
+        self._has_example_audio: bool = False
         self._gender_tip_blur: str | None = None
         self._gender_tip_text: str | None = None
         self._recommended_rating: int | None = None
@@ -184,6 +187,27 @@ class CardWidget(QWidget):
 
         root.addWidget(self.word_frame)
 
+        # ===== Pronunciation speed (applies to the word AND the example) =====
+        self._speed_value = 1.0
+        speed_widget = QWidget()
+        speed_row = QHBoxLayout(speed_widget)
+        speed_row.setContentsMargins(2, 0, 2, 0)
+        speed_row.setSpacing(6)
+        speed_lbl = QLabel("Speed")
+        speed_lbl.setStyleSheet(_muted_label_style())
+        speed_row.addWidget(speed_lbl)
+        self._speed_btns: dict[float, QPushButton] = {}
+        for spd, txt in ((0.75, "0.75×"), (1.0, "1×"), (1.25, "1.25×")):
+            b = QPushButton(txt)
+            b.setMinimumHeight(26)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(lambda _=False, s=spd: self.speed_changed.emit(s))
+            self._speed_btns[spd] = b
+            speed_row.addWidget(b)
+        speed_row.addStretch(1)
+        root.addWidget(speed_widget)
+        self._update_speed_btns()
+
         # ===== Grammar-style tips row =====
         self.tips_row_widget = QWidget()
         tips_row = QHBoxLayout(self.tips_row_widget)
@@ -194,18 +218,21 @@ class CardWidget(QWidget):
             self.meaning_card,
             self.meaning_tip_label,
             self.btn_reveal_meaning,
+            _,
         ) = self._make_reveal_card("Meaning")
 
         (
             self.example_card,
             self.example_tip_label,
             self.btn_reveal_example,
-        ) = self._make_reveal_card("Example")
+            self.example_audio_btn,
+        ) = self._make_reveal_card("Example", with_audio=True)
 
         (
             self.gender_tip_card,
             self.gender_tip_label,
             self.btn_reveal_gender_tip,
+            _,
         ) = self._make_reveal_card("Gender tip")
 
         tips_row.addWidget(self.meaning_card)
@@ -338,7 +365,9 @@ class CardWidget(QWidget):
         for field in (self.in_meaning, self.in_gender, self.in_plural):
             field.installEventFilter(self)
 
-    def _make_reveal_card(self, title: str) -> tuple[QFrame, QLabel, QPushButton]:
+    def _make_reveal_card(
+        self, title: str, with_audio: bool = False
+    ) -> tuple[QFrame, QLabel, QPushButton, AudioButton | None]:
         frame = QFrame()
         frame.setStyleSheet(_card_style(border="#2A2A2A", bg="#101010", radius=14))
         frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -354,6 +383,14 @@ class CardWidget(QWidget):
         title_label.setStyleSheet(_muted_label_style())
         top.addWidget(title_label, 1)
 
+        # A compact speaker for cards that can be heard (the example sentence).
+        audio_btn: AudioButton | None = None
+        if with_audio:
+            audio_btn = AudioButton()
+            audio_btn.setFixedSize(38, 30)
+            audio_btn.set_available(False)
+            top.addWidget(audio_btn)
+
         button = QPushButton("Reveal")
         button.setFixedWidth(74)
         button.setMinimumHeight(28)
@@ -368,7 +405,7 @@ class CardWidget(QWidget):
         layout.addLayout(top)
         layout.addWidget(value)
 
-        return frame, value, button
+        return frame, value, button, audio_btn
 
     def _make_input_row(self, label: str, placeholder: str) -> QFrame:
         row = QFrame()
@@ -648,6 +685,35 @@ class CardWidget(QWidget):
     def reset_audio_state(self) -> None:
         self.audio_btn.reset_state()
 
+    _SPEED_ACTIVE = (
+        "QPushButton { background-color:#244B36; color:#F4FFF7; border:1px solid #4CAF50; "
+        "border-radius:9px; padding:4px 11px; font-weight:900; font-size:11px; }"
+    )
+    _SPEED_IDLE = (
+        "QPushButton { background-color:#161616; color:#C8C8C8; border:1px solid #2E2E2E; "
+        "border-radius:9px; padding:4px 11px; font-weight:800; font-size:11px; }"
+        "QPushButton:hover { border:1px solid #4A4A4A; color:#FFFFFF; }"
+    )
+
+    def _update_speed_btns(self) -> None:
+        for spd, b in getattr(self, "_speed_btns", {}).items():
+            b.setStyleSheet(
+                self._SPEED_ACTIVE if abs(spd - self._speed_value) < 1e-6 else self._SPEED_IDLE
+            )
+
+    def set_speed(self, speed: float) -> None:
+        self._speed_value = float(speed)
+        self._update_speed_btns()
+
+    def set_example_audio_enabled(self, enabled: bool) -> None:
+        if self.example_audio_btn is not None:
+            self.example_audio_btn.set_available(bool(enabled))
+
+    def reset_example_audio_state(self) -> None:
+        if self.example_audio_btn is not None:
+            self.example_audio_btn.reset_state()
+            self.example_audio_btn.set_available(False)
+
     def set_meaning_blurred(self, text: str | None) -> None:
         text = (text or "").strip()
 
@@ -665,6 +731,9 @@ class CardWidget(QWidget):
         self.btn_reveal_meaning.setVisible(True)
 
     def set_example_blurred(self, de_text: str | None, en_text: str | None) -> None:
+        # Audio stays muted until the example is revealed — hearing the full
+        # German sentence would otherwise give the hidden example away.
+        self.set_example_audio_enabled(False)
         de_text = (de_text or "").strip()
         en_text = (en_text or "").strip() if en_text else ""
 
@@ -676,10 +745,12 @@ class CardWidget(QWidget):
         if not display:
             self.example_tip_label.setText("No example available")
             self._example_blur = None
+            self._has_example_audio = False
             self.btn_reveal_example.setEnabled(False)
             self.btn_reveal_example.setVisible(False)
             return
 
+        self._has_example_audio = bool(de_text)
         self._example_blur = display
         self.example_tip_label.setText(mask_hidden(display))
         self.btn_reveal_example.setText("Reveal")
@@ -785,6 +856,20 @@ class CardWidget(QWidget):
         rec = self._recommend_from_checks(True, self._last_gender_ok, self._last_plural_ok)
         self.set_recommended_rating(min(2, rec))
 
+    _RATING_LABELS = {0: "Again", 1: "Hard", 2: "Good", 3: "Easy"}
+
+    def set_rating_intervals(self, labels: dict | None) -> None:
+        """Show the interval each rating would schedule next, e.g. 'Good\\n9d'."""
+        labels = labels or {}
+        for r, btn in self._rating_buttons:
+            base = self._RATING_LABELS.get(r, "")
+            iv = labels.get(r) or labels.get(str(r)) or ""
+            btn.setText(f"{base}\n{iv}" if iv else base)
+
+    def clear_rating_intervals(self) -> None:
+        for r, btn in self._rating_buttons:
+            btn.setText(self._RATING_LABELS.get(r, btn.text()))
+
     def set_recommended_rating(self, rating: int | None) -> None:
         self._recommended_rating = rating
         for r, btn in self._rating_buttons:
@@ -793,6 +878,7 @@ class CardWidget(QWidget):
     def reset_for_next(self) -> None:
         self._recommended_rating = None
 
+        self.clear_rating_intervals()
         self.accept_btn.setVisible(False)
         self.results_frame.setVisible(False)
         self.rating_frame.setVisible(False)
@@ -834,6 +920,8 @@ class CardWidget(QWidget):
 
         self.example_tip_label.setText("No example available")
         self._example_blur = None
+        self._has_example_audio = False
+        self.reset_example_audio_state()
         self.btn_reveal_example.setEnabled(False)
         self.btn_reveal_example.setVisible(False)
 
@@ -906,6 +994,8 @@ class CardWidget(QWidget):
         self.btn_reveal_gender_tip.clicked.connect(self._on_reveal_gender_tip)
 
         self.audio_btn.clicked.connect(self.audio_clicked.emit)
+        if self.example_audio_btn is not None:
+            self.example_audio_btn.clicked.connect(self.example_audio_clicked.emit)
 
     def _emit_skip(self) -> None:
         self.skipped.emit()
@@ -933,6 +1023,9 @@ class CardWidget(QWidget):
             self.example_tip_label.setText(self._example_blur)
             self._example_blur = None
             self.btn_reveal_example.setEnabled(False)
+            # Now that the sentence is on screen, let the learner hear it.
+            if self._has_example_audio:
+                self.set_example_audio_enabled(True)
             self.tip_clicked.emit()
 
     def _on_reveal_gender_tip(self) -> None:

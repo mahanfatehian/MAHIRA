@@ -1315,6 +1315,56 @@ class Repo:
                         out[day] = out.get(day, 0) + int(r["c"])
         return out
 
+    def upcoming_due_counts(self, within_seconds: int = 86400) -> dict[str, int]:
+        """Global (all decks + objectives) schedule pressure for the launch strip:
+        how many SEEN items are due right now vs. ripen within `within_seconds`.
+        Items without a state row (never studied) are not 'due'. A missing state
+        table on a very old DB is skipped rather than fatal."""
+        now = int(time.time())
+        horizon = now + int(within_seconds)
+        tables = ("vocab_states", "grammar_states", "sentence_states", "listening_states")
+        due_now = 0
+        due_soon = 0
+        with self._conn() as conn:
+            for table in tables:  # fixed constants, not user input
+                try:
+                    row = conn.execute(
+                        f"""
+                        SELECT
+                            SUM(CASE WHEN due_at <= ? THEN 1 ELSE 0 END) AS now_due,
+                            SUM(CASE WHEN due_at > ? AND due_at <= ? THEN 1 ELSE 0 END) AS soon_due
+                          FROM {table}
+                        """,
+                        (now, now, horizon),
+                    ).fetchone()
+                except Exception:
+                    continue
+                if row:
+                    due_now += int(row["now_due"] or 0)
+                    due_soon += int(row["soon_due"] or 0)
+        return {"due_now": due_now, "due_soon": due_soon}
+
+    # ---------- one-deep undo: drop the most recent review for an item ----------
+    def _delete_last(self, table: str, fk: str, item_id: int) -> None:
+        with self._conn() as conn:  # table/fk are fixed constants, not user input
+            conn.execute(
+                f"DELETE FROM {table} "
+                f"WHERE rowid = (SELECT rowid FROM {table} WHERE {fk}=? ORDER BY rowid DESC LIMIT 1)",
+                (int(item_id),),
+            )
+
+    def delete_last_review(self, vocab_id: int) -> None:
+        self._delete_last("reviews", "vocab_id", vocab_id)
+
+    def delete_last_grammar_review(self, grammar_id: int) -> None:
+        self._delete_last("grammar_reviews", "grammar_id", grammar_id)
+
+    def delete_last_sentence_review(self, sentence_id: int) -> None:
+        self._delete_last("sentence_reviews", "sentence_id", sentence_id)
+
+    def delete_last_listening_review(self, listening_id: int) -> None:
+        self._delete_last("listening_reviews", "listening_id", listening_id)
+
     def unseen_count(self, deck_id: int) -> int:
         with self._conn() as conn:
             row = conn.execute(

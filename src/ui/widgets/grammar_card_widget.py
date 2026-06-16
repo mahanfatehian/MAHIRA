@@ -536,8 +536,23 @@ class GrammarCardWidget(QWidget):
             button.setEnabled(False)
             button.setStyleSheet(self._rating_style(rating, recommended=False))
 
+    _RATING_LABELS = {0: "Again", 1: "Hard", 2: "Good", 3: "Easy"}
+
+    def set_rating_intervals(self, labels: dict | None) -> None:
+        """Show the interval each rating would schedule next, e.g. 'Good\\n9d'."""
+        labels = labels or {}
+        for r, btn in self._rating_buttons:
+            base = self._RATING_LABELS.get(r, "")
+            iv = labels.get(r) or labels.get(str(r)) or ""
+            btn.setText(f"{base}\n{iv}" if iv else base)
+
+    def clear_rating_intervals(self) -> None:
+        for r, btn in self._rating_buttons:
+            btn.setText(self._RATING_LABELS.get(r, btn.text()))
+
     def reset_for_next(self) -> None:
         self._recommended_rating = None
+        self.clear_rating_intervals()
         self.accept_btn.setVisible(False)
         self.feedback.setVisible(False)
         self.feedback.setText(" ")
