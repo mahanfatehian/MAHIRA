@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QSpacer
 # The four practice objectives are peers in the nav. They are only enabled once a
 # concrete Lektion is selected (and only for objectives that actually have a deck
 # in that Lektion), so they are inert while the user is still choosing in Setup.
-OBJECTIVE_KEYS = ("vocab", "grammar", "sentences", "listening")
+OBJECTIVE_KEYS = ("vocab", "grammar", "sentences", "listening", "game")
 
 
 class NavBar(QWidget):
@@ -88,6 +88,7 @@ class NavBar(QWidget):
         self.btn_grammar = QPushButton("Grammar")
         self.btn_sentences = QPushButton("Sentences")
         self.btn_listening = QPushButton("Listening")
+        self.btn_game = QPushButton("Blitz ⚡")
 
         self.btn_learn = QPushButton("Learn")
         self.btn_progress = QPushButton("Progress")
@@ -99,6 +100,7 @@ class NavBar(QWidget):
             "grammar": self.btn_grammar,
             "sentences": self.btn_sentences,
             "listening": self.btn_listening,
+            "game": self.btn_game,
             "learn": self.btn_learn,
             "progress": self.btn_progress,
         }
@@ -113,6 +115,7 @@ class NavBar(QWidget):
         layout.addWidget(self.btn_grammar)
         layout.addWidget(self.btn_sentences)
         layout.addWidget(self.btn_listening)
+        layout.addWidget(self.btn_game)
         layout.addSpacing(6)
         layout.addWidget(self.btn_learn)
         layout.addWidget(self.btn_progress)

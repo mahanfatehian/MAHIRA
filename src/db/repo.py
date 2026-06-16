@@ -1365,6 +1365,81 @@ class Repo:
     def delete_last_listening_review(self, listening_id: int) -> None:
         self._delete_last("listening_reviews", "listening_id", listening_id)
 
+    # ---------- Blitz game: vocab source rows + per-deck high score ----------
+    def game_vocab_rows(self, deck_id: int) -> list[dict]:
+        """The fields the connect-the-pairs game needs from a vocab deck, as
+        plain dicts (no FSRS state involved — the game is a separate mode)."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id, pos, word, article, gender, plural, meaning "
+                "FROM vocab WHERE deck_id=?",
+                (int(deck_id),),
+            ).fetchall()
+            return [
+                {
+                    "id": int(r["id"]),
+                    "pos": r["pos"],
+                    "word": r["word"],
+                    "article": r["article"],
+                    "gender": r["gender"],
+                    "plural": r["plural"],
+                    "meaning": r["meaning"],
+                }
+                for r in rows
+            ]
+
+    def get_game_best(self, deck_id: int) -> dict:
+        """Personal best + lifetime telemetry for a deck's Blitz game (zeros if
+        never played)."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT best_score, best_combo, last_score, plays "
+                "FROM game_scores WHERE deck_id=?",
+                (int(deck_id),),
+            ).fetchone()
+        if not row:
+            return {"best_score": 0, "best_combo": 0, "last_score": 0, "plays": 0}
+        return {
+            "best_score": int(row["best_score"] or 0),
+            "best_combo": int(row["best_combo"] or 0),
+            "last_score": int(row["last_score"] or 0),
+            "plays": int(row["plays"] or 0),
+        }
+
+    def record_game_score(self, deck_id: int, score: int, max_combo: int) -> dict:
+        """Record a finished round; upsert the per-deck best. Returns the stored
+        row plus `is_new_best` so the UI can celebrate a record."""
+        deck_id = int(deck_id)
+        score = int(max(0, score))
+        max_combo = int(max(0, max_combo))
+        now = int(time.time())
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT best_score, best_combo, plays FROM game_scores WHERE deck_id=?",
+                (deck_id,),
+            ).fetchone()
+            prev_best = int(row["best_score"]) if row else 0
+            is_new_best = score > prev_best
+            if row is None:
+                conn.execute(
+                    "INSERT INTO game_scores "
+                    "(deck_id, best_score, best_combo, last_score, plays, updated_at) "
+                    "VALUES (?, ?, ?, ?, 1, ?)",
+                    (deck_id, score, max_combo, score, now),
+                )
+            else:
+                conn.execute(
+                    "UPDATE game_scores SET "
+                    "best_score=MAX(best_score, ?), "
+                    "best_combo=MAX(best_combo, ?), "
+                    "last_score=?, plays=plays+1, updated_at=? "
+                    "WHERE deck_id=?",
+                    (score, max_combo, score, now, deck_id),
+                )
+        best = self.get_game_best(deck_id)
+        best["is_new_best"] = is_new_best
+        return best
+
     def unseen_count(self, deck_id: int) -> int:
         with self._conn() as conn:
             row = conn.execute(

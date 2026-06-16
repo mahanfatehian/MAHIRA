@@ -18,6 +18,7 @@ from ui.pages.vocab_review import VocabReviewPage
 from ui.pages.grammar_review import GrammarReviewPage
 from ui.pages.sentence_review import SentenceReviewPage
 from ui.pages.listening_review import ListeningReviewPage
+from ui.pages.game_page import GamePage
 from ui.pages.progress import ProgressPage
 from ui.pages.learn import LearnPage
 
@@ -27,6 +28,7 @@ PAGE_KEYS = [
     "grammar_review",
     "sentence_review",
     "listening_review",
+    "game",
     "progress",
     "learn",
 ]
@@ -86,6 +88,7 @@ class MainWindow(QMainWindow):
             "grammar_review": make(GrammarReviewPage),
             "sentence_review": make(SentenceReviewPage),
             "listening_review": make(ListeningReviewPage),
+            "game": make(GamePage),
             "progress": make(ProgressPage),
             "learn": make(LearnPage),
         }
@@ -119,6 +122,10 @@ class MainWindow(QMainWindow):
         if hasattr(self.pages["setup"], "start_practice"):
             self.pages["setup"].start_practice.connect(self._go_from_objective)
 
+        # The Blitz card in the objective selector routes straight to the game.
+        if hasattr(self.pages["setup"], "start_game"):
+            self.pages["setup"].start_game.connect(lambda: self.go("game"))
+
         # Keep the nav's objective tabs in sync as the user picks a Lektion in Setup.
         if hasattr(self.pages["setup"], "context_changed"):
             self.pages["setup"].context_changed.connect(self._sync_nav)
@@ -131,6 +138,8 @@ class MainWindow(QMainWindow):
             self.pages["sentence_review"].go_progress.connect(lambda: self.go("progress"))
         if hasattr(self.pages["listening_review"], "go_progress"):
             self.pages["listening_review"].go_progress.connect(lambda: self.go("progress"))
+        if hasattr(self.pages["game"], "go_progress"):
+            self.pages["game"].go_progress.connect(lambda: self.go("progress"))
 
         if hasattr(self.pages["progress"], "go_learn"):
             self.pages["progress"].go_learn.connect(lambda: self.go("practice"))
@@ -239,6 +248,7 @@ class MainWindow(QMainWindow):
             "grammar_review": "grammar",
             "sentence_review": "sentences",
             "listening_review": "listening",
+            "game": "game",
             "setup": "setup",
             "learn": "learn",
             "progress": "progress",
@@ -276,6 +286,9 @@ class MainWindow(QMainWindow):
                             enabled.add(obj)
                     except Exception:
                         pass
+        # Blitz is played over the vocab deck, so it lights up wherever vocab does.
+        if "vocab" in enabled:
+            enabled.add("game")
         self.nav.set_objective_states(enabled)
 
     def _show(self, page_key: str) -> None:
@@ -316,6 +329,15 @@ class MainWindow(QMainWindow):
     }
 
     def go(self, page_key: str) -> None:
+        # Blitz is a side mode over the current Lektion's vocab — it does NOT flip
+        # the practice objective, so it's routed before the objective tabs.
+        if page_key == "game":
+            if not getattr(self.session.state, "level", None) or not self.session.game_deck_id():
+                self._show("setup")
+                return
+            self._show("game")
+            return
+
         # An objective tab IS its objective: set it, then show its review page.
         # Requires a chosen Lektion; otherwise fall back to Setup. (The nav also
         # disables these tabs until a Lektion exists, so this is a safety net.)

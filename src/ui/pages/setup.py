@@ -49,6 +49,7 @@ _ACCENT_VOCAB     = "#66E39A"
 _ACCENT_GRAMMAR   = "#B983FF"
 _ACCENT_SENTENCES = "#FFB020"
 _ACCENT_LISTENING = "#34D2E0"
+_ACCENT_GAME      = "#FF4D6D"   # Blitz — the game mode
 _ACCENT_DONE      = "#7AE582"   # "fully reviewed" tick (matches milestone green)
 
 
@@ -523,6 +524,7 @@ class LektionCard(_ClickCard):
 
 class SetupPage(QWidget):
     start_practice = Signal()
+    start_game = Signal()        # the Blitz card — jump straight into the game
     context_changed = Signal()   # level/book/lektion changed — nav re-syncs its tabs
 
     def __init__(self, session, nav=None):
@@ -1214,11 +1216,17 @@ class SetupPage(QWidget):
             accent=_ACCENT_LISTENING,
             on_start=lambda: self._choose_objective("listening"),
         )
+        self.card_game = ObjectiveSelectCard(
+            title="Blitz ⚡",
+            accent=_ACCENT_GAME,
+            on_start=self._choose_game,
+        )
 
         inner.addWidget(self.card_vocab, 0)
         inner.addWidget(self.card_grammar, 0)
         inner.addWidget(self.card_sentences, 0)
         inner.addWidget(self.card_listening, 0)
+        inner.addWidget(self.card_game, 0)
         inner.addStretch(1)
 
         lay.addWidget(group, 0)
@@ -1227,7 +1235,8 @@ class SetupPage(QWidget):
 
     def _refresh_objectives(self):
         if not self.level or not self.book_slug or not self.lektion_number:
-            for c in (self.card_vocab, self.card_grammar, self.card_sentences, self.card_listening):
+            for c in (self.card_vocab, self.card_grammar, self.card_sentences,
+                      self.card_listening, self.card_game):
                 c.set_meta("")
                 c.set_enabled(False)
                 c.set_completed(False)
@@ -1260,6 +1269,32 @@ class SetupPage(QWidget):
         self.card_listening.set_enabled(dl is not None)
         self.card_listening.set_meta(f"{_fmt_int(listen_n)} items" if dl is not None else "")
         self.card_listening.set_completed(self._deck_complete(dl, "listening", listen_n))
+
+        # Blitz plays over the vocab deck — enable it wherever vocab exists and
+        # surface the personal best for this Lektion (or a "New!" nudge).
+        self.card_game.set_enabled(dv is not None)
+        self.card_game.set_completed(False)
+        if dv is not None:
+            try:
+                best = int(self.session.repo.get_game_best(dv).get("best_score", 0))
+            except Exception:
+                best = 0
+            self.card_game.set_meta(f"Best {_fmt_int(best)}" if best > 0 else "New — play!")
+        else:
+            self.card_game.set_meta("")
+
+    def _choose_game(self):
+        if not self.level or not self.book_slug or not self.lektion_number:
+            return
+        # Sync state so the game page resolves the right Lektion's vocab deck,
+        # then hand off to the main window (which shows the Blitz page).
+        try:
+            self.session.state.level = _norm_level(self.level)
+            self.session.state.book_slug = self.book_slug
+            self.session.state.lektion_number = int(self.lektion_number)
+        except Exception:
+            pass
+        self.start_game.emit()
 
     def _choose_objective(self, key: str):
         if not self.level or not self.book_slug or not self.lektion_number:

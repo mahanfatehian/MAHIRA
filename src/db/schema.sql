@@ -299,3 +299,23 @@ CREATE TABLE IF NOT EXISTS listening_reviews (
 
 CREATE INDEX IF NOT EXISTS idx_listening_reviews_item ON listening_reviews(listening_id);
 CREATE INDEX IF NOT EXISTS idx_listening_reviews_created ON listening_reviews(created_at);
+
+-- =========================
+-- Blitz game scores
+-- The connect-the-pairs game ("Blitz") is played over a Lektion's existing
+-- vocab deck, so its high score is keyed by that vocab deck_id. One row per
+-- deck holds the personal best plus a little lifetime telemetry.
+-- =========================
+CREATE TABLE IF NOT EXISTS game_scores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  deck_id INTEGER NOT NULL,
+  best_score INTEGER NOT NULL DEFAULT 0,
+  best_combo INTEGER NOT NULL DEFAULT 0,
+  last_score INTEGER NOT NULL DEFAULT 0,
+  plays INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  UNIQUE(deck_id),
+  FOREIGN KEY(deck_id) REFERENCES decks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_scores_deck ON game_scores(deck_id);

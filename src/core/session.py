@@ -397,6 +397,48 @@ class SessionService:
         return self._active_deck_id
 
     # -----------------------------------------------------------------
+    # Blitz game — a separate mode played over the current Lektion's vocab deck
+    # (no FSRS queue/state involved). The objective is never switched to "game";
+    # these resolve the *vocab* deck for whatever Lektion is in context.
+    # -----------------------------------------------------------------
+    def game_deck_id(self) -> int | None:
+        lvl = _norm_level(getattr(self.state, "level", "A1"))
+        lektion_id = self._resolve_lektion_id()
+        try:
+            return self.repo.get_deck_id(lvl, "vocab", lektion_id=lektion_id)
+        except Exception:
+            return None
+
+    def game_vocab_items(self) -> list[dict]:
+        deck_id = self.game_deck_id()
+        if not deck_id:
+            return []
+        try:
+            return self.repo.game_vocab_rows(deck_id)
+        except Exception:
+            return []
+
+    def game_best(self, deck_id: int | None = None) -> dict:
+        if deck_id is None:
+            deck_id = self.game_deck_id()
+        if not deck_id:
+            return {"best_score": 0, "best_combo": 0, "last_score": 0, "plays": 0}
+        try:
+            return self.repo.get_game_best(deck_id)
+        except Exception:
+            return {"best_score": 0, "best_combo": 0, "last_score": 0, "plays": 0}
+
+    def record_game_score(self, score: int, max_combo: int, deck_id: int | None = None) -> dict:
+        if deck_id is None:
+            deck_id = self.game_deck_id()
+        if not deck_id:
+            return {"best_score": int(score), "best_combo": int(max_combo), "is_new_best": False}
+        try:
+            return self.repo.record_game_score(deck_id, score, max_combo)
+        except Exception:
+            return {"best_score": int(score), "best_combo": int(max_combo), "is_new_best": False}
+
+    # -----------------------------------------------------------------
     # Compatibility helpers used by UI pages
     # -----------------------------------------------------------------
     def remaining(self) -> int:
