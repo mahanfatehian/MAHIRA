@@ -29,12 +29,12 @@ from PySide6.QtWidgets import (
 
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.audio.sfx import SfxEngine
-from core.game import build_pairs, make_waves
+from core.game import build_pairs
 from core.session import SessionService
 from ui.widgets.game_board import GameBoard
 
 _ACCENT = "#FF4D6D"  # Blitz red/pink — distinct from the four study objectives.
-_ROUND_SECONDS = 60
+_MAX_PAIRS = 48      # pairs per "map" — keeps a round punchy (~1.5–2.5 min)
 
 
 class _PrecacheWorker(QObject):
@@ -75,6 +75,7 @@ class GamePage(QWidget):
         self._deck_id: int | None = None
         self._best: dict = {"best_score": 0, "best_combo": 0, "plays": 0}
         self._audio_on = True
+        self._level = "normal"
 
         # Arcade SFX (synthesized, offline; built lazily on first play so it never
         # taxes app startup) + word TTS (reuses the app's Piper).
@@ -160,11 +161,11 @@ class GamePage(QWidget):
         lay.addLayout(col)
         lay.addStretch(1)
 
-        self.time_lbl = self._chip("⏱ 60")
+        self.acc_lbl = self._chip("100%")
         self.score_lbl = self._chip("0")
         self.combo_lbl = self._chip("x0")
         self.best_lbl = self._chip("Best 0")
-        for c in (self.time_lbl, self.score_lbl, self.combo_lbl, self.best_lbl):
+        for c in (self.acc_lbl, self.score_lbl, self.combo_lbl, self.best_lbl):
             lay.addWidget(c)
 
         self.audio_btn = QPushButton("🔊")
@@ -216,6 +217,19 @@ class GamePage(QWidget):
         )
         return b
 
+    def _level_btn(self, text: str, accent: str) -> QPushButton:
+        b = QPushButton(text)
+        b.setMinimumHeight(46)
+        b.setMinimumWidth(118)
+        b.setCursor(Qt.CursorShape.PointingHandCursor)
+        b.setStyleSheet(
+            f"QPushButton {{ background-color:#161616; color:{accent}; border:2px solid {accent}; "
+            "border-radius:14px; padding:10px 16px; font-weight:950; font-size:15px; }"
+            f"QPushButton:hover {{ background-color:{accent}; color:#0A0A0A; }}"
+            "QPushButton:disabled { background-color:#1A1A1A; color:#5A5A5A; border:1px solid #2A2A2A; }"
+        )
+        return b
+
     def _build_intro(self) -> QWidget:
         page = QWidget()
         lay = QVBoxLayout(page)
@@ -229,9 +243,10 @@ class GamePage(QWidget):
         lay.addWidget(head)
 
         rules = QLabel(
-            "Connect the matching circles before the clock runs out.\n"
-            "der / die / das → its noun   ·   noun → its plural   ·   word → its meaning\n"
-            "Chain correct connects to build your combo — the faster, the more points."
+            "Pairs rush in with shrinking rings — connect each before its ring closes,\n"
+            "or it drains your HP. Let HP hit zero and you fail.\n"
+            "Tap two that match — or hold a gold circle and drag it onto its partner.\n"
+            "der/die/das → noun  ·  noun → plural  ·  word → meaning  ·  combos speed it up."
         )
         rules.setAlignment(Qt.AlignmentFlag.AlignCenter)
         rules.setWordWrap(True)
@@ -243,11 +258,24 @@ class GamePage(QWidget):
         self.intro_best.setStyleSheet("color:#FFD700; font-size:13px; font-weight:900; border:none;")
         lay.addWidget(self.intro_best)
 
-        self.play_btn = self._primary_btn("▶  Play")
-        self.play_btn.clicked.connect(self._start_round)
+        choose = QLabel("Choose your pace")
+        choose.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        choose.setStyleSheet("color:#9A9A9A; font-size:11px; font-weight:850; border:none;")
+        lay.addWidget(choose)
+
+        self.level_btns: dict[str, QPushButton] = {}
         row = QHBoxLayout()
+        row.setSpacing(10)
         row.addStretch(1)
-        row.addWidget(self.play_btn)
+        for level, label, accent in (
+            ("relaxed", "Relaxed", "#66E39A"),
+            ("normal", "Normal", "#34D2E0"),
+            ("insane", "Insane ☠", "#FF4D6D"),
+        ):
+            b = self._level_btn(label, accent)
+            b.clicked.connect(lambda _=False, lv=level: self._start_round(lv))
+            self.level_btns[level] = b
+            row.addWidget(b)
         row.addStretch(1)
         lay.addLayout(row)
 
@@ -266,7 +294,8 @@ class GamePage(QWidget):
         self.board = GameBoard()
         self.board.scoreChanged.connect(lambda s: self.score_lbl.setText(f"{s}"))
         self.board.comboChanged.connect(self._on_combo)
-        self.board.timeChanged.connect(lambda s: self.time_lbl.setText(f"⏱ {s}"))
+        self.board.accuracyChanged.connect(lambda a: self.acc_lbl.setText(f"{a * 100:.0f}%"))
+        self.board.hpChanged.connect(lambda _hp: None)
         self.board.hitMade.connect(self._on_hit)
         self.board.missMade.connect(self._on_miss)
         self.board.milestoneReached.connect(
@@ -304,7 +333,7 @@ class GamePage(QWidget):
         lay.addWidget(self.end_detail)
 
         self.again_btn = self._primary_btn("↻  Play again")
-        self.again_btn.clicked.connect(self._start_round)
+        self.again_btn.clicked.connect(lambda: self._start_round(self._level))
         row = QHBoxLayout()
         row.addStretch(1)
         row.addWidget(self.again_btn)
@@ -331,12 +360,14 @@ class GamePage(QWidget):
         if not playable:
             self.intro_best.setText("")
             self.intro_hint.setText("No vocab in this Lektion yet — pick a Lektion with vocabulary to play.")
-            self.play_btn.setEnabled(False)
+            for b in self.level_btns.values():
+                b.setEnabled(False)
         else:
             best = self._best.get("best_score", 0)
             self.intro_best.setText(f"Your best: {best}" if best else "")
             self.intro_hint.setText(f"{len(pairs)} pairs in this Lektion")
-            self.play_btn.setEnabled(True)
+            for b in self.level_btns.values():
+                b.setEnabled(True)
 
         self.stack.setCurrentIndex(0)
 
@@ -363,20 +394,24 @@ class GamePage(QWidget):
         except Exception:
             return []
 
-    def _start_round(self) -> None:
+    def _start_round(self, level: str | None = None) -> None:
+        if level:
+            self._level = level
         pairs = self._build_pairs()
         if not pairs:
             self.stack.setCurrentIndex(0)
             return
-        waves = make_waves(pairs, wave_size=3, rng=random)
         self.score_lbl.setText("0")
         self.combo_lbl.setText("x0")
+        self.acc_lbl.setText("100%")
         self.stack.setCurrentIndex(1)
         sfx = self._ensure_sfx()
         if self._audio_on:
             sfx.play_start()
-        self._start_precache([p.word for p in pairs])
-        self.board.start_game(waves, duration_s=_ROUND_SECONDS)
+        # Pre-cache only the words that can actually appear this round.
+        round_words = [p.word for p in pairs][: _MAX_PAIRS * 2]
+        self._start_precache(round_words)
+        self.board.start_game(pairs, max_pairs=_MAX_PAIRS, difficulty=self._level)
 
     def _on_combo(self, combo: int) -> None:
         self.combo_lbl.setText(f"x{combo}")
@@ -392,7 +427,7 @@ class GamePage(QWidget):
             f"border:1px solid {border}; border-radius:8px; padding:6px 10px;"
         )
 
-    def _on_hit(self, word: str, points: int, combo: int) -> None:
+    def _on_hit(self, word: str, judgment: str, points: int, combo: int) -> None:
         if not self._audio_on:
             return
         if self.sfx is not None:
@@ -403,7 +438,10 @@ class GamePage(QWidget):
         if self._audio_on and self.sfx is not None:
             self.sfx.play_miss()
 
-    def _on_finished(self, score: int, max_combo: int, hits: int, misses: int) -> None:
+    def _on_finished(
+        self, cleared: bool, score: int, max_combo: int,
+        perfect: int, good: int, ok: int, misses: int,
+    ) -> None:
         if self._audio_on and self.sfx is not None:
             self.sfx.play_finish()
         self._stop_precache()
@@ -412,15 +450,23 @@ class GamePage(QWidget):
         self._best = self.session.game_best(self._deck_id)
         self.best_lbl.setText(f"Best {self._best.get('best_score', 0)}")
 
+        hits = perfect + good + ok
         total = hits + misses
-        acc = (hits / total * 100.0) if total else 0.0
+        got = 300 * perfect + 100 * good + 50 * ok
+        acc = (got / (300 * total) * 100.0) if total else 0.0
         is_new_best = bool(result.get("is_new_best"))
 
-        self.end_title.setText("Time! ⚡" if (hits or misses) else "Round complete")
+        if cleared:
+            self.end_title.setText("Cleared! ⚡")
+            self.end_title.setStyleSheet("color:#66E39A; font-size:30px; font-weight:950; border:none;")
+        else:
+            self.end_title.setText("Failed")
+            self.end_title.setStyleSheet("color:#FF6B6B; font-size:30px; font-weight:950; border:none;")
         self.end_newbest.setText("★  New personal best!  ★" if is_new_best else "")
         self.end_score.setText(f"{score}")
         self.end_detail.setText(
-            f"Max combo  x{max_combo}     ·     Accuracy  {acc:.0f}%     ·     {hits} connects"
+            f"{self._level.title()}     ·     Max combo  x{max_combo}     ·     Accuracy  {acc:.0f}%\n"
+            f"PERFECT {perfect}   ·   GOOD {good}   ·   OK {ok}   ·   MISS {misses}"
         )
         self.stack.setCurrentIndex(2)
 

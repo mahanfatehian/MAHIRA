@@ -205,6 +205,30 @@ class ProgressPage(QWidget):
         stats_layout.addWidget(self.total_card, 1, 1)
         stats_layout.addWidget(self.mastery_card, 1, 2)
 
+        # ---- Blitz game stats (per current Lektion's vocab deck + a global line) ----
+        blitz_group = QGroupBox("Blitz ⚡")
+        blitz_group.setStyleSheet(session_group.styleSheet())
+        blitz_layout = QVBoxLayout(blitz_group)
+        blitz_layout.setSpacing(8)
+        blitz_layout.setContentsMargins(12, 10, 12, 8)
+
+        bstrip = QHBoxLayout()
+        bstrip.setSpacing(10)
+        cb_best, self.blitz_best, _ = self._streak_chip("best score", accent="#FF4D6D")
+        cb_combo, self.blitz_combo, _ = self._streak_chip("best combo", accent="#FFD700")
+        cb_plays, self.blitz_plays, _ = self._streak_chip("plays")
+        cb_last, self.blitz_last, _ = self._streak_chip("last score")
+        for c in (cb_best, cb_combo, cb_plays, cb_last):
+            bstrip.addWidget(c)
+        bstrip.addStretch(1)
+        blitz_layout.addLayout(bstrip)
+
+        self.blitz_caption = QLabel("")
+        self.blitz_caption.setStyleSheet(
+            "QLabel { font-size:11px; color:#7E7E7E; background:transparent; border:none; }"
+        )
+        blitz_layout.addWidget(self.blitz_caption)
+
         perf_group = QGroupBox("Summary")
         perf_group.setStyleSheet(session_group.styleSheet())
 
@@ -221,6 +245,7 @@ class ProgressPage(QWidget):
         main_layout.addWidget(session_group)
         main_layout.addWidget(activity_group)
         main_layout.addWidget(stats_group)
+        main_layout.addWidget(blitz_group)
         main_layout.addWidget(perf_group)
         main_layout.addStretch(1)
 
@@ -346,6 +371,39 @@ class ProgressPage(QWidget):
         if year_total == 0:
             return "Every day is frozen. Do one review to light the first spark."
         return f"{reviews}  ·  most days are still frozen — start today and light the streak"
+
+    # --------- Blitz game stats ----------
+    def _refresh_blitz(self) -> None:
+        try:
+            deck = self.session.game_deck_id()
+        except Exception:
+            deck = None
+
+        best = {"best_score": 0, "best_combo": 0, "last_score": 0, "plays": 0}
+        if deck:
+            try:
+                best = self.session.repo.get_game_best(deck)
+            except Exception:
+                pass
+
+        self.blitz_best.setText(f"{int(best.get('best_score', 0)):,}")
+        self.blitz_combo.setText(f"x{int(best.get('best_combo', 0))}")
+        self.blitz_plays.setText(str(int(best.get('plays', 0))))
+        self.blitz_last.setText(f"{int(best.get('last_score', 0)):,}")
+
+        try:
+            g = self.session.repo.game_stats_overall()
+        except Exception:
+            g = {"best_score": 0, "best_combo": 0, "plays": 0, "decks": 0}
+
+        if int(g.get("plays", 0)) > 0:
+            decks = int(g.get("decks", 0))
+            self.blitz_caption.setText(
+                f"All Lektionen: best {int(g['best_score']):,}  ·  top combo x{int(g['best_combo'])}"
+                f"  ·  {int(g['plays'])} plays across {decks} deck" + ("" if decks == 1 else "s")
+            )
+        else:
+            self.blitz_caption.setText("No Blitz games yet — open the Blitz tab and play a round.")
 
     # --------- DB helpers ----------
     def _conn(self):
@@ -724,6 +782,7 @@ class ProgressPage(QWidget):
     def on_show(self):
         # Global activity first — independent of any deck selection.
         self._refresh_activity()
+        self._refresh_blitz()
 
         deck_id = None
         if hasattr(self.session, "active_deck_id"):

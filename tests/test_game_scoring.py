@@ -1,54 +1,61 @@
-"""Blitz scoring: combos raise the multiplier, misses break it, accuracy tracks."""
+"""Blitz osu-style scoring: judged hits, combo multiplier, accuracy, milestones."""
 
-from core.game.scoring import BASE_POINTS, MAX_SPEED_BONUS, ScoreState
+from core.game.scoring import ScoreState
 
 
 def test_combo_raises_multiplier_in_tiers():
     s = ScoreState()
-    # Combos 1..3 -> x1, 4..7 -> x2, 8..15 -> x4, 16+ -> x8.
-    for _ in range(3):
-        s.register_hit()
+    for _ in range(7):
+        s.register_hit("perfect")
     assert s.multiplier() == 1
-    s.register_hit()  # combo 4
+    s.register_hit("perfect")  # combo 8
     assert s.multiplier() == 2
-    for _ in range(4):
-        s.register_hit()  # combo 8
-    assert s.multiplier() == 4
     for _ in range(8):
-        s.register_hit()  # combo 16
+        s.register_hit("perfect")  # combo 16
+    assert s.multiplier() == 4
+    for _ in range(16):
+        s.register_hit("perfect")  # combo 32
     assert s.multiplier() == 8
 
 
-def test_miss_resets_combo_and_counts_accuracy():
+def test_judgments_score_and_count():
     s = ScoreState()
-    s.register_hit()
-    s.register_hit()
+    assert s.register_hit("perfect") == 300  # x1
+    assert s.register_hit("good") == 100
+    assert s.register_hit("ok") == 50
+    assert (s.perfect, s.good, s.ok) == (1, 1, 1)
+    assert s.hits == 3 and s.score == 450
+
+
+def test_multiplier_scales_points():
+    s = ScoreState()
+    s.combo = 8  # next hit -> combo 9 -> still x2 (>=8)
+    assert s.register_hit("perfect") == 600
+
+
+def test_miss_resets_combo_and_weighted_accuracy():
+    s = ScoreState()
+    s.register_hit("perfect")
+    s.register_hit("perfect")
     assert s.combo == 2 and s.max_combo == 2
     s.register_miss()
-    assert s.combo == 0
-    assert s.misses == 1
-    # max_combo is sticky.
-    assert s.max_combo == 2
-    # 2 hits / 3 attempts.
-    assert abs(s.accuracy() - (2 / 3)) < 1e-9
+    assert s.combo == 0 and s.misses == 1
+    assert s.max_combo == 2  # sticky
+    # 2 perfects + 1 miss -> 600 / 900.
+    assert abs(s.accuracy() - (600 / 900)) < 1e-9
 
 
-def test_points_scale_with_multiplier_and_speed_bonus():
+def test_accuracy_all_perfect_is_one():
     s = ScoreState()
-    # First hit (combo 1, x1) with a slow connect -> just base.
-    gained = s.register_hit(elapsed_ms=5000)
-    assert gained == BASE_POINTS
-    # Fast connects earn the full speed bonus on top of the multiplier.
-    s2 = ScoreState()
-    s2.combo = 7  # next hit -> combo 8 -> x4
-    gained2 = s2.register_hit(elapsed_ms=100)
-    assert gained2 == BASE_POINTS * 4 + MAX_SPEED_BONUS
+    for _ in range(5):
+        s.register_hit("perfect")
+    assert s.accuracy() == 1.0
 
 
 def test_milestone_detection_is_exact():
     s = ScoreState()
     for _ in range(9):
-        s.register_hit()
+        s.register_hit("good")
     assert s.crosses_milestone() is None
-    s.register_hit()  # combo 10
+    s.register_hit("good")  # combo 10
     assert s.crosses_milestone() == 10

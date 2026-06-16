@@ -1406,6 +1406,20 @@ class Repo:
             "plays": int(row["plays"] or 0),
         }
 
+    def game_stats_overall(self) -> dict:
+        """Aggregate Blitz telemetry across every deck (for the Progress page)."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(MAX(best_score),0) AS best, COALESCE(MAX(best_combo),0) AS combo, "
+                "COALESCE(SUM(plays),0) AS plays, COUNT(*) AS decks FROM game_scores"
+            ).fetchone()
+        return {
+            "best_score": int(row["best"] or 0),
+            "best_combo": int(row["combo"] or 0),
+            "plays": int(row["plays"] or 0),
+            "decks": int(row["decks"] or 0),
+        }
+
     def record_game_score(self, deck_id: int, score: int, max_combo: int) -> dict:
         """Record a finished round; upsert the per-deck best. Returns the stored
         row plus `is_new_best` so the UI can celebrate a record."""

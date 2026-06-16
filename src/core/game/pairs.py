@@ -30,6 +30,10 @@ _GENDER_TO_ARTICLE = {
     "n": "das", "neut": "das", "neuter": "das",
 }
 
+# Long captions read poorly inside a circle and make the game error-prone, so a
+# pair is dropped if either side is longer than this.
+_MAX_CAPTION = 13
+
 
 @dataclass(frozen=True)
 class Pair:
@@ -81,9 +85,14 @@ def _article_for(item) -> str:
     return _GENDER_TO_ARTICLE.get(gender, "")
 
 
+def _fits(a: str, b: str) -> bool:
+    return len(a) <= _MAX_CAPTION and len(b) <= _MAX_CAPTION
+
+
 def build_pairs(items) -> list[Pair]:
     """Derive every candidate pair from `items` (vocab rows: objects or dicts
-    with word / pos / article / gender / plural / meaning)."""
+    with word / pos / article / gender / plural / meaning). Pairs with an
+    over-long caption on either side are skipped."""
     pairs: list[Pair] = []
     for item in items:
         word = _clean(_get(item, "word"))
@@ -96,15 +105,15 @@ def build_pairs(items) -> list[Pair]:
             vid = 0
 
         article = _article_for(item)
-        if article:
+        if article and _fits(article, word):
             pairs.append(Pair(article, word, ARTICLE, vid, word))
 
         plural = _clean(_get(item, "plural"))
-        if plural and plural.lower() != word.lower():
+        if plural and plural.lower() != word.lower() and _fits(word, plural):
             pairs.append(Pair(word, plural, PLURAL, vid, word))
 
         meaning = _first_sense(_get(item, "meaning"))
-        if meaning and meaning.lower() != word.lower():
+        if meaning and meaning.lower() != word.lower() and _fits(word, meaning):
             pairs.append(Pair(word, meaning, MEANING, vid, word))
 
     return pairs

@@ -81,6 +81,24 @@ def test_dash_sentinel_never_becomes_a_pair():
     assert all(w != "schön" for (w, _k) in kinds)
 
 
+def test_long_captions_are_dropped():
+    # "Entschuldigung" (14) is too long; its meaning "sorry" is fine but the pair
+    # is dropped because the German side is long. A short word with a long meaning
+    # also drops just that pair.
+    items = [
+        _vocab(10, "Entschuldigung", article="die", plural="-", meaning="sorry"),
+        _vocab(11, "Tag", article="der", plural="Tage", meaning="day, a unit of time"),
+    ]
+    pairs = build_pairs(items)
+    captions = [c for p in pairs for c in (p.a, p.b)]
+    assert all(len(c) <= 13 for c in captions), captions
+    assert "Entschuldigung" not in captions
+    # Tag keeps article + plural; its over-long meaning pair is dropped.
+    kinds = {(p.word, p.kind) for p in pairs}
+    assert ("Tag", ARTICLE) in kinds and ("Tag", PLURAL) in kinds
+    assert ("Tag", MEANING) not in kinds
+
+
 def test_waves_have_unique_captions_and_cover_all_pairs():
     rng = random.Random(1234)
     # Several nouns that all share the article "der" — the collision stress test.
