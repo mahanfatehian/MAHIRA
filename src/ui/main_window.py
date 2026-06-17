@@ -20,6 +20,8 @@ from ui.pages.sentence_review import SentenceReviewPage
 from ui.pages.listening_review import ListeningReviewPage
 from ui.pages.progress import ProgressPage
 from ui.pages.learn import LearnPage
+from ui.pages.vocab_table import VocabTablePage
+from ui.pages.conjugation import ConjugationPage
 
 PAGE_KEYS = [
     "setup",
@@ -29,6 +31,8 @@ PAGE_KEYS = [
     "listening_review",
     "progress",
     "learn",
+    "vocab_table",
+    "conjugation",
 ]
 
 
@@ -88,6 +92,8 @@ class MainWindow(QMainWindow):
             "listening_review": make(ListeningReviewPage),
             "progress": make(ProgressPage),
             "learn": make(LearnPage),
+            "vocab_table": make(VocabTablePage),
+            "conjugation": make(ConjugationPage),
         }
 
         for key in PAGE_KEYS:
@@ -122,6 +128,20 @@ class MainWindow(QMainWindow):
         # Keep the nav's objective tabs in sync as the user picks a Lektion in Setup.
         if hasattr(self.pages["setup"], "context_changed"):
             self.pages["setup"].context_changed.connect(self._sync_nav)
+
+        # "Table" on the Vocabulary card opens the read-only study grid; its own
+        # Back button returns to the objective-selection screen.
+        if hasattr(self.pages["setup"], "open_vocab_table"):
+            self.pages["setup"].open_vocab_table.connect(lambda: self.go("vocab_table"))
+        if hasattr(self.pages["vocab_table"], "go_back"):
+            self.pages["vocab_table"].go_back.connect(lambda: self.go("setup"))
+
+        # Tapping a verb's tag in the Vocab Table opens its full conjugation;
+        # the conjugation tab's Back button returns to the table.
+        if hasattr(self.pages["vocab_table"], "conjugate_verb"):
+            self.pages["vocab_table"].conjugate_verb.connect(self._open_conjugation)
+        if hasattr(self.pages["conjugation"], "go_back"):
+            self.pages["conjugation"].go_back.connect(lambda: self.go("vocab_table"))
 
         if hasattr(self.pages["vocab_review"], "go_progress"):
             self.pages["vocab_review"].go_progress.connect(lambda: self.go("progress"))
@@ -233,6 +253,15 @@ class MainWindow(QMainWindow):
     def _go_from_objective(self) -> None:
         self._show(self._practice_page_key())
 
+    def _open_conjugation(self, word: str, meaning: str = "") -> None:
+        page = self.pages.get("conjugation")
+        if page is not None and hasattr(page, "set_verb"):
+            try:
+                page.set_verb(word, meaning)
+            except Exception:
+                pass
+        self.go("conjugation")
+
     def _nav_key_for_page(self, page_key: str) -> str:
         return {
             "vocab_review": "vocab",
@@ -242,6 +271,8 @@ class MainWindow(QMainWindow):
             "setup": "setup",
             "learn": "learn",
             "progress": "progress",
+            "vocab_table": "setup",
+            "conjugation": "setup",
         }.get(page_key, "setup")
 
     def _current_lektion_id(self) -> int | None:
@@ -328,6 +359,19 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             self._show(self._OBJ_TO_PAGE[page_key])
+            return
+
+        if page_key == "vocab_table":
+            # Read-only study grid: needs a vocab deck for the current Lektion;
+            # otherwise fall back to Setup. It doesn't touch the objective.
+            try:
+                has_vocab = self.session.vocab_deck_id() is not None
+            except Exception:
+                has_vocab = False
+            if not getattr(self.session.state, "level", None) or not has_vocab:
+                self._show("setup")
+                return
+            self._show("vocab_table")
             return
 
         if page_key == "practice":

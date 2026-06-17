@@ -2,3 +2,7 @@
 
 # Keep model assets byte-exact (no CRLF conversion) so the tokenizer loads cleanly.
 assets/models/** -text
+
+# Bundled binary data (SQLite verb-conjugation asset) — never line-ending convert.
+*.sqlite -text
+assets/data/** -text

@@ -396,6 +396,29 @@ class SessionService:
 
         return self._active_deck_id
 
+    def vocab_deck_id(self) -> int | None:
+        """The vocab deck for the current level/book/lektion, resolved WITHOUT
+        touching state.objective — the read-only vocab table is reachable from
+        the vocab card regardless of which objective is being practiced."""
+        lvl = _norm_level(getattr(self.state, "level", "") or "")
+        lektion_id = self._resolve_lektion_id()
+        try:
+            return self.repo.get_deck_id(lvl, "vocab", lektion_id=lektion_id)
+        except Exception:
+            return None
+
+    def vocab_table_rows(self) -> list[dict]:
+        """(word, article, plural, meaning) rows for the current lektion's vocab
+        deck — the data backing the read-only study table. Empty when there is
+        no vocab deck for the current context."""
+        deck_id = self.vocab_deck_id()
+        if deck_id is None:
+            return []
+        try:
+            return self.repo.vocab_table_rows(deck_id)
+        except Exception:
+            return []
+
     # -----------------------------------------------------------------
     # Compatibility helpers used by UI pages
     # -----------------------------------------------------------------

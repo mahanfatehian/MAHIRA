@@ -159,10 +159,11 @@ _GROUPBOX_STYLE = """
 
 
 class ObjectiveSelectCard(QFrame):
-    def __init__(self, *, title: str, accent: str, on_start):
+    def __init__(self, *, title: str, accent: str, on_start, secondary_label: str | None = None, on_secondary=None):
         super().__init__()
         self._accent = accent
         self._on_start = on_start
+        self._on_secondary = on_secondary
 
         self.setMinimumHeight(86)
         self.setMaximumHeight(110)
@@ -230,6 +231,34 @@ class ObjectiveSelectCard(QFrame):
         left.addStretch(1)
         lay.addLayout(left, 1)
 
+        # Optional secondary action (e.g. "Table" on the Vocabulary card): an
+        # outlined button that sits just left of Start.
+        self.secondary_btn = None
+        if secondary_label:
+            self.secondary_btn = QPushButton(secondary_label)
+            self.secondary_btn.setFixedHeight(36)
+            self.secondary_btn.setMinimumWidth(84)
+            self.secondary_btn.setCursor(QCursor(Qt.PointingHandCursor))
+            self.secondary_btn.setFont(QFont("Segoe UI", 10, QFont.Weight.Black))
+            self.secondary_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: #161616;
+                    color: {accent};
+                    border: 1px solid {accent};
+                    border-radius: 12px;
+                    padding: 6px 14px;
+                    font-weight: 900;
+                }}
+                QPushButton:hover {{ background-color: #1F1F1F; border: 1px solid #FFFFFF; color: #FFFFFF; }}
+                QPushButton:disabled {{
+                    background-color:#101010;
+                    color:#5A5A5A;
+                    border:1px solid #252525;
+                }}
+            """)
+            self.secondary_btn.clicked.connect(self._on_secondary_clicked)
+            lay.addWidget(self.secondary_btn, 0, Qt.AlignmentFlag.AlignVCenter)
+
         self.start_btn = QPushButton("Start")
         self.start_btn.setFixedHeight(36)
         self.start_btn.setMinimumWidth(96)
@@ -256,6 +285,10 @@ class ObjectiveSelectCard(QFrame):
     def _on_start_clicked(self):
         self._on_start()
 
+    def _on_secondary_clicked(self):
+        if callable(self._on_secondary):
+            self._on_secondary()
+
     def set_meta(self, text: str):
         self.meta_badge.setText(text or "")
         self.meta_badge.setVisible(bool(text and text.strip()))
@@ -265,6 +298,10 @@ class ObjectiveSelectCard(QFrame):
 
     def set_enabled(self, enabled: bool):
         self.start_btn.setEnabled(enabled)
+
+    def set_secondary_enabled(self, enabled: bool):
+        if self.secondary_btn is not None:
+            self.secondary_btn.setEnabled(enabled)
 
 
 class _ClickCard(QFrame):
@@ -524,6 +561,7 @@ class LektionCard(_ClickCard):
 class SetupPage(QWidget):
     start_practice = Signal()
     context_changed = Signal()   # level/book/lektion changed — nav re-syncs its tabs
+    open_vocab_table = Signal()  # "Table" on the Vocabulary card — open the read-only study grid
 
     def __init__(self, session, nav=None):
         super().__init__()
@@ -1198,6 +1236,8 @@ class SetupPage(QWidget):
             title="Vocabulary",
             accent=_ACCENT_VOCAB,
             on_start=lambda: self._choose_objective("vocab"),
+            secondary_label="Table",
+            on_secondary=self._open_vocab_table,
         )
         self.card_grammar = ObjectiveSelectCard(
             title="Grammar",
@@ -1231,6 +1271,7 @@ class SetupPage(QWidget):
                 c.set_meta("")
                 c.set_enabled(False)
                 c.set_completed(False)
+            self.card_vocab.set_secondary_enabled(False)
             return
 
         lektion_id = self._current_lektion_id()
@@ -1246,6 +1287,7 @@ class SetupPage(QWidget):
         listen_n = self._count_table("listening", dl) if dl is not None else 0
 
         self.card_vocab.set_enabled(dv is not None)
+        self.card_vocab.set_secondary_enabled(dv is not None and vocab_n > 0)
         self.card_vocab.set_meta(f"{_fmt_int(vocab_n)} items" if dv is not None else "")
         self.card_vocab.set_completed(self._deck_complete(dv, "vocab", vocab_n))
 
@@ -1260,6 +1302,17 @@ class SetupPage(QWidget):
         self.card_listening.set_enabled(dl is not None)
         self.card_listening.set_meta(f"{_fmt_int(listen_n)} items" if dl is not None else "")
         self.card_listening.set_completed(self._deck_complete(dl, "listening", listen_n))
+
+    def _open_vocab_table(self):
+        """Open the read-only vocab study table for the current Lektion. This
+        does NOT change the practice objective — the table resolves its own
+        vocab deck — so it only ensures the level/book/lektion are in state."""
+        if not self.level or not self.book_slug or not self.lektion_number:
+            return
+        self.session.state.level = self.level
+        self.session.state.book_slug = self.book_slug
+        self.session.state.lektion_number = self.lektion_number
+        self.open_vocab_table.emit()
 
     def _choose_objective(self, key: str):
         if not self.level or not self.book_slug or not self.lektion_number:

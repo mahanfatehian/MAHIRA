@@ -352,6 +352,49 @@ class Repo:
             row = conn.execute("SELECT COUNT(*) AS c FROM vocab WHERE deck_id=?", (deck_id,)).fetchone()
             return int(row["c"]) if row else 0
 
+    def vocab_table_rows(self, deck_id: int) -> list[dict]:
+        """Flat (word, article, plural, meaning, pos) rows for the read-only
+        study table. The article is taken from the stored column, falling back
+        to the der/die/das implied by the noun's gender, so a learner always
+        sees a usable article column. Ordered case-insensitively by the word."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT word, article, gender, plural, meaning, pos
+                FROM vocab
+                WHERE deck_id=?
+                ORDER BY LOWER(word), id
+                """,
+                (deck_id,),
+            ).fetchall()
+
+        out: list[dict] = []
+        for r in rows:
+            article = (r["article"] or "").strip()
+            if not article:
+                article = self._article_from_gender(r["gender"])
+            out.append(
+                {
+                    "word": (r["word"] or "").strip(),
+                    "article": article,
+                    "plural": (r["plural"] or "").strip(),
+                    "meaning": (r["meaning"] or "").strip(),
+                    "pos": (r["pos"] or "").strip(),
+                }
+            )
+        return out
+
+    @staticmethod
+    def _article_from_gender(gender: str | None) -> str:
+        """der/die/das implied by a gender value (accepts 'm/f/n' or the
+        article itself); empty string when the gender is unknown."""
+        g = (gender or "").strip().lower()
+        return {
+            "m": "der", "masculine": "der", "der": "der",
+            "f": "die", "feminine": "die", "die": "die",
+            "n": "das", "neuter": "das", "das": "das",
+        }.get(g, "")
+
     def clear_vocab_deck(self, deck_id: int) -> None:
         with self._conn() as conn:
             conn.execute("DELETE FROM vocab WHERE deck_id=?", (deck_id,))
