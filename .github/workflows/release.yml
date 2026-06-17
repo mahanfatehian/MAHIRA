@@ -202,6 +202,10 @@ jobs:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
+      # Checkout FIRST (before artifacts are downloaded) so its clean step never
+      # wipes them — we only need the repo here for RELEASE_NOTES.md.
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -210,6 +214,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           draft: false              # publish straight to the Releases tab on a vX.Y.Z tag
+          body_path: RELEASE_NOTES.md     # human-written description; the generated notes are appended
           generate_release_notes: true
           fail_on_unmatched_files: true   # don't publish an empty release if artifacts are missing
           files: artifacts/**/*
