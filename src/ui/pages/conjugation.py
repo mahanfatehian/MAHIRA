@@ -10,9 +10,10 @@ Perfekt, Plusquamperfekt, Futur I, Konjunktiv II, plus the Imperativ. Nothing
 is scheduled or scored — it is a calm reference view in the app's house style.
 """
 
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QObject, QThread, Qt, Signal, Slot
 from PySide6.QtGui import QCursor, QFont
 from PySide6.QtWidgets import (
     QFrame,
@@ -39,6 +40,79 @@ _TENSE_ACCENT = {
 }
 _IMP_ACCENT = "#FF8A5B"
 
+# The displayed person label vs. the single pronoun we actually speak before the
+# verb (so "er/sie/es liebt" is read as "er liebt", not the whole slash list).
+_SPOKEN_PRONOUN = {
+    "ich": "ich", "du": "du", "er/sie/es": "er",
+    "wir": "wir", "ihr": "ihr", "sie/Sie": "sie",
+}
+
+
+class _Speaker(QPushButton):
+    """A compact 🔊 button for a single conjugated form, with the same idle /
+    busy / playing states as the app's main AudioButton but table-row sized."""
+
+    def __init__(self, parent=None):
+        super().__init__("🔊", parent)
+        self._available = True
+        self._busy = False
+        self._playing = False
+        self.setObjectName("ConjSpeaker")
+        self.setCursor(QCursor(Qt.PointingHandCursor))
+        self.setFixedSize(28, 24)
+        self.setToolTip("Play pronunciation")
+        self._sync()
+
+    def set_available(self, v: bool) -> None:
+        self._available = bool(v); self._sync()
+
+    def set_busy(self, v: bool) -> None:
+        self._busy = bool(v)
+        if self._busy:
+            self._playing = False
+        self._sync()
+
+    def set_playing(self, v: bool) -> None:
+        self._playing = bool(v)
+        if self._playing:
+            self._busy = False
+        self._sync()
+
+    def reset_state(self) -> None:
+        self._busy = False
+        self._playing = False
+        self._sync()
+
+    def _sync(self) -> None:
+        self.setText("…" if self._busy else ("🔈" if self._playing else "🔊"))
+        self.setEnabled(self._available and not self._busy and not self._playing)
+        self.setStyleSheet(
+            "QPushButton#ConjSpeaker { background:#1B1B1B; color:#FFFFFF; border:1px solid #2E2E2E;"
+            " border-radius:7px; font-size:11px; padding:0px; }"
+            "QPushButton#ConjSpeaker:hover { background:#232323; border:1px solid #FFFFFF; }"
+            "QPushButton#ConjSpeaker:disabled { background:#151515; color:#6B6B6B; border:1px solid #252525; }"
+        )
+
+
+class _TtsWorker(QObject):
+    """Renders one phrase to a cached WAV off the UI thread."""
+
+    done = Signal(str, str)   # (text, wav_path)
+    fail = Signal(str, str)   # (text, message)
+
+    def __init__(self, service, text: str):
+        super().__init__()
+        self._service = service
+        self._text = text
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            path = self._service.generate_wav(self._text)
+            self.done.emit(self._text, str(path))
+        except Exception as e:  # noqa: BLE001 - reported to the UI, never raised
+            self.fail.emit(self._text, str(e))
+
 
 def _chip(text: str, color: str = "#D7DAE0") -> QLabel:
     lbl = QLabel(text)
@@ -53,7 +127,7 @@ def _chip(text: str, color: str = "#D7DAE0") -> QLabel:
 class _TenseCard(QFrame):
     """One tense as a card: an accented header + the six person/form rows."""
 
-    def __init__(self, title_de: str, title_en: str, accent: str, rows: list):
+    def __init__(self, title_de: str, title_en: str, accent: str, rows: list, on_audio=None):
         super().__init__()
         self.setObjectName("TenseCard")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -86,9 +160,10 @@ class _TenseCard(QFrame):
         grid.setContentsMargins(0, 2, 0, 0)
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(5)
-        grid.setColumnStretch(0, 0)
-        grid.setColumnStretch(1, 1)
-        for r, (pronoun, form) in enumerate(rows):
+        grid.setColumnStretch(0, 0)   # pronoun
+        grid.setColumnStretch(1, 1)   # form
+        grid.setColumnStretch(2, 0)   # speaker
+        for r, (pronoun, form, speak) in enumerate(rows):
             pl = QLabel(pronoun)
             pl.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
             pl.setStyleSheet("QLabel { color:#8A8A8A; background:transparent; border:none; }")
@@ -103,6 +178,11 @@ class _TenseCard(QFrame):
             fl.setTextInteractionFlags(Qt.TextSelectableByMouse)
             grid.addWidget(pl, r, 0)
             grid.addWidget(fl, r, 1)
+            # A speaker for every real form — reads the pronoun + form aloud.
+            if has and speak and callable(on_audio):
+                spk = _Speaker()
+                spk.clicked.connect(lambda _=False, t=speak, b=spk: on_audio(t, b))
+                grid.addWidget(spk, r, 2, Qt.AlignRight | Qt.AlignVCenter)
         lay.addLayout(grid)
 
 
@@ -116,6 +196,18 @@ class ConjugationPage(QWidget):
         self._infinitive = ""
         self._meaning = ""
         self._conj = Conjugator()
+
+        # Audio (lazily created on the first play so the page costs nothing at
+        # startup). One synthesis thread at a time; the active speaker button is
+        # tracked so its busy/playing state can be driven and reset.
+        self._model_mgr = None
+        self._pron = None
+        self._play_svc = None
+        self._audio_thread: Optional[QThread] = None
+        self._audio_worker: Optional[_TtsWorker] = None
+        self._active_spk: Any | None = None
+        self._cur_text = ""
+        self._cur_path = ""
 
         self.setObjectName("ConjugationPage")
         self.setFont(QFont("Segoe UI", 10))
@@ -213,6 +305,9 @@ class ConjugationPage(QWidget):
                 self._delete_layout(it.layout())
 
     def _render(self) -> None:
+        # Stop any playback and drop references to the speaker buttons we are
+        # about to delete, so handlers never touch a deleted widget.
+        self._stop_audio()
         self._clear_host()
         verb = self._infinitive
         self.page_subtitle.setText(verb or "Full verb paradigm")
@@ -245,14 +340,19 @@ class ConjugationPage(QWidget):
             if not any((f or "").strip() for f in forms):
                 continue  # skip a tense the dataset can't fill (rare verbs)
             accent = _TENSE_ACCENT.get(de, "#9AA0A6")
-            rows = list(zip(PERSONS, forms))
-            cards.append(_TenseCard(de, en, accent, rows))
+            # Speak the pronoun + the form, e.g. "ich liebe", "wir haben geliebt".
+            rows = [
+                (p, f, (f"{_SPOKEN_PRONOUN.get(p, p)} {f}".strip() if (f or '').strip() else ""))
+                for p, f in zip(PERSONS, forms)
+            ]
+            cards.append(_TenseCard(de, en, accent, rows, on_audio=self._play))
 
-        # Imperativ as a final card (only when the verb actually has one).
+        # Imperativ as a final card (only when the verb actually has one). The
+        # form itself is the command, so it is spoken as-is ("geh", "gehen Sie").
         if conj.imperativ:
             order = [k for k in ("du", "ihr", "Sie") if k in conj.imperativ]
-            imp_rows = [(k, conj.imperativ[k]) for k in order]
-            cards.append(_TenseCard("Imperativ", "Imperative", _IMP_ACCENT, imp_rows))
+            imp_rows = [(k, conj.imperativ[k], conj.imperativ[k]) for k in order]
+            cards.append(_TenseCard("Imperativ", "Imperative", _IMP_ACCENT, imp_rows, on_audio=self._play))
 
         for i, card in enumerate(cards):
             grid.addWidget(card, i // 2, i % 2, Qt.AlignmentFlag.AlignTop)
@@ -320,6 +420,124 @@ class ConjugationPage(QWidget):
         lay.addWidget(title)
         lay.addWidget(sub)
         return card
+
+    # -------------------------------------------------------------- audio
+    def _ensure_audio(self) -> bool:
+        if self._play_svc is not None:
+            return True
+        try:
+            from core.audio import PiperModelManager, PlaybackService, PronunciationService
+            self._model_mgr = PiperModelManager()
+            self._pron = PronunciationService(self._model_mgr)
+            self._play_svc = PlaybackService(self)
+            self._play_svc.started.connect(self._on_play_started)
+            self._play_svc.finished.connect(self._on_play_finished)
+            self._play_svc.failed.connect(self._on_play_failed)
+            return True
+        except Exception:
+            self._play_svc = None
+            return False
+
+    def _play(self, text: str, spk) -> None:
+        text = (text or "").strip()
+        if not text or spk is None or not self._ensure_audio():
+            return
+        # One synthesis at a time (a fresh click waits for the current render).
+        if self._audio_thread is not None and self._audio_thread.isRunning():
+            return
+
+        prev = self._active_spk
+        if prev is not None and prev is not spk:
+            try:
+                prev.set_busy(False)
+                prev.set_playing(False)
+            except Exception:
+                pass
+
+        # Reuse the exact cached clip if we still have it.
+        if self._cur_text == text and self._cur_path and Path(self._cur_path).exists():
+            self._play_svc.stop()
+            self._active_spk = spk
+            spk.set_busy(True)
+            self._play_svc.play_file(self._cur_path)
+            return
+
+        self._cur_text = text
+        self._cur_path = ""
+        self._active_spk = spk
+        self._play_svc.stop()
+        spk.set_busy(True)
+
+        self._audio_thread = QThread(self)
+        self._audio_worker = _TtsWorker(self._pron, text)
+        self._audio_worker.moveToThread(self._audio_thread)
+        self._audio_thread.started.connect(self._audio_worker.run)
+        self._audio_worker.done.connect(self._on_tts_done)
+        self._audio_worker.fail.connect(self._on_tts_fail)
+        self._audio_worker.done.connect(self._audio_thread.quit)
+        self._audio_worker.fail.connect(self._audio_thread.quit)
+        self._audio_worker.done.connect(self._audio_worker.deleteLater)
+        self._audio_worker.fail.connect(self._audio_worker.deleteLater)
+        self._audio_thread.finished.connect(self._on_thread_finished)
+        self._audio_thread.finished.connect(self._audio_thread.deleteLater)
+        self._audio_thread.start()
+
+    @Slot(str, str)
+    def _on_tts_done(self, text: str, path: str) -> None:
+        if text != self._cur_text:
+            return  # a newer request (or a page change) superseded this one
+        self._cur_path = path
+        if self._active_spk is not None:
+            self._active_spk.set_busy(True)
+        if self._play_svc is not None:
+            self._play_svc.play_file(path)
+
+    @Slot(str, str)
+    def _on_tts_fail(self, text: str, message: str) -> None:
+        if self._active_spk is not None:
+            self._active_spk.reset_state()
+
+    @Slot()
+    def _on_thread_finished(self) -> None:
+        self._audio_thread = None
+        self._audio_worker = None
+
+    @Slot(str)
+    def _on_play_started(self, path: str) -> None:
+        if self._active_spk is not None:
+            self._active_spk.set_playing(True)
+
+    @Slot()
+    def _on_play_finished(self) -> None:
+        if self._active_spk is not None:
+            self._active_spk.set_playing(False)
+            self._active_spk.set_busy(False)
+
+    @Slot(str)
+    def _on_play_failed(self, message: str) -> None:
+        if self._active_spk is not None:
+            self._active_spk.reset_state()
+
+    def _stop_audio(self) -> None:
+        if self._play_svc is not None:
+            try:
+                self._play_svc.stop()
+            except Exception:
+                pass
+        if self._active_spk is not None:
+            try:
+                self._active_spk.reset_state()
+            except Exception:
+                pass
+        self._active_spk = None
+        self._cur_text = ""
+        self._cur_path = ""
+
+    def hideEvent(self, event):
+        # Leaving the tab stops any audio (and releases the speaker buttons we
+        # are about to lose on the next render).
+        self._stop_audio()
+        super().hideEvent(event)
 
     # ---------------------------------------------------------- focus mode
     def set_focus_mode(self, on: bool) -> None:

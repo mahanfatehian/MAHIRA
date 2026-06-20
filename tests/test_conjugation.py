@@ -172,3 +172,34 @@ def test_page_renders_known_verb_and_handles_unknown():
         assert page.host_lay.count() >= 1
     finally:
         page.deleteLater()
+
+
+def test_page_speakers_read_pronoun_plus_form():
+    _qapp()
+    from ui.pages.conjugation import ConjugationPage, _Speaker
+
+    page = ConjugationPage()
+    try:
+        # Capture what each speaker would synthesize, without touching audio.
+        spoken = []
+        page._play = lambda text, spk: spoken.append(text)
+
+        page.set_verb("lieben", "to love")
+        page.on_show()
+
+        speakers = page.findChildren(_Speaker)
+        assert len(speakers) >= 36, "a speaker on every conjugated form"
+        for spk in speakers:
+            spk.click()
+
+        texts = set(spoken)
+        # Präsens reads pronoun + form ("er/sie/es" is spoken as "er").
+        for expected in ("ich liebe", "du liebst", "er liebt",
+                         "wir lieben", "ihr liebt", "sie lieben"):
+            assert expected in texts, f"missing spoken form: {expected}"
+        # Compound tense keeps the pronoun in front of the whole form.
+        assert "ich habe geliebt" in texts
+        # Imperativ is spoken as the bare command (no extra pronoun).
+        assert "lieben Sie" in texts
+    finally:
+        page.deleteLater()
