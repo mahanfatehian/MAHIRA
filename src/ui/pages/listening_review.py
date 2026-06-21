@@ -909,6 +909,11 @@ class ListeningReviewPage(QWidget):
         if not self.isVisible():
             self._set_audio_state(busy=False, playing=False)
             return
+        # The speed was changed while this was synthesizing: don't play the
+        # stale-speed clip. _on_audio_thread_finished re-renders the passage at
+        # the speed that's now selected, so the highlight and audio agree.
+        if self._audio_ls != self._current_ls():
+            return
         self._set_audio_state(busy=True, playing=False)
         self.playback_service.play_file(wav_path)
 
@@ -922,6 +927,14 @@ class ListeningReviewPage(QWidget):
     def _on_audio_thread_finished(self) -> None:
         self._audio_thread = None
         self._audio_worker = None
+        # If the speed was changed mid-synthesis, the clip we just produced is at
+        # the previous speed. Re-render the SAME passage at the now-selected
+        # speed so the highlighted speed button and the audio match.
+        if self.current_item is None or not self.isVisible():
+            return
+        cur_text = (getattr(self.current_item, "text", "") or "").strip()
+        if cur_text and cur_text == self._audio_text and self._audio_ls != self._current_ls():
+            self._play_passage()
 
     @Slot(str)
     def _on_playback_started(self, path: str) -> None:
@@ -949,7 +962,9 @@ class ListeningReviewPage(QWidget):
                     pass
             if self._audio_text:
                 try:
-                    self.pronunciation_service.delete_cached_audio(self._audio_text)
+                    # Pass the speed so a slow/fast clip (different cache key) is
+                    # actually matched, not just the normal-speed one.
+                    self.pronunciation_service.delete_cached_audio(self._audio_text, self._audio_ls)
                 except Exception:
                     pass
             self._audio_text = ""

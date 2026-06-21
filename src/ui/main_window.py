@@ -165,6 +165,35 @@ class MainWindow(QMainWindow):
             start = "setup"
         self.go(start)
 
+    def closeEvent(self, event) -> None:
+        # Stop any in-flight audio and JOIN the worker threads before the window
+        # (and the pages' child QThread objects) are destroyed. A page's own
+        # closeEvent never fires for a stacked child widget, so quitting while a
+        # Piper synthesis is still running would otherwise trip Qt's
+        # "QThread: Destroyed while thread is still running" abort.
+        for page in self.pages.values():
+            stop = getattr(page, "_stop_audio", None)
+            if callable(stop):
+                try:
+                    stop()
+                except Exception:
+                    pass
+            svc = getattr(page, "playback_service", None)
+            if svc is not None:
+                try:
+                    svc.stop()
+                except Exception:
+                    pass
+            thread = getattr(page, "_audio_thread", None)
+            if thread is not None:
+                try:
+                    if thread.isRunning():
+                        thread.quit()
+                        thread.wait(2000)
+                except Exception:
+                    pass
+        super().closeEvent(event)
+
     def set_focus_mode(self, on: bool) -> None:
         self._focus_mode = bool(on)
         self.nav.setVisible(not self._focus_mode)

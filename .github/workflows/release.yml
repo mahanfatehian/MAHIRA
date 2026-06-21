@@ -8,8 +8,8 @@ name: Build & Release
 #     test packaging before you ever cut a real release.
 #
 # Targets (GitHub-hosted runners):
-#   - Windows: windows-latest  (x64)            -> Inno Setup installer + portable zip
-#   - macOS:   macos-14 (Apple Silicon / arm64) -> arm64 .dmg + .zip
+#   - Windows: windows-latest  (x64)            -> Inno Setup installer (.exe)
+#   - macOS:   macos-14 (Apple Silicon / arm64) -> arm64 .dmg
 # Apple Silicon only by choice: an arm64 build finishes in ~6 min, vs the slow
 # Intel (macos-13) runner. Intel Macs are not supported. If you ever need x86_64
 # again, add a `macos-13` matrix entry back.
@@ -87,17 +87,12 @@ jobs:
         shell: pwsh
         run: pyinstaller packaging/mahira.spec --noconfirm
 
-      - name: Portable ZIP
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist/artifacts | Out-Null
-          Compress-Archive -Path dist/MAHIRA/* -DestinationPath "dist/artifacts/MAHIRA-$env:VERSION-win64-portable.zip" -Force
-
       - name: Build installer (Inno Setup)
         shell: pwsh
         run: |
           choco install innosetup --no-progress -y
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:VERSION" packaging\windows\mahira.iss
+          New-Item -ItemType Directory -Force -Path dist/artifacts | Out-Null
           Copy-Item dist/installer/*.exe dist/artifacts/
 
       - uses: actions/upload-artifact@v4
@@ -175,10 +170,15 @@ jobs:
       - name: Ad-hoc codesign (so the unsigned arm64 app launches)
         run: |
           set -e
+          # Strip extended attributes (Finder/quarantine metadata) BEFORE signing.
+          # Leftover xattrs corrupt the code signature, which makes Gatekeeper
+          # reject the app on recent macOS ("damaged" / "not appropriate for this
+          # version of macOS"). A clean tree + clean ad-hoc signature fixes that.
+          xattr -cr "dist/MAHIRA.app"
           codesign --force --deep --sign - "dist/MAHIRA.app"
-          codesign --verify --deep --strict "dist/MAHIRA.app" || true
+          codesign --verify --deep --strict --verbose=2 "dist/MAHIRA.app" || true
 
-      - name: Package DMG + ZIP
+      - name: Package DMG
         run: |
           set -e
           mkdir -p dist/artifacts dist/dmg
@@ -186,7 +186,6 @@ jobs:
           ln -s /Applications dist/dmg/Applications
           hdiutil create -volname "MAHIRA" -srcfolder dist/dmg -ov -format UDZO \
             "dist/artifacts/MAHIRA-$VERSION-macos-arm64.dmg"
-          ditto -c -k --keepParent "dist/MAHIRA.app" "dist/artifacts/MAHIRA-$VERSION-macos-arm64.zip"
 
       - uses: actions/upload-artifact@v4
         with:

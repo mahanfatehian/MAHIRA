@@ -532,7 +532,9 @@ class VocabReviewPage(QWidget):
             )
 
         if not deleted and self._current_audio_text:
-            self.pronunciation_service.delete_cached_audio(self._current_audio_text)
+            self.pronunciation_service.delete_cached_audio(
+                self._current_audio_text, self._current_audio_ls
+            )
 
         self._current_audio_text = ""
         self._current_audio_path = ""
@@ -886,6 +888,15 @@ class VocabReviewPage(QWidget):
             return
 
         self._current_audio_path = wav_path
+        # Don't start audio on a tab the user has already left.
+        if not self.isVisible():
+            if btn is not None:
+                btn.set_busy(False)
+            return
+        # Speed was changed mid-synthesis: skip this stale-speed clip;
+        # _on_audio_thread_finished re-renders at the now-selected speed.
+        if self._current_audio_ls != self._current_ls():
+            return
         if btn is not None:
             btn.set_available(True)
             btn.set_busy(True)
@@ -893,18 +904,32 @@ class VocabReviewPage(QWidget):
 
     @Slot(str, str)
     def _on_audio_failed(self, text: str, message: str) -> None:
+        # Stay silent for superseded requests: if the user has advanced past the
+        # word (or left the page), a late synthesis failure is no longer relevant
+        # and must not pop a blocking dialog over unrelated content.
+        if text != self._current_audio_text:
+            return
         btn = self._active_audio_btn
-        if text == self._current_audio_text and btn is not None:
+        if btn is not None:
             btn.set_available(True)
             btn.set_busy(False)
             btn.set_playing(False)
-
-        QMessageBox.warning(self, "Pronunciation Error", message)
+        if self.isVisible():
+            QMessageBox.warning(self, "Pronunciation Error", message)
 
     @Slot()
     def _on_audio_thread_finished(self) -> None:
         self._audio_thread = None
         self._audio_worker = None
+        # If the speed was changed mid-synthesis, the clip just produced is at the
+        # old speed. Re-render the current word/example at the now-selected speed
+        # so the highlighted speed and the audio agree.
+        if self.current_item is None or not self.isVisible():
+            return
+        if self._current_audio_text and self._current_audio_ls != self._current_ls():
+            self._play_audio_for(
+                self._current_audio_text, self._active_audio_btn or self.card.audio_btn
+            )
 
     @Slot(str)
     def _on_playback_started(self, path: str) -> None:
@@ -923,7 +948,22 @@ class VocabReviewPage(QWidget):
         if self._active_audio_btn is not None:
             self._active_audio_btn.set_busy(False)
             self._active_audio_btn.set_playing(False)
-        QMessageBox.warning(self, "Playback Error", message)
+        # Only surface a playback error in context — not for a stray device
+        # error after the user has navigated away.
+        if self.isVisible() and self._active_audio_btn is not None:
+            QMessageBox.warning(self, "Playback Error", message)
+
+    def hideEvent(self, event) -> None:
+        # Leaving the tab stops any audio so a synthesis that finishes after the
+        # user navigates away never blares a word on an unrelated page.
+        try:
+            self.playback_service.stop()
+            if self._active_audio_btn is not None:
+                self._active_audio_btn.set_busy(False)
+                self._active_audio_btn.set_playing(False)
+        except Exception:
+            pass
+        super().hideEvent(event)
 
     def closeEvent(self, event) -> None:
         try:

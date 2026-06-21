@@ -11,10 +11,12 @@ APP_NAME = "mahira"
 APP_AUTHOR = "mahira"
 DB_FILENAME = "mahira.db"
 
-# Folder (next to the executable / repo root) that holds ALL writable runtime
-# state. Everything MAHIRA generates lives under <data_root>/.mahira so the app
-# is fully self-contained — nothing is written to %APPDATA%, ~/Library, or any
-# other per-user/OS location.
+# Folder that holds ALL writable runtime state. Everything MAHIRA generates
+# lives under <data_root>/.mahira. On Windows/Linux that sits next to the
+# executable (a user-writable install dir), keeping the app self-contained;
+# nothing lands in %APPDATA% or other metadata locations. macOS is the one
+# exception: a .app bundle is read-only, so data_root() uses
+# ~/Library/Application Support/MAHIRA instead (see data_root()).
 STATE_DIRNAME = ".mahira"
 
 
@@ -51,18 +53,26 @@ def resource_root() -> Path:
 
 def data_root() -> Path:
     """
-    Root for WRITABLE runtime state. Resolved so the app is portable and keeps
-    everything inside the installation folder:
+    Root for WRITABLE runtime state.
 
     - MAHIRA_DATA_DIR env var wins (lets advanced users relocate state).
-    - Frozen: the directory that contains the executable (the install folder).
+    - Frozen Windows/Linux: the directory that contains the executable. The
+      installer puts the app in a user-writable location, so state stays
+      self-contained next to it.
+    - Frozen macOS (.app): a macOS app bundle is read-only once installed and
+      App Translocation runs it from a random read-only mount, so writable state
+      must NOT live inside the bundle. Use the standard per-user Application
+      Support directory instead.
     - From source: the repository root.
     """
     override = os.environ.get("MAHIRA_DATA_DIR")
     if override:
         return Path(override).expanduser().resolve()
     if is_frozen():
-        return Path(sys.executable).resolve().parent
+        exe_dir = Path(sys.executable).resolve().parent
+        if sys.platform == "darwin" and ".app/Contents/MacOS" in str(exe_dir):
+            return Path.home() / "Library" / "Application Support" / "MAHIRA"
+        return exe_dir
     return Path(__file__).resolve().parents[2]
 
 

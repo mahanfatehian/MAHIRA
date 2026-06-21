@@ -462,6 +462,14 @@ class ConjugationPage(QWidget):
             self._play_svc.play_file(self._cur_path)
             return
 
+        # Switching to a new form: drop the previous clip so the per-form audio
+        # cache doesn't grow without bound as the user taps around the paradigm.
+        if self._cur_path and self._pron is not None:
+            try:
+                self._pron.delete_cached_file(self._cur_path)
+            except Exception:
+                pass
+
         self._cur_text = text
         self._cur_path = ""
         self._active_spk = spk
@@ -485,7 +493,14 @@ class ConjugationPage(QWidget):
     @Slot(str, str)
     def _on_tts_done(self, text: str, path: str) -> None:
         if text != self._cur_text:
-            return  # a newer request (or a page change) superseded this one
+            # Superseded (a newer click, or the user left the tab): drop the clip
+            # we just rendered so it doesn't linger in the audio cache.
+            if path and self._pron is not None:
+                try:
+                    self._pron.delete_cached_file(path)
+                except Exception:
+                    pass
+            return
         self._cur_path = path
         if self._active_spk is not None:
             self._active_spk.set_busy(True)
@@ -527,6 +542,13 @@ class ConjugationPage(QWidget):
         if self._active_spk is not None:
             try:
                 self._active_spk.reset_state()
+            except Exception:
+                pass
+        # Drop the last synthesized clip so leaving the tab / re-rendering
+        # doesn't leave WAVs piling up in the audio cache.
+        if self._cur_path and self._pron is not None:
+            try:
+                self._pron.delete_cached_file(self._cur_path)
             except Exception:
                 pass
         self._active_spk = None

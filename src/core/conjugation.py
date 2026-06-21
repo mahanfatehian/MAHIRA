@@ -207,7 +207,10 @@ def _expand(p: PrincipalParts, reflexive: bool = False) -> Conjugation:
     # has no past stem — a handful of rare/dialectal entries — so we never emit
     # a garbage ending attached to nothing.)
     pbase, _ = _split_prefix(p.praeteritum_ich)
-    if not pbase:
+    if not pbase or any(ch in pbase for ch in "<>()[]"):
+        # Empty, or a rare/dialectal row whose stem is stored as literal markup
+        # (e.g. "<small>(derkam)</small>"): emit blanks rather than gluing person
+        # endings onto HTML.
         praeteritum = [""] * 6
     else:
         if pbase.endswith("te"):  # weak
@@ -220,7 +223,8 @@ def _expand(p: PrincipalParts, reflexive: bool = False) -> Conjugation:
 
     # ---- Konjunktiv II from the given 1st-person form (it ends in -e).
     kbase, _ = _split_prefix(p.konjunktiv2_ich)
-    if not kbase:
+    if not kbase or any(ch in kbase for ch in "<>()[]"):
+        # Same markup guard as Präteritum above.
         konjunktiv2 = [""] * 6
     else:
         if kbase.endswith("e"):

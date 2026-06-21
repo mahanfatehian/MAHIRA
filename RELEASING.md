@@ -99,16 +99,15 @@ You do **not** need to create a release manually — the workflow does it. Steps
    git push origin v0.1.0
    ```
 
-   The workflow then builds Windows + macOS and creates a **draft** GitHub
-   Release with these assets attached:
+   The workflow then builds Windows + macOS and **publishes** a GitHub Release
+   (using `RELEASE_NOTES.md` as the description) with these assets attached:
 
    - `MAHIRA-Setup-<ver>-win64.exe` (Windows installer)
-   - `MAHIRA-<ver>-win64-portable.zip` (Windows portable, unzip & run)
-   - `MAHIRA-<ver>-macos-arm64.dmg` / `.zip` (macOS, Apple Silicon)
+   - `MAHIRA-<ver>-macos-arm64.dmg` (macOS, Apple Silicon)
 
-3. **Review & publish:** GitHub → **Releases** → open the draft → edit notes →
-   **Publish release**. (It's created as a draft so nothing goes public until you
-   click publish.)
+3. **Verify:** GitHub → **Releases** → confirm the new version shows both assets
+   and the notes from `RELEASE_NOTES.md`. (The release is published directly on a
+   `vX.Y.Z` tag — `draft: false` — so update `RELEASE_NOTES.md` before tagging.)
 
 ### Versioning tip
 The version comes from the tag (`v0.1.0` → `0.1.0`). Update

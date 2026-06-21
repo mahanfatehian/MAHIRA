@@ -9,9 +9,11 @@ Produces a self-contained "onedir" build in dist/MAHIRA:
     - Windows: dist/MAHIRA/MAHIRA.exe  (+ bundled libs)
     - macOS:   dist/MAHIRA.app
 
-Everything the app generates at runtime (SQLite DB, ML models, logs) is written
-to a `.mahira` folder NEXT TO THE EXECUTABLE — see src/mahira/config.py:data_root.
-Nothing is written to %APPDATA% / ~/Library / any per-user OS location.
+Everything the app generates at runtime (SQLite DB, ML models, logs, audio
+cache) is written to a `.mahira` folder under data_root() — see
+src/mahira/config.py:data_root. On Windows/Linux that is next to the executable
+(a user-writable install dir); on macOS the .app bundle is read-only, so state
+goes to ~/Library/Application Support/MAHIRA instead.
 """
 import os
 import sys

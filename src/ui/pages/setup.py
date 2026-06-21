@@ -1156,6 +1156,10 @@ class SetupPage(QWidget):
 
     def _refresh_lektions(self):
         self._clear_vbox(self.lektion_grid)
+        # Clear any row stretch left from a previous (taller) book so empty rows
+        # don't accumulate stretch on this shared, long-lived grid.
+        for r in range(self.lektion_grid.rowCount()):
+            self.lektion_grid.setRowStretch(r, 0)
         if not self.level or not self.book_slug:
             lbl = QLabel("Select a book first.")
             lbl.setStyleSheet("QLabel { color: #777; }")

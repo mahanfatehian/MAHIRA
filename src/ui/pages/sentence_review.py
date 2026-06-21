@@ -555,10 +555,14 @@ class SentenceReviewPage(QWidget):
 
     @Slot(str, str)
     def _on_audio_failed(self, text: str, message: str) -> None:
-        if text == self._current_audio_text:
-            self.card.audio_btn.set_busy(False)
-            self.card.audio_btn.set_playing(False)
-        QMessageBox.warning(self, "Pronunciation Error", message)
+        # Ignore failures for a request the user has already moved past, so a
+        # late error never throws a modal over the next sentence.
+        if text != self._current_audio_text:
+            return
+        self.card.audio_btn.set_busy(False)
+        self.card.audio_btn.set_playing(False)
+        if self.isVisible():
+            QMessageBox.warning(self, "Pronunciation Error", message)
 
     @Slot()
     def _on_audio_thread_finished(self) -> None:

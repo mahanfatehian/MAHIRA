@@ -23,8 +23,21 @@ class PronunciationService:
     def __init__(self, model_manager: PiperModelManager | None = None) -> None:
         self.model_manager = model_manager or PiperModelManager()
         self._project_root = self.model_manager.project_root
-        self._cache_dir = self._project_root / ".mahira" / "audio_cache"
+        # The cache holds WRITABLE WAVs, so it must live under the writable data
+        # root (<data_root>/.mahira), NOT the read-only resource root. On a frozen
+        # macOS .app the two diverge — resource_root() is inside the read-only /
+        # App-Translocated bundle — so caching there would fail every synthesis.
+        self._cache_dir = self._writable_cache_dir()
         self._cache_dir.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def _writable_cache_dir() -> Path:
+        try:
+            from mahira.config import data_root, STATE_DIRNAME
+            return data_root() / STATE_DIRNAME / "audio_cache"
+        except Exception:
+            # From-source fallback: the repo root (where data_root resolves too).
+            return Path(__file__).resolve().parents[3] / ".mahira" / "audio_cache"
 
     @property
     def cache_dir(self) -> Path:
@@ -85,24 +98,41 @@ class PronunciationService:
             except Exception:
                 syn_config = None  # older piper: fall back to default speed
 
-        with wave.open(str(out_path), "wb") as wav_file:
-            if syn_config is not None:
-                voice.synthesize_wav(normalized, wav_file, syn_config=syn_config)
-            else:
-                voice.synthesize_wav(normalized, wav_file)
+        # Render to a temp file and move it into place only on success. Writing
+        # straight to out_path would leave a 0-byte WAV there if synthesize_wav
+        # raises — and the cache-hit check above would then serve that empty file
+        # forever, silencing the word until the whole cache is cleared.
+        tmp_path = out_path.with_name(out_path.name + ".part")
+        try:
+            with wave.open(str(tmp_path), "wb") as wav_file:
+                if syn_config is not None:
+                    voice.synthesize_wav(normalized, wav_file, syn_config=syn_config)
+                else:
+                    voice.synthesize_wav(normalized, wav_file)
+            tmp_path.replace(out_path)
+        except Exception:
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+            raise
 
         return out_path
 
-    def delete_cached_audio(self, text: str) -> bool:
+    def delete_cached_audio(self, text: str, length_scale: float | None = None) -> bool:
         """
-        Delete cached WAV for the given text.
+        Delete cached WAV for the given text (at the given speed, if any).
         Returns True if a file was deleted, False otherwise.
+
+        `length_scale` must match the value used when the clip was generated; a
+        slow/fast render lives under a different cache key than the normal-speed
+        one, so omitting it would silently miss those files.
         """
         normalized = self._normalize_text(text)
         if not normalized:
             return False
 
-        path = self.get_cached_path(normalized)
+        path = self.get_cached_path(normalized, length_scale)
         if path.exists():
             try:
                 path.unlink()

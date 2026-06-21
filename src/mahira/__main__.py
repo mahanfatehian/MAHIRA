@@ -31,7 +31,19 @@ def main() -> None:
     # installation folder (data_root) so nothing lands in user/OS locations.
     project_root = resource_root()
     state_dir = data_root() / STATE_DIRNAME
-    state_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        state_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        # The resolved state dir isn't writable (e.g. a read-only or translocated
+        # install). Fall back to a temp dir so the app can still launch and write
+        # a crash log, instead of dying silently before the excepthook below is
+        # even installed. Point the rest of the app at the same dir.
+        import tempfile
+
+        fallback = Path(tempfile.gettempdir()) / "MAHIRA"
+        state_dir = fallback / STATE_DIRNAME
+        state_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["MAHIRA_DATA_DIR"] = str(fallback)
 
     log_path = state_dir / "crash.log"
     _log = open(log_path, "a", encoding="utf-8")

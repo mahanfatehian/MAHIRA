@@ -200,7 +200,10 @@ def _effective_vocab_rating(
             return min(raw, 2)
         return raw
 
-    if ratio >= 0.67:
+    if ratio >= 2.0 / 3.0:
+        # Two-thirds or more of the applicable fields right -> Hard, not a full
+        # lapse. Use the exact fraction so the 2-of-3 case (0.6666…) isn't lost
+        # to a 0.67 rounding cliff and mis-scheduled as Again.
         return min(raw, 1)
 
     return 0
@@ -789,7 +792,13 @@ class SessionService:
                 return selected
             pick = self.rng.choice(candidates)
             out = list(selected)
-            out[0] = pick  # replace the lowest-priority selected item
+            # Replace the lowest-priority SELECTED item. `ranked` is low->high
+            # priority, so that's the selected item appearing earliest in it.
+            # Computing it (rather than assuming index 0) avoids evicting a
+            # high-priority unseen coverage item that a top-up prepended.
+            rank_pos = {item: idx for idx, item in enumerate(ranked)}
+            lowest_idx = min(range(len(out)), key=lambda j: rank_pos.get(out[j], -1))
+            out[lowest_idx] = pick
             return out
         except Exception:
             return selected
