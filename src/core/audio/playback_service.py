@@ -21,13 +21,20 @@ class PlaybackService(QObject):
         self.effect.playingChanged.connect(self._on_playing_changed)
         self.effect.statusChanged.connect(self._on_status_changed)
 
+        self._ready_status = getattr(QSoundEffect.Status, "Ready", None)
+        self._error_status = getattr(QSoundEffect.Status, "Error", None)
+
         self._current_path: str | None = None
         self._was_playing = False
         self._pending_play = False
+        self._poll_left = 0
 
     def set_volume(self, volume: float) -> None:
         volume = max(0.0, min(1.0, float(volume)))
         self.effect.setVolume(volume)
+
+    def _is_ready(self) -> bool:
+        return self._ready_status is not None and self.effect.status() == self._ready_status
 
     def play_file(self, file_path: str | Path) -> None:
         path = Path(file_path).resolve()
@@ -37,34 +44,43 @@ class PlaybackService(QObject):
             return
 
         self.stop()
+        url = QUrl.fromLocalFile(str(path))
         self._current_path = str(path)
         self._pending_play = True
 
-        self.effect.setSource(QUrl.fromLocalFile(str(path)))
-
-        # Some Windows/Qt builds need a tiny delay before QSoundEffect reports Ready.
-        QTimer.singleShot(40, self._play_if_ready)
-
-    def _play_if_ready(self) -> None:
-        if not self._current_path or not self._pending_play:
-            return
-
-        status = self.effect.status()
-        ready_status = getattr(QSoundEffect.Status, "Ready", None)
-        loading_status = getattr(QSoundEffect.Status, "Loading", None)
-
-        if ready_status is not None and status == ready_status:
+        # Same clip already loaded: play immediately. Re-setting the same source
+        # does not reload, so no statusChanged would arrive to drive it.
+        if self.effect.source() == url and self._is_ready():
             self._pending_play = False
             self.effect.play()
             return
 
-        if loading_status is not None and status == loading_status:
-            QTimer.singleShot(40, self._play_if_ready)
-            return
+        # New clip: load it, then play ONLY once this source reports Ready.
+        #
+        # Driving playback off statusChanged -> Ready (see _on_status_changed),
+        # with the timer as a safety net, is what fixes the long-standing bug
+        # where switching word -> example played the *word* on the first click:
+        # right after setSource() the effect could still report the PREVIOUS
+        # clip as Ready, and the old code would play() that stale buffer.
+        self.effect.setSource(url)
+        self._poll_left = 60  # up to ~3s of 50ms polls, then give up gracefully
+        QTimer.singleShot(50, self._poll_ready)
 
-        # Fallback for Qt builds where status timing is inconsistent.
-        self._pending_play = False
-        self.effect.play()
+    def _poll_ready(self) -> None:
+        # Safety net for builds where statusChanged is unreliable. It only ever
+        # plays once the NEW source is genuinely Ready, never a stale one.
+        if not self._pending_play:
+            return  # already played via statusChanged
+        if self._is_ready():
+            self._pending_play = False
+            self.effect.play()
+            return
+        self._poll_left -= 1
+        if self._poll_left > 0:
+            QTimer.singleShot(50, self._poll_ready)
+        else:
+            self._pending_play = False
+            self.failed.emit("Audio took too long to load.")
 
     def stop(self) -> None:
         self._pending_play = False
@@ -84,8 +100,14 @@ class PlaybackService(QObject):
 
     def _on_status_changed(self) -> None:
         status = self.effect.status()
-        error_status = getattr(QSoundEffect.Status, "Error", None)
 
-        if error_status is not None and status == error_status:
+        if self._error_status is not None and status == self._error_status:
             self._pending_play = False
             self.failed.emit("QSoundEffect failed to play audio.")
+            return
+
+        # The Ready that follows a setSource() belongs to the NEW clip, so this
+        # is the correct, race-free moment to start playback.
+        if self._ready_status is not None and status == self._ready_status and self._pending_play:
+            self._pending_play = False
+            self.effect.play()
