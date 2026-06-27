@@ -1,0 +1,13 @@
+test_text,answer,test_verb,tip,meaning,grammar_tip
+"Zuerst essen wir, null sehen wir einen Film.",dann,dann,sequence,"First we eat, then we watch a film.","After dann, the conjugated verb is in position 2."
+Ich kaufe null neuen Computer.,einen,Adjektivdeklination,masculine accusative,I am buying a new computer.,"After einen, adjective ending: neuen."
+Sie nutzt null praktische App.,eine,Adjektivdeklination,feminine accusative,She uses a practical app.,Feminine accusative: eine praktische App.
+Wir sehen null spannendes Programm.,ein,Adjektivdeklination,neuter accusative,We are watching an exciting program.,Neuter accusative after ein: spannendes.
+Mit null neuen Computer arbeitet er schneller.,dem,Adjektivdeklination,dative masculine,He works faster with the new computer.,Dative masculine: dem neuen Computer.
+Ich schenke null ein Buch.,dir,Dativobjekt,recipient,I give you a book.,The recipient is dative.
+Sie gibt null das Geschenk.,ihm,Dativobjekt,recipient,She gives him the gift.,geben uses dative recipient and accusative thing.
+Wir kaufen null einen Snack.,dem Gastgeber,Dativobjekt,recipient,We buy the host a snack.,Person receiving something is dative.
+Der Gastgeber bietet null Getränke an.,uns,Dativobjekt,recipient,The host offers us drinks.,anbieten uses dative for the person.
+"Ich frage, null die gleiche App hat.",wer,indirect question,who,I ask who has the same app.,The question word can introduce an indirect question.
+"Weißt du, null die Sendung beginnt?",wann,indirect question,when,Do you know when the program begins?,"In indirect questions, the verb goes to the end."
+Nach dem Essen null wir den Fernseher an.,machen,trennbares Verb,turn on,After dinner we turn on the TV.,anmachen is separable: machen ... an.
