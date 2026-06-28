@@ -1,13 +1,60 @@
 sentence,words,tip,translation_en
-Ich freue mich auf die Reise.,Ich|freue|mich|auf|die|Reise|.,sich freuen auf takes accusative.,I am looking forward to the trip.
-Wir interessieren uns für moderne Kunst.,Wir|interessieren|uns|für|moderne|Kunst|.,sich interessieren für takes accusative.,We are interested in modern art.
-Er ärgert sich über den verschobenen Termin.,Er|ärgert|sich|über|den|verschobenen|Termin|.,sich ärgern über takes accusative.,He is annoyed about the postponed appointment.
-In zwei Wochen beginnt das Filmfestival.,In|zwei|Wochen|beginnt|das|Filmfestival|.,in plus time can refer to the future.,The film festival begins in two weeks.
-Während des Films war mein Handy aus.,Während|des|Films|war|mein|Handy|aus|.,während can introduce a time span.,During the film my phone was off.
-Ich warte auf deine Begründung.,Ich|warte|auf|deine|Begründung|.,warten auf is a prepositional verb.,I am waiting for your explanation.
-Dieser Trend ist mir egal.,Dieser|Trend|ist|mir|egal|.,egal sein uses dative for the person.,This trend does not matter to me.
-Wir müssen den Termin leider verschieben.,Wir|müssen|den|Termin|leider|verschieben|.,verschieben means to reschedule.,Unfortunately we have to postpone the appointment.
-"Ich vermute, dass sie gute Freunde sind.","Ich|vermute|,|dass|sie|gute|Freunde|sind|.",dass sends the verb to the end.,I assume that they are good friends.
-In dieser Stadt wünsche ich mir mehr Parks.,In|dieser|Stadt|wünsche|ich|mir|mehr|Parks|.,dieser is feminine dative.,In this city I wish for more parks.
-Mein Lieblingsfilm läuft am Freitag im Kino.,Mein|Lieblingsfilm|läuft|am|Freitag|im|Kino|.,laufen can mean to be showing.,My favorite film is playing at the cinema on Friday.
-Bitte füllen Sie den Fragebogen aus.,Bitte|füllen|Sie|den|Fragebogen|aus|.,ausfüllen is separable.,Please fill out the questionnaire.
+"Wir müssen die Umwelt schützen.","Wir|müssen|die|Umwelt|schützen|.","Vocabulary Umwelt","We must protect the environment."
+"Ich interessiere mich sehr für Streetart.","Ich|interessiere|mich|sehr|für|Streetart|.","sich interessieren für + Akk","I am very interested in street art."
+"Worauf freust du dich?","Worauf|freust|du|dich|?","W-Frage (Sachen)","What are you looking forward to?"
+"Ich freue mich auf den Urlaub mit dem Rucksack.","Ich|freue|mich|auf|den|Urlaub|mit|dem|Rucksack|.","sich freuen auf + Akk","I am looking forward to the vacation with the backpack."
+"Worüber ärgerst du dich?","Worüber|ärgerst|du|dich|?","W-Frage (Sachen)","What are you angry about?"
+"Ich ärgere mich über die Verspätung.","Ich|ärgere|mich|über|die|Verspätung|.","sich ärgern über + Akk","I am angry about the delay."
+"An wen erinnerst du dich?","An|wen|erinnerst|du|dich|?","W-Frage (Personen)","Who do you remember?"
+"Ich erinnere mich an diesen Künstler.","Ich|erinnere|mich|an|diesen|Künstler|.","sich erinnern an + Akk","I remember this artist."
+"Kümmerst du dich um die Tickets fürs Kino?","Kümmerst|du|dich|um|die|Tickets|fürs|Kino|?","sich kümmern um + Akk","Are you taking care of the tickets for the cinema?"
+"Wir treffen uns um 20 Uhr vor dem Kino.","Wir|treffen|uns|um|20|Uhr|vor|dem|Kino|.","sich treffen","We are meeting at 8 PM in front of the cinema."
+"Wie fühlst du dich heute?","Wie|fühlst|du|dich|heute|?","sich fühlen","How do you feel today?"
+"Ich fühle mich heute total entspannt.","Ich|fühle|mich|heute|total|entspannt|.","Feelings","I feel totally relaxed today."
+"Bist du sauer auf mich?","Bist|du|sauer|auf|mich|?","sauer sein auf + Akk","Are you mad at me?"
+"Nein, ich bin nicht wütend, nur ein bisschen traurig.","Nein|,|ich|bin|nicht|wütend|,|nur|ein|bisschen|traurig|.","Feelings","No, I am not angry, just a little sad."
+"Der Film war eine Komödie und sehr lustig.","Der|Film|war|eine|Komödie|und|sehr|lustig|.","Movie vocabulary","The movie was a comedy and very funny."
+"Wer ist der Regisseur von deinem Lieblingsfilm?","Wer|ist|der|Regisseur|von|deinem|Lieblingsfilm|?","Movie vocabulary","Who is the director of your favorite movie?"
+"Die Schauspielerin auf der Bühne war fantastisch.","Die|Schauspielerin|auf|der|Bühne|war|fantastisch|.","Theater/Stage vocab","The actress on the stage was fantastic."
+"Das Publikum hat am Ende laut geklatscht.","Das|Publikum|hat|am|Ende|laut|geklatscht|.","Poetry/Stage vocab","The audience clapped loudly at the end."
+"Ich schreibe gerne Gedichte für den Poetry Slam.","Ich|schreibe|gerne|Gedichte|für|den|Poetry|Slam|.","Poetry Slam","I like writing poems for the poetry slam."
+"Können wir unseren Termin auf Freitag verschieben?","Können|wir|unseren|Termin|auf|Freitag|verschieben|?","verschieben auf + Akk","Can we postpone our appointment to Friday?"
+"Es tut mir leid, aber ich muss den Termin leider absagen.","Es|tut|mir|leid|,|aber|ich|muss|den|Termin|leider|absagen|.","Termin absagen","I'm sorry, but I unfortunately have to cancel the appointment."
+"Wir müssen einen neuen Termin vereinbaren.","Wir|müssen|einen|neuen|Termin|vereinbaren|.","Termin vereinbaren","We have to arrange a new appointment."
+"Passt es Ihnen in dieser Woche?","Passt|es|Ihnen|in|dieser|Woche|?","in + Dativ","Does it suit you in this week?"
+"Nein, in diesem Monat habe ich leider keine Zeit.","Nein|,|in|diesem|Monat|habe|ich|leider|keine|Zeit|.","in + Dativ","No, I unfortunately have no time in this month."
+"In einem Jahr fahre ich mit dem Rucksack nach Asien.","In|einem|Jahr|fahre|ich|mit|dem|Rucksack|nach|Asien|.","in + Dativ (Zukunft)","In a year I am going to Asia with the backpack."
+"Wir fliegen in zwei Wochen in den Urlaub.","Wir|fliegen|in|zwei|Wochen|in|den|Urlaub|.","in + Dativ Plural","We are flying on vacation in two weeks."
+"Während des Films darf man nicht sprechen.","Während|des|Films|darf|man|nicht|sprechen|.","während + Genitiv","One must not speak during the movie."
+"Während der Reise haben wir im Zelt übernachtet.","Während|der|Reise|haben|wir|im|Zelt|übernachtet|.","während + Genitiv","During the trip we stayed overnight in the tent."
+"Es war sehr kalt, wir brauchten unsere Schlafsäcke.","Es|war|sehr|kalt|,|wir|brauchten|unsere|Schlafsäcke|.","Travel vocabulary","It was very cold, we needed our sleeping bags."
+"Das Wandern in der Natur ist ein tolles Gefühl.","Das|Wandern|in|der|Natur|ist|ein|tolles|Gefühl|.","Verb -> Nomen","Hiking in nature is a great feeling."
+"Das Reisen mit Freunden macht immer Spaß.","Das|Reisen|mit|Freunden|macht|immer|Spaß|.","Verb -> Nomen","Traveling with friends is always fun."
+"Beim Lesen kann ich mich sehr gut entspannen.","Beim|Lesen|kann|ich|mich|sehr|gut|entspannen|.","Verb -> Nomen + Reflexiv","While reading I can relax very well."
+"Bitte füllen Sie den Fragebogen zum Thema Film aus.","Bitte|füllen|Sie|den|Fragebogen|zum|Thema|Film|aus|.","ausfüllen","Please fill out the questionnaire on the topic of film."
+"Was ist das Ergebnis von der Umfrage?","Was|ist|das|Ergebnis|von|der|Umfrage|?","Survey vocabulary","What is the result of the survey?"
+"Das ist mir völlig egal!","Das|ist|mir|völlig|egal|!","Opinion","That doesn't matter to me at all!"
+"Ich vermute, dass das Verhältnis zwischen ihnen gut ist.","Ich|vermute|,|dass|das|Verhältnis|zwischen|ihnen|gut|ist|.","Vermutungen äußern","I suspect that the relationship between them is good."
+"Wir spekulieren über die Personen auf dem Foto.","Wir|spekulieren|über|die|Personen|auf|dem|Foto|.","spekulieren über","We speculate about the people in the photo."
+"Können Sie Ihre Meinung bitte begründen?","Können|Sie|Ihre|Meinung|bitte|begründen|?","begründen","Can you please justify your opinion?"
+"Die Eintrittskarte für das Kino kostet 10 Euro.","Die|Eintrittskarte|für|das|Kino|kostet|10|Euro|.","Cinema vocabulary","The admission ticket for the cinema costs 10 euros."
+"Wir haben tolle Plätze in Reihe fünf.","Wir|haben|tolle|Plätze|in|Reihe|fünf|.","Cinema vocabulary","We have great seats in row five."
+"Streetart macht die grauen Wände der Stadt bunt.","Streetart|macht|die|grauen|Wände|der|Stadt|bunt|.","Art vocabulary","Street art makes the gray walls of the city colorful."
+"Der Künstler hat ein wunderschönes Bild gemalt.","Der|Künstler|hat|ein|wunderschönes|Bild|gemalt|.","Art vocabulary","The artist painted a beautiful picture."
+"Ich habe eine halbformelle E-Mail an den Chef geschrieben.","Ich|habe|eine|halbformelle|E-Mail|an|den|Chef|geschrieben|.","Writing emails","I wrote a semi-formal email to the boss."
+"Zu diesem Zeitpunkt war ich leider nicht da.","Zu|diesem|Zeitpunkt|war|ich|leider|nicht|da|.","Zeitpunkt","At this point in time, I was unfortunately not there."
+"Ich beschwere mich über den schlechten Service.","Ich|beschwere|mich|über|den|schlechten|Service|.","sich beschweren über","I complain about the bad service."
+"Hast du dich in sie verliebt?","Hast|du|dich|in|sie|verliebt|?","sich verlieben in","Did you fall in love with her?"
+"Wir kümmern uns um den Umweltschutz.","Wir|kümmern|uns|um|den|Umweltschutz|.","sich kümmern um","We take care of environmental protection."
+"Ich freue mich über dein Geschenk, vielen Dank!","Ich|freue|mich|über|dein|Geschenk|,|vielen|Dank|!","sich freuen über","I am happy about your gift, thank you very much!"
+"Das Lesen dieses Buches war sehr interessant.","Das|Lesen|dieses|Buches|war|sehr|interessant|.","Verb -> Nomen","Reading this book was very interesting."
+"Ich war sehr überrascht von dem Ende des Films.","Ich|war|sehr|überrascht|von|dem|Ende|des|Films|.","Feelings","I was very surprised by the end of the movie."
+"Bist du enttäuscht, weil wir nicht wandern gehen?","Bist|du|enttäuscht|,|weil|wir|nicht|wandern|gehen|?","Feelings","Are you disappointed because we are not going hiking?"
+"Während des Essens klingelte mein Handy.","Während|des|Essens|klingelte|mein|Handy|.","während + Genitiv","During the meal my cell phone rang."
+"Wir haben den Termin auf nächsten Montag verschoben.","Wir|haben|den|Termin|auf|nächsten|Montag|verschoben|.","verschieben","We postponed the appointment to next Monday."
+"Der Regisseur hat auch das Drehbuch geschrieben.","Der|Regisseur|hat|auch|das|Drehbuch|geschrieben|.","Movie vocabulary","The director also wrote the screenplay."
+"Wir übernachten lieber im Hotel als im Zelt.","Wir|übernachten|lieber|im|Hotel|als|im|Zelt|.","Travel preference","We prefer to stay overnight in a hotel rather than in a tent."
+"Ich habe meinen Schlafsack vergessen!","Ich|habe|meinen|Schlafsack|vergessen|!","Travel vocabulary","I forgot my sleeping bag!"
+"Ein zukünftiger Zeitpunkt ist noch nicht bekannt.","Ein|zukünftiger|Zeitpunkt|ist|noch|nicht|bekannt|.","Time vocabulary","A future point in time is not yet known."
+"Sie trägt immer die neuesten Trends.","Sie|trägt|immer|die|neuesten|Trends|.","Trends","She always wears the newest trends."
+"Wir machen eine Umfrage über Lieblingsfilme.","Wir|machen|eine|Umfrage|über|Lieblingsfilme|.","Umfrage","We are doing a survey about favorite movies."

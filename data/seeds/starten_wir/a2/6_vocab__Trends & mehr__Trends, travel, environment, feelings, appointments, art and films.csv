@@ -1,23 +1,73 @@
-pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en,ex3_de,ex3_en
-noun,Trend,der,m,der Trend - masculine.,Trends,trend,Dieser Trend gefällt mir.,I like this trend.,,,,
-noun,Umwelt,die,f,die Umwelt - feminine.,,environment,Wir sprechen über die Umwelt.,We talk about the environment.,,,,
-noun,Reise,die,f,die Reise - feminine.,Reisen,trip / journey,Die Reise war spannend.,The trip was exciting.,,,,
-noun,Gefühl,das,n,das Gefühl - neuter.,Gefühle,feeling,Dieses Gefühl kenne ich gut.,I know this feeling well.,,,,
-noun,Wunsch,der,m,der Wunsch - masculine.,Wünsche,wish,Mein Wunsch ist mehr Grün in der Stadt.,My wish is more green space in the city.,,,,
-noun,Termin,der,m,der Termin - masculine.,Termine,appointment,Wir müssen den Termin verschieben.,We have to postpone the appointment.,,,,
-noun,Vermutung,die,f,die Vermutung - feminine.,Vermutungen,guess / assumption,Meine Vermutung ist richtig.,My assumption is correct.,,,,
-noun,Kunst,die,f,die Kunst - feminine.,,art,Moderne Kunst interessiert mich.,Modern art interests me.,,,,
-noun,Lieblingsfilm,der,m,der Lieblingsfilm - masculine.,Lieblingsfilme,favorite film,Mein Lieblingsfilm läuft heute.,My favorite film is on today.,,,,
-noun,Fragebogen,der,m,der Fragebogen - masculine.,Fragebögen,questionnaire,Bitte füllen Sie den Fragebogen aus.,Please fill out the questionnaire.,,,,
-noun,Zeitpunkt,der,m,der Zeitpunkt - masculine.,Zeitpunkte,point in time,Wir bestimmen den Zeitpunkt später.,We will set the time later.,,,,
-noun,Poetry-Slam,der,m,der Poetry-Slam - masculine.,Poetry-Slams,poetry slam,Beim Poetry-Slam hören wir Texte.,At the poetry slam we listen to texts.,,,,
-verb,sich freuen,,,,,to be happy / look forward,Ich freue mich auf den Film.,I am looking forward to the film.,,,,
-verb,sich ärgern,,,,,to be annoyed,Er ärgert sich über den Lärm.,He is annoyed about the noise.,,,,
-verb,sich interessieren,,,,,to be interested,Wir interessieren uns für Kunst.,We are interested in art.,,,,
-verb,verschieben,,,,,to postpone / reschedule,Wir verschieben den Termin.,We reschedule the appointment.,,,,
-verb,begründen,,,,,to justify / give a reason,Bitte begründen Sie Ihre Meinung.,Please justify your opinion.,,,,
-verb,vermuten,,,,,to assume / guess,"Ich vermute, dass sie Geschwister sind.",I assume that they are siblings.,,,,
-prep,während,,,,,during,Während des Films war es ruhig.,It was quiet during the film.,,,,
-prep,in,,,,,in / within,In zwei Wochen fahren wir los.,We leave in two weeks.,,,,
-phrase,egal sein,,,,,to not matter,Das ist mir egal.,That does not matter to me.,,,,
-phrase,sich austauschen,,,,,to exchange views,Wir tauschen uns über Trends aus.,We exchange views about trends.,,,,
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Trend,der,m,"der Trend — masculine.",Trends,"trend","Das ist ein neuer Trend.","That is a new trend.","Folgen Sie diesem Trend?","Do you follow this trend?"
+noun,Umwelt,die,f,"die Umwelt — feminine.",-,"environment","Wir müssen die Umwelt schützen.","We must protect the environment.","Der Müll ist schlecht für die Umwelt.","The trash is bad for the environment."
+noun,Gefühl,das,n,"das Gefühl — neuter.",Gefühle,"feeling / emotion","Das ist ein schönes Gefühl.","That is a nice feeling.","Er spricht über seine Gefühle.","He talks about his feelings."
+adj,glücklich,-,-,-,-,"happy","Ich bin heute sehr glücklich.","I am very happy today.","Sie sieht glücklich aus.","She looks happy."
+adj,traurig,-,-,-,-,"sad","Der Film war sehr traurig.","The movie was very sad.","Warum bist du traurig?","Why are you sad?"
+adj,wütend,-,-,-,-,"angry / furious","Er ist wütend auf seinen Chef.","He is angry at his boss.","Werde nicht wütend!","Don't get angry!"
+adj,sauer,-,-,-,-,"mad / sour","Bist du sauer auf mich?","Are you mad at me?","Die Zitrone ist sauer.","The lemon is sour."
+adj,überrascht,-,-,-,-,"surprised","Ich war sehr überrascht.","I was very surprised.","Sie ist angenehm überrascht.","She is pleasantly surprised."
+adj,enttäuscht,-,-,-,-,"disappointed","Er ist enttäuscht von dem Buch.","He is disappointed by the book.","Ich bin ein bisschen enttäuscht.","I am a little disappointed."
+verb,freuen (sich),-,-,-,-,"to be happy / look forward to","Ich freue mich auf den Urlaub.","I look forward to the vacation.","Sie freut sich über das Geschenk.","She is happy about the gift."
+verb,ärgern (sich),-,-,-,-,"to be annoyed / angry","Ich ärgere mich über den Zug.","I am annoyed about the train.","Ärgerst du dich?","Are you angry?"
+verb,interessieren (sich),-,-,-,-,"to be interested","Ich interessiere mich für Kunst.","I am interested in art.","Interessierst du dich für Filme?","Are you interested in movies?"
+verb,kümmern (sich),-,-,-,-,"to take care of","Ich kümmere mich um den Hund.","I take care of the dog.","Sie kümmert sich um die Tickets.","She takes care of the tickets."
+verb,erinnern (sich),-,-,-,-,"to remember","Ich erinnere mich an dich.","I remember you.","Erinnert ihr euch an den Film?","Do you guys remember the movie?"
+verb,entspannen (sich),-,-,-,-,"to relax","Im Urlaub möchte ich mich entspannen.","I want to relax on vacation.","Wir entspannen uns am Strand.","We are relaxing on the beach."
+verb,fühlen (sich),-,-,-,-,"to feel","Wie fühlst du dich heute?","How do you feel today?","Ich fühle mich nicht gut.","I don't feel well."
+verb,beschweren (sich),-,-,-,-,"to complain","Er beschwert sich über das Essen.","He complains about the food.","Wir beschweren uns beim Kellner.","We complain to the waiter."
+noun,Termin,der,m,"der Termin — masculine.",Termine,"appointment","Ich habe heute einen Termin.","I have an appointment today.","Der Termin ist um 15 Uhr.","The appointment is at 3 PM."
+verb,verschieben,-,-,-,-,"to postpone / move","Können wir den Termin verschieben?","Can we postpone the appointment?","Ich muss das Treffen verschieben.","I have to postpone the meeting."
+verb,absagen,-,-,-,-,"to cancel","Ich muss den Termin leider absagen.","I have to cancel the appointment unfortunately.","Die Party wurde abgesagt.","The party was canceled."
+verb,vereinbaren,-,-,-,-,"to arrange / agree on","Wir vereinbaren einen neuen Termin.","We arrange a new appointment.","Haben Sie einen Termin vereinbart?","Did you arrange an appointment?"
+noun,Kunst,die,f,"die Kunst — feminine.",Künste,"art","Ich interessiere mich für Kunst.","I am interested in art.","Streetart ist moderne Kunst.","Street art is modern art."
+noun,Streetart,die,f,"die Streetart — feminine.",-,"street art","Berlin ist bekannt für Streetart.","Berlin is known for street art.","Gefällt dir diese Streetart?","Do you like this street art?"
+noun,Wand,die,f,"die Wand — feminine.",Wände,"wall","Das Bild ist an der Wand.","The picture is on the wall.","Sie malen auf die Wände.","They paint on the walls."
+noun,Künstler,der,m,"der Künstler — masculine.",Künstler,"artist (male)","Der Künstler malt ein Bild.","The artist paints a picture.","Er ist ein berühmter Künstler.","He is a famous artist."
+noun,Künstlerin,die,f,"die Künstlerin — feminine.",Künstlerinnen,"artist (female)","Sie ist eine tolle Künstlerin.","She is a great artist.","Die Künstlerin stellt ihre Bilder aus.","The artist exhibits her pictures."
+noun,Reise,die,f,"die Reise — feminine.",Reisen,"trip / journey","Die Reise nach Italien war schön.","The trip to Italy was beautiful.","Gute Reise!","Have a good trip!"
+noun,Rucksack,der,m,"der Rucksack — masculine.",Rucksäcke,"backpack","Ich reise nur mit dem Rucksack.","I travel only with the backpack.","Der Rucksack ist sehr schwer.","The backpack is very heavy."
+noun,Zelt,das,n,"das Zelt — neuter.",Zelte,"tent","Wir schlafen im Zelt.","We sleep in the tent.","Das Zelt steht im Wald.","The tent is in the forest."
+noun,Schlafsack,der,m,"der Schlafsack — masculine.",Schlafsäcke,"sleeping bag","Es ist kalt, ich brauche den Schlafsack.","It is cold, I need the sleeping bag.","Wo ist mein Schlafsack?","Where is my sleeping bag?"
+verb,übernachten,-,-,-,-,"to stay overnight","Wir übernachten im Hotel.","We are staying overnight in the hotel.","Wo habt ihr übernachtet?","Where did you guys stay overnight?"
+noun,Natur,die,f,"die Natur — feminine.",-,"nature","Ich bin gerne in der Natur.","I like being in nature.","Die Natur hier ist wunderschön.","The nature here is beautiful."
+verb,wandern,-,-,-,-,"to hike","Wir wandern in den Bergen.","We hike in the mountains.","Wandern macht Spaß.","Hiking is fun."
+noun,Film,der,m,"der Film — masculine.",Filme,"movie / film","Der Film fängt um 20 Uhr an.","The movie starts at 8 PM.","Das ist mein Lieblingsfilm.","That is my favorite movie."
+noun,Kino,das,n,"das Kino — neuter.",Kinos,"cinema / movie theater","Wir gehen heute ins Kino.","We are going to the cinema today.","Das Open-Air-Kino ist toll.","The open-air cinema is great."
+noun,Lieblingsfilm,der,m,"der Lieblingsfilm — masculine.",Lieblingsfilme,"favorite movie","Was ist dein Lieblingsfilm?","What is your favorite movie?","Mein Lieblingsfilm ist eine Komödie.","My favorite movie is a comedy."
+noun,Schauspieler,der,m,"der Schauspieler — masculine.",Schauspieler,"actor","Er ist ein guter Schauspieler.","He is a good actor.","Wer ist der Hauptdarsteller?","Who is the lead actor?"
+noun,Schauspielerin,die,f,"die Schauspielerin — feminine.",Schauspielerinnen,"actress","Sie ist meine Lieblingsschauspielerin.","She is my favorite actress.","Die Schauspielerin spielt super.","The actress acts great."
+noun,Regisseur,der,m,"der Regisseur — masculine.",Regisseure,"director","Der Regisseur macht einen neuen Film.","The director is making a new movie.","Wer ist der Regisseur von diesem Film?","Who is the director of this movie?"
+noun,Komödie,die,f,"die Komödie — feminine.",Komödien,"comedy","Ich sehe gerne Komödien.","I like watching comedies.","Die Komödie war sehr lustig.","The comedy was very funny."
+noun,Dokumentarfilm,der,m,"der Dokumentarfilm — masculine.",Dokumentarfilme,"documentary","Der Dokumentarfilm über Tiere ist interessant.","The documentary about animals is interesting.","Wir schauen einen Dokumentarfilm.","We are watching a documentary."
+noun,Eintritt,der,m,"der Eintritt — masculine.",Eintritte,"admission / entry","Der Eintritt kostet 8 Euro.","Admission costs 8 euros.","Der Eintritt ist heute frei.","Admission is free today."
+noun,Reihe,die,f,"die Reihe — feminine.",Reihen,"row","Wir sitzen in Reihe drei.","We are sitting in row three.","Welche Reihe ist das?","Which row is that?"
+noun,Platz,der,m,"der Platz — masculine.",Plätze,"seat / place","Das ist mein Platz.","That is my seat.","Die Plätze sind sehr gut.","The seats are very good."
+noun,Poetry Slam,der,m,"der Poetry Slam — masculine.",Poetry Slams,"poetry slam","Wir gehen zu einem Poetry Slam.","We are going to a poetry slam.","Der Poetry Slam war kreativ.","The poetry slam was creative."
+noun,Gedicht,das,n,"das Gedicht — neuter.",Gedichte,"poem","Sie schreibt ein Gedicht.","She is writing a poem.","Das Gedicht ist sehr modern.","The poem is very modern."
+noun,Bühne,die,f,"die Bühne — feminine.",Bühnen,"stage","Der Künstler steht auf der Bühne.","The artist stands on the stage.","Die Bühne ist groß.","The stage is large."
+noun,Publikum,das,n,"das Publikum — neuter.",-,"audience / public","Das Publikum klatscht.","The audience claps.","Das Publikum war begeistert.","The audience was enthusiastic."
+verb,klatschen,-,-,-,-,"to clap / applaud","Wir klatschen für den Künstler.","We clap for the artist.","Das Publikum hat laut geklatscht.","The audience clapped loudly."
+noun,Fragebogen,der,m,"der Fragebogen — masculine.",Fragebögen,"questionnaire","Füllen Sie den Fragebogen aus.","Fill out the questionnaire.","Der Fragebogen ist kurz.","The questionnaire is short."
+verb,ausfüllen,-,-,-,-,"to fill out","Bitte füllen Sie das Formular aus.","Please fill out the form.","Ich habe den Fragebogen ausgefüllt.","I filled out the questionnaire."
+prep,während,-,-,-,-,"during","Während der Reise habe ich viel gesehen.","During the trip I saw a lot.","Bitte nicht stören während des Films.","Please do not disturb during the film."
+prep,auf,-,-,-,-,"for / to (with certain verbs in Akkusativ)","Ich freue mich auf dich.","I look forward to you.","Wir warten auf den Bus.","We wait for the bus."
+prep,über,-,-,-,-,"about (with certain verbs in Akkusativ)","Ich ärgere mich über das Wetter.","I am annoyed about the weather.","Wir sprechen über den Film.","We are talking about the movie."
+prep,für,-,-,-,-,"for (with certain verbs in Akkusativ)","Ich interessiere mich für Kunst.","I am interested in art.","Das ist für dich.","That is for you."
+prep,an,-,-,-,-,"of / to (with certain verbs in Akkusativ)","Ich erinnere mich an ihn.","I remember him.","Ich denke an dich.","I am thinking of you."
+prep,um,-,-,-,-,"about / for (with certain verbs in Akkusativ)","Ich kümmere mich um die Tickets.","I take care of the tickets.","Wir kümmern uns um den Hund.","We take care of the dog."
+verb,spekulieren,-,-,-,-,"to speculate / guess","Wir spekulieren über das Foto.","We speculate about the photo.","Spekulieren Sie nicht!","Do not speculate!"
+adj,egal,-,-,-,-,"equal / doesn't matter","Das ist mir egal.","That doesn't matter to me.","Ist dir das egal?","Do you not care?"
+noun,Umfrage,die,f,"die Umfrage — feminine.",Umfragen,"survey","Wir machen eine Umfrage.","We are doing a survey.","Die Umfrage zeigt das Ergebnis.","The survey shows the result."
+noun,Ergebnis,das,n,"das Ergebnis — neuter.",Ergebnisse,"result","Das Ergebnis der Umfrage ist da.","The result of the survey is here.","Was ist das Ergebnis?","What is the result?"
+noun,Lesen,das,n,"das Lesen — neuter (Nomen vom Verb).",-,"reading","Das Lesen macht mir Spaß.","Reading is fun to me.","Beim Lesen entspanne ich mich.","I relax while reading."
+noun,Reisen,das,n,"das Reisen — neuter (Nomen vom Verb).",-,"traveling","Das Reisen ist mein Hobby.","Traveling is my hobby.","Ich liebe das Reisen.","I love traveling."
+noun,Essen,das,n,"das Essen — neuter (Nomen vom Verb).",Essen,"eating / food","Das Essen ist fertig.","The food is ready.","Während des Essens sprechen wir nicht.","We do not speak during the meal."
+adj,halbformell,-,-,-,-,"semi-formal","Schreiben Sie eine halbformelle E-Mail.","Write a semi-formal email.","Die Einladung ist halbformell.","The invitation is semi-formal."
+adj,zukünftig,-,-,-,-,"future","Das ist ein zukünftiger Termin.","That is a future appointment.","Die zukünftige Frau von Paul.","The future wife of Paul."
+noun,Zeitpunkt,der,m,"der Zeitpunkt — masculine.",Zeitpunkte,"point in time","Das ist ein guter Zeitpunkt.","That is a good point in time.","Zu diesem Zeitpunkt war ich im Kino.","At this point in time I was at the cinema."
+verb,begründen,-,-,-,-,"to justify / give reasons","Bitte begründen Sie Ihre Meinung.","Please justify your opinion.","Kannst du das begründen?","Can you give reasons for that?"
+verb,vermuten,-,-,-,-,"to suspect / guess","Ich vermute, er ist krank.","I suspect he is sick.","Wir vermuten, dass es regnet.","We guess that it will rain."
+noun,Vermutung,die,f,"die Vermutung — feminine.",Vermutungen,"assumption / guess","Ich habe eine Vermutung.","I have a guess.","Was ist deine Vermutung?","What is your assumption?"
+verb,ansehen,-,-,-,-,"to look at / watch","Wir sehen uns den Film an.","We are watching the movie.","Ich sehe mir die Bilder an.","I am looking at the pictures."
+noun,Verhältnis,das,n,"das Verhältnis — neuter.",Verhältnisse,"relationship / proportion","Ihr Verhältnis ist gut.","Their relationship is good.","Das Verhältnis von Personen auf einem Foto.","The relationship of people in a photo."

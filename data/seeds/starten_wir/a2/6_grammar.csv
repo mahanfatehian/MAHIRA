@@ -1,13 +1,53 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Ich freue null auf die Reise.,mich,Reflexivpronomen,reflexive verb,I am looking forward to the trip.,sich freuen: ich freue mich.
-Wir interessieren null für Kunst.,uns,Reflexivpronomen,reflexive verb,We are interested in art.,sich interessieren: wir interessieren uns.
-Er ärgert null über den Lärm.,sich,Reflexivpronomen,reflexive verb,He is annoyed about the noise.,third person reflexive pronoun: sich.
-Ich warte null den Bus.,auf,Präpositionalergänzung,prepositional complement,I am waiting for the bus.,warten auf takes accusative.
-Sie denkt oft null ihren Lieblingsfilm.,an,Präpositionalergänzung,prepositional complement,She often thinks about her favorite film.,denken an takes accusative.
-Wir sprechen null die Umwelt.,über,Präpositionalergänzung,topic,We are talking about the environment.,sprechen über takes accusative.
-In null Stadt gibt es viele Trends.,dieser,dies- im Dativ,dative demonstrative,There are many trends in this city.,Dative feminine: dieser Stadt.
-Mit null Film beginnt das Festival.,diesem,dies- im Dativ,dative demonstrative,The festival begins with this film.,Dative masculine/neuter: diesem.
-null zwei Wochen fahren wir nach Wien.,In,temporale Präposition,future time,We are going to Vienna in two weeks.,in + dative can indicate a future point.
-null des Films war es sehr ruhig.,Während,temporale Präposition,during,It was very quiet during the film.,während can mean during.
-reisen wird zu null Reise.,die,Wortbildung,verb to noun,reisen becomes the noun die Reise.,Many nominalized concepts take an article.
-vermuten wird zu null Vermutung.,die,Wortbildung,verb to noun,vermuten becomes die Vermutung.,Many nouns ending in -ung are feminine.
+"Ich freue null auf den Urlaub. (myself)","mich","freuen","myself (Akkusativ)","I am looking forward to the vacation.","Reflexivpronomen: ich -> mich (Akkusativ)"
+"Ärgerst du null über das Wetter? (yourself)","dich","ärgern","yourself (Akkusativ)","Are you angry about the weather?","Reflexivpronomen: du -> dich"
+"Er kümmert null um die Tickets. (himself)","sich","kümmern","himself (Akkusativ)","He takes care of the tickets.","Reflexivpronomen: er -> sich"
+"Wir interessieren null für Kunst. (ourselves)","uns","interessieren","ourselves (Akkusativ)","We are interested in art.","Reflexivpronomen: wir -> uns"
+"Erinnert ihr null an den Film? (yourselves)","euch","erinnern","yourselves (Akkusativ)","Do you guys remember the movie?","Reflexivpronomen: ihr -> euch"
+"Die Studenten treffen null vor dem Kino. (themselves)","sich","treffen","themselves (Akkusativ)","The students are meeting in front of the cinema.","Reflexivpronomen: sie (Pl) -> sich"
+"Fühlen Sie null heute besser? (yourself - formal)","sich","fühlen","yourself (formal)","Do you feel better today? (formal)","Reflexivpronomen: Sie -> sich"
+"Ich entspanne null am liebsten beim Lesen. (myself)","mich","entspannen","myself","I prefer to relax while reading.","Reflexivpronomen: ich -> mich"
+"Wir freuen uns null die Ferien. (forward to)","auf","freuen","looking forward to (Akkusativ)","We are looking forward to the holidays.","sich freuen auf + Akkusativ (Zukunft)"
+"Sie freut sich null das Geschenk. (about - past/present)","über","freuen","happy about (Akkusativ)","She is happy about the gift.","sich freuen über + Akkusativ (Gegenwart/Vergangenheit)"
+"Ich ärgere mich sehr null den Zug. (about)","über","ärgern","angry about (Akkusativ)","I am very angry about the train.","sich ärgern über + Akkusativ"
+"Interessierst du dich null Streetart? (for)","für","interessieren","interested in (Akkusativ)","Are you interested in street art?","sich interessieren für + Akkusativ"
+"Er erinnert sich nicht null mich. (of/to)","an","erinnern","remembers (Akkusativ)","He doesn't remember me.","sich erinnern an + Akkusativ"
+"Kümmerst du dich null den Hund? (about/for)","um","kümmern","take care of (Akkusativ)","Are you taking care of the dog?","sich kümmern um + Akkusativ"
+"Ich denke oft null meine Familie. (of/about)","an","denken","think of (Akkusativ)","I often think of my family.","denken an + Akkusativ"
+"Wartest du null den Bus? (for)","auf","warten","wait for (Akkusativ)","Are you waiting for the bus?","warten auf + Akkusativ"
+"null diesem Jahr fahre ich nach Italien. (In)","In","fahren","In this year (Dativ, n)","In this year I am traveling to Italy.","in + Dativ: das Jahr -> in diesem Jahr"
+"In null Monat habe ich Urlaub. (this)","diesem","haben","this month (Dativ, m)","In this month I have vacation.","in + Dativ: der Monat -> in diesem Monat"
+"In null Woche gehen wir ins Kino. (this)","dieser","gehen","this week (Dativ, f)","In this week we are going to the cinema.","in + Dativ: die Woche -> in dieser Woche"
+"In null Tagen wird alles besser. (these)","diesen","werden","these days (Dativ, pl)","In these days everything will be better.","in + Dativ Plural: die Tage -> in diesen Tagen"
+"Ich sehe ihn in null Woche wieder. (one)","einer","sehen","one week (Dativ, f)","I will see him again in one week.","in + Dativ: die Woche -> in einer Woche (Zukunft)"
+"Der Film beginnt in null Monat. (one)","einem","beginnen","one month (Dativ, m)","The movie begins in one month.","in + Dativ: der Monat -> in einem Monat"
+"Wir fliegen in null Jahr nach Asien. (one)","einem","fliegen","one year (Dativ, n)","We are flying to Asia in one year.","in + Dativ: das Jahr -> in einem Jahr"
+"In zwei null ist das Projekt fertig. (months)","Monaten","sein","months (Dativ, pl)","In two months the project will be finished.","in + Dativ Plural: zwei Monate + n -> zwei Monaten"
+"null der Arbeit darf ich nicht telefonieren. (During)","Während","dürfen","During work (Genitiv/Dativ, f)","During work I am not allowed to be on the phone.","während + Genitiv (der Arbeit)"
+"Während des null esse ich Popcorn. (movie)","Films","essen","movie (Genitiv, m)","During the movie I eat popcorn.","während + Genitiv: der Film -> des Films"
+"Während des null sprechen wir nicht. (meal/eating)","Essens","sprechen","meal (Genitiv, n)","During the meal we do not speak.","während + Genitiv: das Essen -> des Essens"
+"Das null von Büchern ist wichtig. (reading)","Lesen","sein","Reading (Noun)","Reading books is important.","Wortbildung Verb -> Nomen: lesen -> das Lesen"
+"Das null nach Asien war teuer. (traveling)","Reisen","sein","Traveling (Noun)","Traveling to Asia was expensive.","Wortbildung Verb -> Nomen: reisen -> das Reisen"
+"Beim null trinke ich Wasser. (eating)","Essen","trinken","Eating (Noun)","While eating I drink water.","Wortbildung Verb -> Nomen: essen -> das Essen"
+"Auf wen wartest du? - Ich warte null ihn. (on/for)","auf","warten","for him (Akkusativ)","Who are you waiting for? - I wait for him.","Präposition + Personalpronomen im Akkusativ"
+"Worüber ärgerst du dich? - Ich ärgere mich null das Wetter. (about)","über","ärgern","about it (Akkusativ)","What are you angry about? - I am angry about the weather.","Präpositionalergänzung: über + Akkusativ"
+"null freust du dich? - Auf die Ferien. (What/forward to)","Worauf","freuen","What forward to","What are you looking forward to? - To the holidays.","Fragewort für Sachen: Wo + r + auf -> Worauf"
+"null wen wartest du? - Auf Maria. (On who)","Auf","warten","On who (Akkusativ)","Who are you waiting for? - For Maria.","Fragewort für Personen: Präposition + wen -> Auf wen"
+"null interessierst du dich? - Für Kunst. (What for)","Wofür","interessieren","What for","What are you interested in? - In art.","Fragewort für Sachen: Wo + für -> Wofür"
+"null wen interessierst du dich? - Für den Künstler. (For who)","Für","interessieren","For who (Akkusativ)","Who are you interested in? - In the artist.","Fragewort für Personen: Präposition + wen -> Für wen"
+"null erinnerst du dich? - An unseren Urlaub. (What to/of)","Woran","erinnern","What of","What do you remember? - Our vacation.","Fragewort für Sachen: Wo + r + an -> Woran"
+"Wir haben null in Paris getroffen. (ourselves)","uns","treffen","ourselves","We met in Paris.","Reflexivpronomen: wir -> uns (Perfekt)"
+"Habt ihr null gut ausgeruht? (yourselves)","euch","ausruhen","yourselves","Did you guys rest well?","Reflexivpronomen: ihr -> euch (Perfekt)"
+"Sie beschweren null beim Kellner. (themselves)","sich","beschweren","themselves","They complain to the waiter.","Reflexivpronomen: sie (Pl) -> sich"
+"Ich muss null auf die Arbeit konzentrieren. (myself)","mich","konzentrieren","myself","I must concentrate on the work.","Reflexivpronomen: ich -> mich"
+"null diesem Wochenende fahre ich weg. (At)","An","fahren","At this weekend (Dativ, n)","At this weekend I am going away.","an + Dativ: das Wochenende -> an diesem Wochenende"
+"Ich habe mich in null Woche gut entspannt. (this)","dieser","entspannen","this week (Dativ, f)","I relaxed well in this week.","in + Dativ: die Woche -> in dieser Woche"
+"Wir treffen uns in null Tagen. (three)","drei","treffen","three days (Dativ, pl)","We meet in three days.","in + Dativ Plural: drei Tage + n -> drei Tagen"
+"Das null ist eine tolle Kunst. (painting)","Malen","sein","Painting (Noun)","Painting is a great art.","Wortbildung Verb -> Nomen: malen -> das Malen"
+"Während der null habe ich viel gelernt. (trip/journey)","Reise","lernen","trip (Genitiv/Dativ, f)","During the trip I learned a lot.","während + Genitiv (die Reise -> der Reise)"
+"Ich freue mich riesig null den neuen Film. (forward to)","auf","freuen","looking forward to","I am hugely looking forward to the new movie.","sich freuen auf + Akkusativ"
+"Wir ärgern uns oft null den Lärm. (about)","über","ärgern","about the noise","We often get angry about the noise.","sich ärgern über + Akkusativ"
+"Erinnert er sich null den Termin? (to/of)","an","erinnern","of the appointment","Does he remember the appointment?","sich erinnern an + Akkusativ"
+"Kümmern Sie sich bitte null die Gäste. (for/about)","um","kümmern","about the guests (Akkusativ)","Please take care of the guests.","sich kümmern um + Akkusativ"
+"null dieses Bild ist sehr bunt. (This)","Dieses","sein","This picture (Nominativ, n)","This picture is very colorful.","Demonstrativartikel Nominativ: dieses"
+"Ich finde null Künstler fantastisch. (this)","diesen","finden","this artist (Akkusativ, m)","I find this artist fantastic.","Demonstrativartikel Akkusativ: diesen"

@@ -1,23 +1,76 @@
-pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en,ex3_de,ex3_en
-noun,Fernsehprogramm,das,n,das Fernsehprogramm - neuter.,Fernsehprogramme,TV schedule,Was läuft heute im Fernsehprogramm?,What is on the TV schedule today?,,,,
-noun,Sendung,die,f,die Sendung - feminine.,Sendungen,program / broadcast,Diese Sendung sehe ich gern.,I like watching this program.,,,,
-noun,Nachricht,die,f,die Nachricht - feminine.,Nachrichten,news / message,Ich sehe abends die Nachrichten.,I watch the news in the evening.,,,,
-noun,Fernsehverhalten,das,n,das Fernsehverhalten - neuter.,,TV viewing habits,Mein Fernsehverhalten hat sich geändert.,My TV habits have changed.,,,,
-noun,Technik,die,f,die Technik - feminine.,Techniken,technology,Welche Technik benutzt du?,What technology do you use?,,,,
-noun,Computer,der,m,der Computer - masculine.,Computer,computer,Der Computer ist neu.,The computer is new.,,,,
-noun,App,die,f,die App - feminine.,Apps,app,Diese App benutze ich täglich.,I use this app daily.,,,,
-noun,Internet,das,n,das Internet - neuter.,,internet,Ich nutze das Internet für die Arbeit.,I use the internet for work.,,,,
-noun,Gastgeber,der,m,der Gastgeber - masculine.,Gastgeber,host,Der Gastgeber bietet Snacks an.,The host offers snacks.,,,,
-noun,Snack,der,m,der Snack - masculine.,Snacks,snack,Möchtest du einen Snack?,Would you like a snack?,,,,
-noun,Fest,das,n,das Fest - neuter.,Feste,festival / celebration,Mein Lieblingsfest ist Nowruz.,My favorite celebration is Nowruz.,,,,
-noun,Feiertag,der,m,der Feiertag - masculine.,Feiertage,holiday,Morgen ist ein Feiertag.,Tomorrow is a holiday.,,,,
-noun,Geschenk,das,n,das Geschenk - neuter.,Geschenke,gift,Ich kaufe ein Geschenk für meine Mutter.,I am buying a gift for my mother.,,,,
-verb,schenken,,,,,to give as a gift,Ich schenke meiner Schwester ein Buch.,I give my sister a book as a gift.,,,,
-verb,geben,,,,,to give,Gibst du mir bitte dein Handy?,Can you please give me your phone?,,,,
-verb,anbieten,,,,,to offer,Der Gastgeber bietet Getränke an.,The host offers drinks.,,,,
-verb,nutzen,,,,,to use,Wozu nutzt du das Internet?,What do you use the internet for?,,,,
-verb,erkundigen,,,,,to inquire,Ich erkundige mich nach dem Programm.,I inquire about the program.,,,,
-adj,digital,,,,,digital,Digitale Technik ist praktisch.,Digital technology is practical.,,,,
-adj,spannend,,,,,exciting,Die Sendung ist spannend.,The program is exciting.,,,,
-conj,dann,,,,,then,"Zuerst essen wir, dann sehen wir fern.","First we eat, then we watch TV.",,,,
-phrase,wozu,,,,,what for,Wozu brauchst du die App?,What do you need the app for?,,,,
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Fernseher,der,m,"der Fernseher — masculine.",Fernseher,"television (device)","Wir kaufen einen neuen Fernseher.","We are buying a new television.","Der Fernseher ist kaputt.","The television is broken."
+noun,Fernsehen,das,n,"das Fernsehen — neuter.",-,"television (medium / watching TV)","Was kommt heute im Fernsehen?","What's on TV today?","Ich schaue nicht oft Fernsehen.","I don't watch television often."
+noun,Programm,das,n,"das Programm — neuter.",Programme,"program / channel","Wie ist das Fernsehprogramm heute?","How is the TV program today?","Es gibt viele Programme.","There are many channels."
+noun,Sendung,die,f,"die Sendung — feminine.",Sendungen,"broadcast / show","Das ist meine Lieblingssendung.","That is my favorite show.","Die Sendung fängt um 20 Uhr an.","The show starts at 8 PM."
+noun,Krimi,der,m,"der Krimi — masculine.",Krimis,"crime thriller","Ich sehe sonntags immer einen Krimi.","I watch a crime thriller on Sundays.","Der Krimi war sehr spannend.","The crime thriller was very exciting."
+noun,Nachrichten,die,pl,"die Nachrichten — plural only.",-,"news","Um 20 Uhr kommen die Nachrichten.","The news comes on at 8 PM.","Hast du die Nachrichten gesehen?","Did you see the news?"
+noun,Serie,die,f,"die Serie — feminine.",Serien,"series","Wir schauen eine neue Serie auf Netflix.","We are watching a new series on Netflix.","Die Serie hat fünf Staffeln.","The series has five seasons."
+noun,Dokumentation,die,f,"die Dokumentation — feminine.",Dokumentationen,"documentary","Die Dokumentation über Tiere ist toll.","The documentary about animals is great.","Ich liebe historische Dokumentationen.","I love historical documentaries."
+noun,Sender,der,m,"der Sender — masculine.",Sender,"channel / station","Welcher Sender ist das?","Which channel is that?","Mein Lieblingssender spielt viel Musik.","My favorite station plays a lot of music."
+noun,Fernbedienung,die,f,"die Fernbedienung — feminine.",Fernbedienungen,"remote control","Gib mir bitte die Fernbedienung.","Please give me the remote control.","Wo liegt die Fernbedienung?","Where is the remote control?"
+verb,einschalten,-,-,-,-,"to turn on","Kannst du den Fernseher einschalten?","Can you turn on the TV?","Ich schalte das Radio ein.","I turn on the radio."
+verb,ausschalten,-,-,-,-,"to turn off","Bitte schalte den Fernseher aus.","Please turn off the TV.","Wir schalten das Licht aus.","We turn off the light."
+verb,umschalten,-,-,-,-,"to switch channels","Der Film ist langweilig, ich schalte um.","The movie is boring, I am switching channels.","Bitte nicht umschalten!","Please don't change the channel!"
+verb,gucken,-,-,-,-,"to watch / look (informal)","Wir gucken heute Abend einen Film.","We are watching a movie tonight.","Guck mal!","Look!"
+noun,Laptop,der,m,"der Laptop — masculine.",Laptops,"laptop","Ich arbeite an einem neuen Laptop.","I work on a new laptop.","Mein Laptop ist sehr schnell.","My laptop is very fast."
+noun,Tablet,das,n,"das Tablet — neuter.",Tablets,"tablet (computer)","Das Tablet ist praktisch für unterwegs.","The tablet is practical for on the go.","Ich lese E-Books auf dem Tablet.","I read e-books on the tablet."
+noun,Smartphone,das,n,"das Smartphone — neuter.",Smartphones,"smartphone","Mit dem Smartphone kann man alles machen.","You can do everything with the smartphone.","Mein Smartphone ist fast leer.","My smartphone is almost empty."
+noun,Bildschirm,der,m,"der Bildschirm — masculine.",Bildschirme,"screen / monitor","Der Bildschirm ist sehr groß.","The screen is very large.","Ich schaue auf den Bildschirm.","I look at the screen."
+noun,Tastatur,die,f,"die Tastatur — feminine.",Tastaturen,"keyboard","Die Tastatur von meinem Laptop ist kaputt.","The keyboard of my laptop is broken.","Ich tippe auf der Tastatur.","I type on the keyboard."
+noun,Drucker,der,m,"der Drucker — masculine.",Drucker,"printer","Der Drucker hat kein Papier mehr.","The printer has no paper.","Wir brauchen einen neuen Drucker.","We need a new printer."
+noun,Internet,das,n,"das Internet — neuter.",-,"internet","Wozu nutzt du das Internet?","What do you use the internet for?","Ich habe Probleme mit dem Internet.","I have problems with the internet."
+noun,WLAN,das,n,"das WLAN — neuter.",-,"Wi-Fi","Haben Sie hier kostenloses WLAN?","Do you have free Wi-Fi here?","Das WLAN funktioniert nicht.","The Wi-Fi is not working."
+noun,App,die,f,"die App — feminine.",Apps,"app / application","Welche ist deine Lieblings-App?","Which is your favorite app?","Ich lade eine neue App herunter.","I am downloading a new app."
+verb,herunterladen,-,-,-,-,"to download","Ich muss das Programm herunterladen.","I have to download the program.","Hast du die App heruntergeladen?","Did you download the app?"
+verb,installieren,-,-,-,-,"to install","Ich installiere die App auf meinem Handy.","I install the app on my cell phone.","Du musst das Update installieren.","You have to install the update."
+verb,löschen,-,-,-,-,"to delete","Ich habe die Datei gelöscht.","I deleted the file.","Bitte lösche dieses Foto.","Please delete this photo."
+verb,surfen,-,-,-,-,"to surf (internet)","Ich surfe jeden Tag im Internet.","I surf the internet every day.","Wir surfen oft auf dieser Webseite.","We often surf on this website."
+verb,chatten,-,-,-,-,"to chat (online)","Sie chattet stundenlang mit Freunden.","She chats with friends for hours.","Wir haben gestern gechattet.","We chatted yesterday."
+noun,Gastgeber,der,m,"der Gastgeber — masculine.",Gastgeber,"host","Er ist ein toller Gastgeber.","He is a great host.","Der Gastgeber begrüßt die Gäste.","The host greets the guests."
+noun,Gastgeberin,die,f,"die Gastgeberin — feminine.",Gastgeberinnen,"hostess","Die Gastgeberin bietet Getränke an.","The hostess offers drinks.","Sie ist eine wunderbare Gastgeberin.","She is a wonderful hostess."
+noun,Gast,der,m,"der Gast — masculine.",Gäste,"guest","Wir erwarten heute Abend Gäste.","We are expecting guests tonight.","Jeder Gast bringt etwas mit.","Every guest brings something."
+noun,Snack,der,m,"der Snack — masculine.",Snacks,"snack","Möchtet ihr ein paar Snacks?","Would you guys like some snacks?","Ich bereite die Snacks vor.","I am preparing the snacks."
+noun,Chips,die,pl,"die Chips — plural only.",-,"chips / crisps","Wir essen Chips beim Fernsehen.","We eat chips while watching TV.","Eine Tüte Chips, bitte.","A bag of chips, please."
+noun,Nuss,die,f,"die Nuss — feminine.",Nüsse,"nut","Möchtest du ein paar Nüsse?","Would you like some nuts?","Diese Nüsse sind gesalzen.","These nuts are salted."
+noun,Schokolade,die,f,"die Schokolade — feminine.",Schokoladen,"chocolate","Ich liebe dunkle Schokolade.","I love dark chocolate.","Wir haben viel Schokolade gekauft.","We bought a lot of chocolate."
+noun,Getränk,das,n,"das Getränk — neuter.",Getränke,"beverage / drink","Welche Getränke möchtest du anbieten?","Which drinks would you like to offer?","Wir haben genug Getränke.","We have enough drinks."
+noun,Cola,die/das,f/n,"die/das Cola — feminine/neuter.",Colas,"cola","Ein Glas Cola mit Eis, bitte.","A glass of cola with ice, please.","Ich trinke selten Cola.","I rarely drink cola."
+verb,anbieten,-,-,-,-,"to offer","Darf ich dir ein Getränk anbieten?","May I offer you a drink?","Der Gastgeber bietet Snacks an.","The host offers snacks."
+noun,Fest,das,n,"das Fest — neuter.",Feste,"festival / celebration","Das ist mein Lieblingsfest.","That is my favorite festival.","Wir feiern ein großes Fest.","We are celebrating a big festival."
+noun,Feiertag,der,m,"der Feiertag — masculine.",Feiertage,"holiday / public holiday","Morgen ist ein Feiertag, wir müssen nicht arbeiten.","Tomorrow is a public holiday, we don't have to work.","Welche Feiertage gibt es in deinem Land?","Which holidays are there in your country?"
+noun,Weihnachten,das,n,"das Weihnachten — neuter.",-,"Christmas","Wir feiern Weihnachten mit der Familie.","We celebrate Christmas with the family.","Frohe Weihnachten!","Merry Christmas!"
+noun,Ostern,das,n,"das Ostern — neuter.",-,"Easter","Zu Ostern suchen wir Eier.","At Easter we search for eggs.","Frohe Ostern!","Happy Easter!"
+noun,Silvester,das,n,"das Silvester — neuter.",-,"New Year's Eve","Was macht ihr an Silvester?","What are you doing on New Year's Eve?","Wir feiern Silvester bei Freunden.","We are celebrating New Year's Eve at friends'."
+noun,Neujahr,das,n,"das Neujahr — neuter.",-,"New Year's Day","Frohes Neujahr!","Happy New Year!","An Neujahr schlafen wir lange.","On New Year's Day we sleep late."
+noun,Karneval,der,m,"der Karneval — masculine.",-,"carnival","Im Februar ist Karneval.","In February is carnival.","Feiert ihr Karneval?","Do you celebrate carnival?"
+noun,Hochzeit,die,f,"die Hochzeit — feminine.",Hochzeiten,"wedding","Wir sind auf eine Hochzeit eingeladen.","We are invited to a wedding.","Die Hochzeit war wunderschön.","The wedding was beautiful."
+noun,Geburtstag,der,m,"der Geburtstag — masculine.",Geburtstage,"birthday","Wann hast du Geburtstag?","When is your birthday?","Alles Gute zum Geburtstag!","Happy birthday!"
+noun,Geschenk,das,n,"das Geschenk — neuter.",Geschenke,"gift / present","Das ist ein Geschenk für dich.","That is a gift for you.","Wir packen die Geschenke aus.","We unpack the gifts."
+verb,schenken,-,-,-,-,"to give (as a gift)","Was schenkst du deinem Bruder?","What are you giving your brother?","Ich schenke ihr ein Buch.","I am giving her a book."
+verb,geben,-,-,-,-,"to give","Kannst du mir das Tablet geben?","Can you give me the tablet?","Ich gebe dem Gast ein Glas Wein.","I give the guest a glass of wine."
+verb,zeigen,-,-,-,-,"to show","Ich zeige dir meine neue App.","I show you my new app.","Zeig mir bitte den Laptop.","Please show me the laptop."
+verb,mitbringen,-,-,-,-,"to bring along","Was soll ich zur Party mitbringen?","What should I bring to the party?","Er hat leckere Snacks mitgebracht.","He brought delicious snacks."
+verb,leihen,-,-,-,-,"to lend / borrow","Kannst du mir deinen Drucker leihen?","Can you lend me your printer?","Ich habe ihr mein Auto geliehen.","I lent her my car."
+verb,empfehlen,-,-,-,-,"to recommend","Kannst du mir einen guten Film empfehlen?","Can you recommend me a good movie?","Er empfiehlt uns dieses Restaurant.","He recommends this restaurant to us."
+adj,spannend,-,-,-,-,"exciting / thrilling","Der Krimi gestern war sehr spannend.","The crime thriller yesterday was very exciting.","Das ist ein spannendes Spiel.","That is a thrilling game."
+adj,langweilig,-,-,-,-,"boring","Die Sendung ist total langweilig.","The show is totally boring.","Mir ist langweilig.","I am bored."
+adj,lustig,-,-,-,-,"funny","Die Komödie war echt lustig.","The comedy was really funny.","Er erzählt lustige Geschichten.","He tells funny stories."
+adj,praktisch,-,-,-,-,"practical","Ein Tablet ist sehr praktisch.","A tablet is very practical.","Diese App ist total praktisch.","This app is totally practical."
+adj,nützlich,-,-,-,-,"useful / helpful","Das Internet ist nützlich für die Arbeit.","The internet is useful for work.","Das war ein nützlicher Tipp.","That was a helpful tip."
+adj,richtig,-,-,-,-,"right / correct","Hast du das richtige Produkt gekauft?","Did you buy the right product?","Das ist die richtige Antwort.","That is the correct answer."
+adj,falsch,-,-,-,-,"wrong / false","Oh nein, das ist der falsche Laptop!","Oh no, that is the wrong laptop!","Das Passwort ist falsch.","The password is wrong."
+adv,zuerst,-,-,-,-,"first / initially","Zuerst essen wir, dann sehen wir fern.","First we eat, then we watch TV.","Wer war zuerst da?","Who was there first?"
+adv,dann,-,-,-,-,"then","Ich arbeite bis sechs, dann komme ich.","I work until six, then I'll come.","Und was machen wir dann?","And what do we do then?"
+adv,danach,-,-,-,-,"after that / afterwards","Wir gehen ins Kino und danach essen wir.","We go to the cinema and after that we eat.","Was passierte danach?","What happened after that?"
+noun,Technik,die,f,"die Technik — feminine.",Techniken,"technology","Ich interessiere mich für Technik.","I am interested in technology.","Die moderne Technik macht vieles leichter.","Modern technology makes many things easier."
+noun,Produkt,das,n,"das Produkt — neuter.",Produkte,"product","Ist das ein neues Produkt?","Is that a new product?","Ich habe das Produkt online bestellt.","I ordered the product online."
+verb,kaufen,-,-,-,-,"to buy","Ich kaufe meiner Mutter eine Kette.","I buy my mother a necklace.","Was hast du gekauft?","What did you buy?"
+noun,Überraschung,die,f,"die Überraschung — feminine.",Überraschungen,"surprise","Das Fest war eine tolle Überraschung.","The party was a great surprise.","Wir planen eine Überraschung für ihn.","We are planning a surprise for him."
+noun,Einladung,die,f,"die Einladung — feminine.",Einladungen,"invitation","Danke für die Einladung zur Hochzeit.","Thanks for the invitation to the wedding.","Hast du die Einladung gelesen?","Did you read the invitation?"
+noun,Geburtstagskind,das,n,"das Geburtstagskind — neuter.",Geburtstagskinder,"birthday boy/girl","Wo ist denn das Geburtstagskind?","Where is the birthday boy/girl?","Ein Geschenk für das Geburtstagskind.","A gift for the birthday boy/girl."
+verb,feiern,-,-,-,-,"to celebrate","Wir feiern Weihnachten bei meinen Eltern.","We are celebrating Christmas at my parents'.","Wo feierst du deinen Geburtstag?","Where are you celebrating your birthday?"
+noun,Gutschein,der,m,"der Gutschein — masculine.",Gutscheine,"voucher / gift card","Ich schenke ihm einen Kino-Gutschein.","I am giving him a cinema voucher.","Der Gutschein ist für ein Restaurant.","The gift card is for a restaurant."
+adj,schick,-,-,-,-,"chic / fancy","Das ist aber ein schickes Tablet!","That is a fancy tablet!","Du siehst heute sehr schick aus.","You look very chic today."
+verb,schicken,-,-,-,-,"to send","Ich schicke dir eine Nachricht.","I'll send you a message.","Hat er dir die Fotos geschickt?","Did he send you the photos?"
+noun,E-Book,das,n,"das E-Book — neuter.",E-Books,"e-book","Ich lese lieber E-Books als Papierbücher.","I prefer reading e-books to paper books.","Hast du ein neues E-Book gekauft?","Did you buy a new e-book?"

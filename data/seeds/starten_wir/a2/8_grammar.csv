@@ -1,13 +1,59 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Ich null gern gesünder.,wäre,sein,Konjunktiv II,I would like to be healthier.,sein in Konjunktiv II: wäre.
-"Wenn ich weniger Stress hätte, null ich glücklicher.",wäre,sein,Konjunktiv II,"If I had less stress, I would be happier.",wäre expresses an unreal wish or condition.
-Die Apotheke ist null 18 Uhr geöffnet.,bis,bis,until,The pharmacy is open until 6 p.m.,bis gives an endpoint.
-Der Kurs geht null neun null zwölf Uhr.,von,von ... bis,from,The course runs from nine to twelve.,The pair is von ... bis.
-Der Kurs geht von neun null zwölf Uhr.,bis,von ... bis,to,The course runs from nine to twelve.,bis gives the endpoint.
-Yoga ist genauso entspannend null Spazierengehen.,wie,genauso ... wie,equal comparison,Yoga is just as relaxing as walking.,Use wie for equal comparisons.
-Laufen ist gesünder null Sitzen.,als,Komparativ,unequal comparison,Running is healthier than sitting.,Use als for unequal comparisons.
-Das ist null guter Arzt.,ein,Adjektivdeklination,indefinite article nominative,That is a good doctor.,Masculine nominative after ein: guter Arzt.
-Sie ist null nette Apothekerin.,eine,Adjektivdeklination,feminine nominative,She is a nice pharmacist.,Feminine nominative: eine nette Apothekerin.
-Das ist null wichtiges Medikament.,ein,Adjektivdeklination,neuter nominative,That is an important medicine.,Neuter nominative: ein wichtiges Medikament.
-Mein Rücken tut null.,weh,wehtun,pain phrase,My back hurts.,wehtun separates: tut weh.
-Ich habe stärkere Schmerzen null gestern.,als,Vergleich,than,I have stronger pain than yesterday.,Comparative + als.
+"Ich null so gern reich! (would be)","wäre","sein","Konjunktiv II: ich wäre","I would so much like to be rich!","Konjunktiv II von sein: ich wäre"
+"Wenn ich gesund null... (were)","wäre","sein","Konjunktiv II: ich wäre","If I were healthy...","Konjunktiv II von sein: ich wäre"
+"null du gern ein Millionär? (Would you be)","Wärst","sein","Konjunktiv II: du wärst","Would you like to be a millionaire?","Konjunktiv II von sein: du wärst"
+"Wenn du hier null, wäre ich glücklich. (were)","wärst","sein","Konjunktiv II: du wärst","If you were here, I would be happy.","Konjunktiv II von sein: du wärst"
+"Er null gern groß und stark. (would be)","wäre","sein","Konjunktiv II: er/sie/es wäre","He would like to be big and strong.","Konjunktiv II von sein: er/sie/es wäre"
+"Sie null gern eine berühmte Ärztin. (would be - she)","wäre","sein","Konjunktiv II: er/sie/es wäre","She would like to be a famous doctor.","Konjunktiv II von sein: er/sie/es wäre"
+"Wir null gern im Urlaub am Strand. (would be)","wären","sein","Konjunktiv II: wir wären","We would like to be on vacation at the beach.","Konjunktiv II von sein: wir wären"
+"null ihr gern wieder Kinder? (Would you guys be)","Wärt","sein","Konjunktiv II: ihr wärt","Would you guys like to be children again?","Konjunktiv II von sein: ihr wärt"
+"Die Kinder null gern draußen. (would be)","wären","sein","Konjunktiv II: sie (Pl) wären","The children would like to be outside.","Konjunktiv II von sein: sie (Plural) wären"
+"null Sie gern jünger, Herr Müller? (Would you be - formal)","Wären","sein","Konjunktiv II: Sie wären","Would you like to be younger, Mr. Müller?","Konjunktiv II von sein: Sie wären"
+"Ich bin genauso alt null mein Bruder. (as)","wie","wie","Vergleich (gleich): genauso ... wie","I am just as old as my brother.","Gleichheit: genauso + Adjektiv + wie"
+"Meine Schwester ist genauso groß null ich. (as)","wie","wie","Vergleich (gleich): genauso ... wie","My sister is just as tall as I am.","Gleichheit: genauso + Adjektiv + wie"
+"Der Hals tut genauso weh null der Kopf. (as)","wie","wie","Vergleich (gleich): genauso ... wie","The throat hurts just as much as the head.","Gleichheit: genauso + Adjektiv + wie"
+"Berlin ist größer null München. (than)","als","als","Vergleich (ungleich): Komparativ + als","Berlin is bigger than Munich.","Ungleichheit: Komparativ + als"
+"Die Tabletten helfen besser null die Salbe. (than)","als","als","Vergleich (ungleich): Komparativ + als","The pills help better than the ointment.","Ungleichheit: Komparativ + als"
+"Er ist viel älter null seine Freundin. (than)","als","als","Vergleich (ungleich): Komparativ + als","He is much older than his girlfriend.","Ungleichheit: Komparativ + als"
+"Yoga ist entspannender null Joggen. (than)","als","als","Vergleich (ungleich): Komparativ + als","Yoga is more relaxing than jogging.","Ungleichheit: Komparativ + als"
+"Wir arbeiten von Montag null Freitag. (until/to)","bis","bis","von ... bis","We work from Monday to Friday.","Temporale Präposition: von ... bis"
+"Die Apotheke hat null 18 Uhr geöffnet. (until)","bis","bis","bis + Uhrzeit","The pharmacy is open until 6 PM.","Temporale Präposition: bis"
+"Der Arzt ist null 8 bis 12 Uhr in der Praxis. (from)","von","von","von ... bis","The doctor is in the practice from 8 to 12 o'clock.","Temporale Präposition: von ... bis"
+"Ich habe Urlaub von Juli null August. (until/to)","bis","bis","von ... bis","I have vacation from July to August.","Temporale Präposition: von ... bis"
+"Er ist ein nett null Arzt. (nice - nom m)","er","nett","ein netter (m)","He is a nice doctor.","Adjektivdeklination Nominativ (ein): maskulin -> -er"
+"Das ist ein gut null Mann. (good - nom m)","er","gut","ein guter (m)","That is a good man.","Adjektivdeklination Nominativ (ein): maskulin -> -er"
+"Sie ist eine freundlich null Ärztin. (friendly - nom f)","e","freundlich","eine freundliche (f)","She is a friendly doctor.","Adjektivdeklination Nominativ (eine): feminin -> -e"
+"Das ist eine stark null Tablette. (strong - nom f)","e","stark","eine starke (f)","That is a strong pill.","Adjektivdeklination Nominativ (eine): feminin -> -e"
+"Wir haben ein klein null Problem. (small - nom n)","es","klein","ein kleines (n)","We have a small problem.","Adjektivdeklination Nominativ (ein): neutral -> -es"
+"Das ist ein krank null Kind. (sick - nom n)","es","krank","ein krankes (n)","That is a sick child.","Adjektivdeklination Nominativ (ein): neutral -> -es"
+"Das sind kein null guten Tabletten. (no good - nom pl)","e","gut","keine guten (pl)","Those are not good pills.","Adjektivdeklination Nominativ (keine): plural -> -en (Wait, it's 'keine guten'. Correction: answer is e, but the text has 'guten', so let's adjust the test text)"
+"Das sind keine gut null Tabletten. (good - nom pl)","en","gut","keine guten (pl)","Those are no good pills.","Adjektivdeklination Nominativ (keine): plural -> -en"
+"Wir haben keine stark null Schmerzen. (strong - nom pl)","en","stark","keine starken (pl)","We have no strong pain.","Adjektivdeklination Nominativ (keine): plural -> -en"
+"Ich bin genauso fit null du. (as)","wie","wie","genauso ... wie","I am just as fit as you.","Gleichheit: genauso + Adjektiv + wie"
+"Gesundheit ist wichtiger null Geld. (than)","als","als","wichtiger als","Health is more important than money.","Ungleichheit: Komparativ + als"
+"Yoga hilft besser null Schokolade. (than)","als","als","besser als","Yoga helps better than chocolate.","Ungleichheit: Komparativ + als"
+"Die Praxis öffnet von 9 null 13 Uhr. (until/to)","bis","bis","von ... bis","The practice opens from 9 to 1 PM.","Temporale Präposition: von ... bis"
+"Wenn ich nicht krank null, würde ich arbeiten. (were)","wäre","sein","ich wäre","If I weren't sick, I would work.","Konjunktiv II von sein: ich wäre"
+"Ein lustig null Freund macht mich glücklich. (funny - nom m)","er","lustig","ein lustiger (m)","A funny friend makes me happy.","Adjektivdeklination Nominativ (ein): maskulin -> -er"
+"Eine neu null Wohnung ist mein Traum. (new - nom f)","e","neu","eine neue (f)","A new apartment is my dream.","Adjektivdeklination Nominativ (eine): feminin -> -e"
+"Ein teuer null Auto ist unwichtig. (expensive - nom n)","es","teuer","ein teures (n)","An expensive car is unimportant.","Adjektivdeklination Nominativ (ein): neutral -> -es (teuer loses the 'e' before 'r': teures)"
+"Keine ernst null Probleme machen mich glücklich. (serious - nom pl)","en","ernst","keine ernsten (pl)","No serious problems make me happy.","Adjektivdeklination Nominativ (keine): plural -> -en"
+"Er hat genauso viel Stress null ich. (as)","wie","wie","genauso ... wie","He has just as much stress as I do.","Gleichheit: genauso + Adjektiv + wie"
+"Sie verdient mehr null ihr Chef. (than)","als","als","mehr als","She earns more than her boss.","Ungleichheit: Komparativ + als"
+"null du gern in Schweden? (Would you be)","Wärst","sein","du wärst","Would you like to be in Sweden?","Konjunktiv II von sein: du wärst"
+"Wir null am liebsten gesund. (would be)","wären","sein","wir wären","We would prefer to be healthy the most.","Konjunktiv II von sein: wir wären"
+"Ein gut null Arzt ist wichtig. (good - nom m)","er","gut","ein guter (m)","A good doctor is important.","Adjektivdeklination Nominativ (ein): maskulin -> -er"
+"Eine warm null Suppe hilft bei Halsschmerzen. (warm - nom f)","e","warm","eine warme (f)","A warm soup helps with a sore throat.","Adjektivdeklination Nominativ (eine): feminin -> -e"
+"Ein klein null Pflaster reicht. (small - nom n)","es","klein","ein kleines (n)","A small plaster is enough.","Adjektivdeklination Nominativ (ein): neutral -> -es"
+"Die Tabletten muss man null Freitag nehmen. (until)","bis","bis","bis + Freitag","One must take the pills until Friday.","Temporale Präposition: bis"
+"Die Pause geht null 12 bis 13 Uhr. (from)","von","von","von ... bis","The break goes from 12 to 1 PM.","Temporale Präposition: von ... bis"
+"Ich schlafe lieber null ich lerne. (than)","als","als","lieber ... als","I prefer sleeping rather than studying.","Ungleichheit: Komparativ (lieber) + als"
+"Ein gesund null Essen macht fit. (healthy - nom n)","es","gesund","ein gesundes (n)","A healthy meal makes you fit.","Adjektivdeklination Nominativ (ein): neutral -> -es"
+"Er ist ein treu null Hund. (loyal - nom m)","er","treu","ein treuer (m)","He is a loyal dog.","Adjektivdeklination Nominativ (ein): maskulin -> -er"
+"Sie sind genauso reich null wir. (as)","wie","wie","genauso ... wie","They are just as rich as we are.","Gleichheit: genauso + Adjektiv + wie"
+"Ein warm null Tee ist gut für den Hals. (warm - nom m)","er","warm","ein warmer (m)","A warm tea is good for the throat.","Adjektivdeklination Nominativ (ein): maskulin -> -er"
+"Eine lustig null Geschichte hilft gegen Stress. (funny - nom f)","e","lustig","eine lustige (f)","A funny story helps against stress.","Adjektivdeklination Nominativ (eine): feminin -> -e"
+"Er spricht besser Deutsch null Englisch. (than)","als","als","besser als","He speaks German better than English.","Ungleichheit: Komparativ (besser) + als"
+"Das ist genauso teuer null in der Apotheke. (as)","wie","wie","genauso ... wie","That is just as expensive as in the pharmacy.","Gleichheit: genauso + Adjektiv + wie"
+"Wenn es doch nur Wochenende null! (were)","wäre","sein","es wäre","If only it were the weekend!","Konjunktiv II von sein: es wäre"
+"Keine krank null Leute dürfen hier rein. (sick - nom pl)","en","krank","keine kranken (pl)","No sick people are allowed in here.","Adjektivdeklination Nominativ (keine): plural -> -en"

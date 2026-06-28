@@ -1,23 +1,91 @@
-pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en,ex3_de,ex3_en
-noun,Lebenstraum,der,m,der Lebenstraum - masculine.,Lebensträume,life dream,Mein Lebenstraum ist ein eigenes Café.,My life dream is my own cafe.,,,,
-noun,Berufsalltag,der,m,der Berufsalltag - masculine.,,everyday work life,Der Berufsalltag ist oft stressig.,Everyday work life is often stressful.,,,,
-noun,Schulfach,das,n,das Schulfach - neuter.,Schulfächer,school subject,Mathe war mein Lieblingsfach.,Math was my favorite subject.,,,,
-noun,Lieblingslehrer,der,m,der Lieblingslehrer - masculine.,Lieblingslehrer,favorite teacher,Mein Lieblingslehrer war sehr geduldig.,My favorite teacher was very patient.,,,,
-noun,Stellenanzeige,die,f,die Stellenanzeige - feminine.,Stellenanzeigen,job advertisement,Ich lese die Stellenanzeige genau.,I read the job ad carefully.,,,,
-noun,Bewerbung,die,f,die Bewerbung - feminine.,Bewerbungen,application,Die Bewerbung ist vollständig.,The application is complete.,,,,
-noun,Bewerbungsschreiben,das,n,das Bewerbungsschreiben - neuter.,Bewerbungsschreiben,cover letter,Das Bewerbungsschreiben ist formell.,The cover letter is formal.,,,,
-noun,Lebenslauf,der,m,der Lebenslauf - masculine.,Lebensläufe,CV / resume,Bitte schicken Sie Ihren Lebenslauf.,Please send your CV.,,,,
-noun,Voraussetzung,die,f,die Voraussetzung - feminine.,Voraussetzungen,requirement,Deutschkenntnisse sind eine Voraussetzung.,German skills are a requirement.,,,,
-noun,Kenntnis,die,f,die Kenntnis - feminine.,Kenntnisse,knowledge / skill,Gute Computerkenntnisse sind wichtig.,Good computer skills are important.,,,,
-noun,Team,das,n,das Team - neuter.,Teams,team,Ich arbeite gern im Team.,I like working in a team.,,,,
-noun,Konsequenz,die,f,die Konsequenz - feminine.,Konsequenzen,consequence,Welche Konsequenz hat das?,What consequence does that have?,,,,
-adj,formell,,,,,formal,Eine Bewerbung ist formell.,An application is formal.,,,,
-adj,informell,,,,,informal,Die Nachricht an Freunde ist informell.,The message to friends is informal.,,,,
-adj,pünktlich,,,,,punctual,Im Job muss man pünktlich sein.,At work one must be punctual.,,,,
-adj,zuverlässig,,,,,reliable,Zuverlässige Mitarbeiter sind wichtig.,Reliable employees are important.,,,,
-verb,sich bewerben,,,,,to apply,Ich bewerbe mich um eine Stelle.,I am applying for a position.,,,,
-verb,verfassen,,,,,to compose / write,Wir verfassen ein Bewerbungsschreiben.,We write a cover letter.,,,,
-verb,unterscheiden,,,,,to distinguish,Wir unterscheiden formelle und informelle Texte.,We distinguish formal and informal texts.,,,,
-prep,ohne,,,,,without,Ohne Erfahrung ist die Stelle schwer.,"Without experience, the job is difficult.",,,,
-prep,mit,,,,,with,Mit guten Kenntnissen findet man leichter Arbeit.,"With good skills, it is easier to find work.",,,,
-conj,deshalb,,,,,therefore / that's why,"Ich war krank, deshalb blieb ich zu Hause.","I was sick, so I stayed home.",,,,
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Schule,die,f,"die Schule — feminine.",Schulen,"school","Ich gehe in die Schule.","I go to school.","Meine Schule war sehr groß.","My school was very big."
+noun,Fach,das,n,"das Fach — neuter.",Fächer,"subject (school)","Welches Fach magst du?","Which subject do you like?","Mathe ist mein Lieblingsfach.","Math is my favorite subject."
+noun,Schulfach,das,n,"das Schulfach — neuter.",Schulfächer,"school subject","Wir haben viele Schulfächer.","We have many school subjects.","Was war dein bestes Schulfach?","What was your best school subject?"
+noun,Mathematik,die,f,"die Mathematik (Mathe) — feminine.",-,"mathematics / math","Mathematik ist wichtig.","Mathematics is important.","In Mathe war ich sehr gut.","I was very good in math."
+noun,Englisch,das,n,"das Englisch — neuter (language).",-,"English (subject)","Er spricht sehr gut Englisch.","He speaks English very well.","Englisch war mein Lieblingsfach.","English was my favorite subject."
+noun,Deutsch,das,n,"das Deutsch — neuter (language).",-,"German (subject)","Wir lernen Deutsch.","We are learning German.","Der Deutschlehrer ist nett.","The German teacher is nice."
+noun,Geschichte,die,f,"die Geschichte — feminine.",Geschichten,"history (subject) / story","Ich interessiere mich für Geschichte.","I am interested in history.","In Geschichte hatte ich eine Eins.","I got an A in history."
+noun,Geografie,die,f,"die Geografie — feminine.",-,"geography","Geografie finde ich spannend.","I find geography exciting.","Wir haben heute Geografie.","We have geography today."
+noun,Physik,die,f,"die Physik — feminine.",-,"physics","Physik ist oft schwer.","Physics is often difficult.","Ich habe Physik nicht verstanden.","I didn't understand physics."
+noun,Chemie,die,f,"die Chemie — feminine.",-,"chemistry","In Chemie machen wir Experimente.","In chemistry we do experiments.","Chemie war interessant.","Chemistry was interesting."
+noun,Biologie,die,f,"die Biologie — feminine.",-,"biology","Wir lernen Biologie.","We are learning biology.","Die Biologielehrerin ist streng.","The biology teacher is strict."
+noun,Kunst,die,f,"die Kunst — feminine.",Künste,"art (subject)","Kunst macht mir viel Spaß.","Art is a lot of fun for me.","Ich male gerne in Kunst.","I like painting in art class."
+noun,Musik,die,f,"die Musik — feminine.",-,"music (subject)","Wir singen in Musik.","We sing in music class.","Hörst du gerne Musik?","Do you like listening to music?"
+noun,Sport,der,m,"der Sport — masculine.",-,"PE / sports","Sport war mein Lieblingsfach.","PE was my favorite subject.","Wir treiben viel Sport.","We do a lot of sports."
+noun,Lehrer,der,m,"der Lehrer — masculine.",Lehrer,"teacher (male)","Mein Lehrer heißt Herr Müller.","My teacher is Mr. Müller.","Der Lehrer erklärt die Grammatik.","The teacher explains the grammar."
+noun,Lehrerin,die,f,"die Lehrerin — feminine.",Lehrerinnen,"teacher (female)","Sie ist eine gute Lehrerin.","She is a good teacher.","Die Lehrerin hilft mir.","The teacher helps me."
+noun,Lieblingslehrer,der,m,"der Lieblingslehrer — masculine.",Lieblingslehrer,"favorite teacher","Wer war dein Lieblingslehrer?","Who was your favorite teacher?","Mein Lieblingslehrer war lustig.","My favorite teacher was funny."
+noun,Note,die,f,"die Note — feminine.",Noten,"grade / mark","Ich hatte immer gute Noten.","I always had good grades.","Die Note in Mathe ist eine Zwei.","The grade in math is a two (B)."
+noun,Zeugnis,das,n,"das Zeugnis — neuter.",Zeugnisse,"report card / certificate","Morgen bekommen wir das Zeugnis.","Tomorrow we get our report cards.","Mein Zeugnis ist sehr gut.","My report card is very good."
+noun,Traum,der,m,"der Traum — masculine.",Träume,"dream","Das ist mein großer Traum.","That is my big dream.","Ich hatte einen Traum.","I had a dream."
+noun,Lebenstraum,der,m,"der Lebenstraum — masculine.",Lebensträume,"lifelong dream","Sein Lebenstraum ist eine Weltreise.","His lifelong dream is a world trip.","Hast du einen Lebenstraum?","Do you have a lifelong dream?"
+noun,Kind,das,n,"das Kind — neuter.",Kinder,"child","Als Kind wollte ich Arzt werden.","As a child I wanted to be a doctor.","Die Kinder spielen.","The children are playing."
+noun,Beruf,der,m,"der Beruf — masculine.",Berufe,"profession / occupation","Was ist dein Beruf?","What is your profession?","Dieser Beruf ist stressig.","This profession is stressful."
+noun,Berufswunsch,der,m,"der Berufswunsch — masculine.",Berufswünsche,"career aspiration","Mein Berufswunsch war Pilot.","My career aspiration was a pilot.","Was ist dein Berufswunsch?","What is your career aspiration?"
+verb,werden,-,-,-,-,"to become","Ich möchte Lehrer werden.","I want to become a teacher.","Was willst du werden?","What do you want to become?"
+noun,Astronaut,der,m,"der Astronaut — masculine (weak noun).",Astronauten,"astronaut","Er wollte Astronaut werden.","He wanted to become an astronaut.","Der Astronaut fliegt ins All.","The astronaut flies into space."
+noun,Pilot,der,m,"der Pilot — masculine (weak noun).",Piloten,"pilot (male)","Der Pilot fliegt das Flugzeug.","The pilot flies the airplane.","Ich wollte Pilot werden.","I wanted to be a pilot."
+noun,Tierarzt,der,m,"der Tierarzt — masculine.",Tierärzte,"veterinarian (male)","Der Tierarzt hilft Tieren.","The vet helps animals.","Als Kind wollte sie Tierärztin werden.","As a child she wanted to be a vet."
+noun,Feuerwehrmann,der,m,"der Feuerwehrmann — masculine.",Feuerwehrmänner,"firefighter (male)","Mein Bruder ist Feuerwehrmann.","My brother is a firefighter.","Der Feuerwehrmann ist mutig.","The firefighter is brave."
+noun,Arbeit,die,f,"die Arbeit — feminine.",Arbeiten,"work / job","Die Arbeit macht mir Spaß.","The work is fun for me.","Ich fahre zur Arbeit.","I am driving to work."
+noun,Job,der,m,"der Job — masculine.",Jobs,"job","Ich suche einen neuen Job.","I am looking for a new job.","Der Job ist gut bezahlt.","The job is well paid."
+noun,Ausbildung,die,f,"die Ausbildung — feminine.",Ausbildungen,"apprenticeship / training","Er macht eine Ausbildung zum Koch.","He is doing an apprenticeship as a cook.","Die Ausbildung dauert drei Jahre.","The training takes three years."
+noun,Studium,das,n,"das Studium — neuter.",Studien,"university studies","Das Studium war sehr schwer.","The university studies were very hard.","Sie hat ihr Studium beendet.","She finished her studies."
+noun,Praktikum,das,n,"das Praktikum — neuter.",Praktika,"internship","Ich mache ein Praktikum bei Siemens.","I am doing an internship at Siemens.","Das Praktikum dauert zwei Monate.","The internship lasts two months."
+noun,Erfahrung,die,f,"die Erfahrung — feminine.",Erfahrungen,"experience","Ich habe viel Erfahrung in dem Job.","I have a lot of experience in the job.","Erfahrung ist sehr wichtig.","Experience is very important."
+noun,Chef,der,m,"der Chef — masculine.",Chefs,"boss (male)","Mein Chef ist nett.","My boss is nice.","Ich spreche mit dem Chef.","I am speaking with the boss."
+noun,Chefin,die,f,"die Chefin — feminine.",Chefinnen,"boss (female)","Die Chefin organisiert das Meeting.","The boss organizes the meeting.","Sie ist eine gute Chefin.","She is a good boss."
+noun,Kollege,der,m,"der Kollege — masculine (weak noun).",Kollegen,"colleague (male)","Mein Kollege hilft mir immer.","My colleague always helps me.","Die Kollegen sind sehr freundlich.","The colleagues are very friendly."
+noun,Kollegin,die,f,"die Kollegin — feminine.",Kolleginnen,"colleague (female)","Ich arbeite gerne mit meiner Kollegin.","I like working with my colleague.","Die Kollegin ist neu hier.","The colleague is new here."
+noun,Gehalt,das,n,"das Gehalt — neuter.",Gehälter,"salary","Das Gehalt ist nicht so hoch.","The salary is not so high.","Ich bekomme mein Gehalt am Freitag.","I get my salary on Friday."
+noun,Geld,das,n,"das Geld — neuter.",Gelder,"money","Man verdient gutes Geld.","You earn good money.","Ich brauche Geld.","I need money."
+verb,verdienen,-,-,-,-,"to earn","Wie viel verdienst du in dem Job?","How much do you earn in the job?","Er verdient sehr gut.","He earns very well."
+noun,Arbeitszeit,die,f,"die Arbeitszeit — feminine.",Arbeitszeiten,"working hours","Die Arbeitszeit ist sehr flexibel.","The working hours are very flexible.","Meine Arbeitszeiten sind lang.","My working hours are long."
+noun,Karriere,die,f,"die Karriere — feminine.",Karrieren,"career","Sie macht eine tolle Karriere.","She is making a great career.","Karriere ist ihr wichtig.","Career is important to her."
+noun,Erfolg,der,m,"der Erfolg — masculine.",Erfolge,"success","Ich wünsche dir viel Erfolg.","I wish you much success.","Der Erfolg macht sie glücklich.","The success makes her happy."
+noun,Stelle,die,f,"die Stelle — feminine.",Stellen,"position / job","Ich habe die Stelle bekommen!","I got the position!","Die Stelle ist frei.","The position is available."
+noun,Stellenanzeige,die,f,"die Stellenanzeige — feminine.",Stellenanzeigen,"job advertisement","Ich lese die Stellenanzeigen in der Zeitung.","I am reading the job ads in the newspaper.","Die Stellenanzeige ist interessant.","The job ad is interesting."
+noun,Bewerbung,die,f,"die Bewerbung — feminine.",Bewerbungen,"application","Ich schreibe heute eine Bewerbung.","I am writing an application today.","Die Bewerbung schicke ich per E-Mail.","I am sending the application by email."
+noun,Bewerbungsschreiben,das,n,"das Bewerbungsschreiben — neuter.",Bewerbungsschreiben,"cover letter / application letter","Das Bewerbungsschreiben muss gut sein.","The cover letter must be good.","Ich formuliere ein Bewerbungsschreiben.","I am drafting an application letter."
+noun,Lebenslauf,der,m,"der Lebenslauf — masculine.",Lebensläufe,"CV / resume","Mein Lebenslauf ist zwei Seiten lang.","My CV is two pages long.","Schicken Sie auch Ihren Lebenslauf.","Send your CV as well."
+noun,Interview,das,n,"das Interview — neuter.",Interviews,"interview","Morgen habe ich ein Interview.","Tomorrow I have an interview.","Das Interview war erfolgreich.","The interview was successful."
+verb,bewerben (sich),-,-,-,-,"to apply (for a job)","Ich bewerbe mich um die Stelle.","I am applying for the position.","Er bewirbt sich bei Siemens.","He is applying at Siemens."
+adj,wichtig,-,-,-,-,"important","Gutes Gehalt ist mir wichtig.","A good salary is important to me.","Das Meeting ist sehr wichtig.","The meeting is very important."
+adj,unwichtig,-,-,-,-,"unimportant","Das Geld ist für mich unwichtig.","The money is unimportant to me.","Das ist ein unwichtiges Detail.","That is an unimportant detail."
+adj,interessant,-,-,-,-,"interesting","Der Job ist interessant.","The job is interesting.","Ich suche eine interessante Arbeit.","I am looking for an interesting job."
+adj,langweilig,-,-,-,-,"boring","Die Arbeit im Büro ist langweilig.","The work in the office is boring.","Mir ist langweilig.","I am bored."
+adj,stressig,-,-,-,-,"stressful","Mein Berufsalltag ist sehr stressig.","My everyday work life is very stressful.","Ist der Job stressig?","Is the job stressful?"
+adj,flexibel,-,-,-,-,"flexible","Ich brauche flexible Arbeitszeiten.","I need flexible working hours.","Wir sind sehr flexibel.","We are very flexible."
+adj,fest,-,-,-,-,"fixed / permanent","Ich suche eine feste Stelle.","I am looking for a permanent position.","Wir haben feste Arbeitszeiten.","We have fixed working hours."
+noun,Team,das,n,"das Team — neuter.",Teams,"team","Wir arbeiten in einem tollen Team.","We work in a great team.","Das Team ist sehr wichtig.","The team is very important."
+noun,Teamarbeit,die,f,"die Teamarbeit — feminine.",-,"teamwork","Teamarbeit macht mir Spaß.","Teamwork is fun for me.","In diesem Job ist Teamarbeit gefragt.","Teamwork is required in this job."
+adj,selbstständig,-,-,-,-,"independent / self-employed","Er arbeitet gerne selbstständig.","He likes working independently.","Ich bin selbstständig.","I am self-employed."
+adj,pünktlich,-,-,-,-,"punctual / on time","Du musst pünktlich zur Arbeit kommen.","You must come to work on time.","Seien Sie bitte pünktlich.","Please be punctual."
+adj,zuverlässig,-,-,-,-,"reliable","Sie ist eine zuverlässige Kollegin.","She is a reliable colleague.","Wir suchen zuverlässige Mitarbeiter.","We are looking for reliable employees."
+prep,ohne,-,-,-,-,"without (requires Akkusativ)","Ich trinke Kaffee ohne Zucker.","I drink coffee without sugar.","Ohne dich gehe ich nicht.","I won't go without you."
+prep,mit,-,-,-,-,"with (requires Dativ)","Ich komme mit dem Auto.","I am coming with the car.","Er arbeitet mit seinem Kollegen.","He is working with his colleague."
+conj,deshalb,-,-,-,-,"therefore / that's why","Ich war krank, deshalb kam ich nicht.","I was sick, therefore I didn't come.","Es regnet, deshalb bleibe ich hier.","It is raining, that's why I am staying here."
+conj,wenn,-,-,-,-,"if / when (condition)","Wenn ich Zeit habe, komme ich.","If I have time, I will come.","Ruf mich an, wenn du fertig bist.","Call me when you are finished."
+conj,dass,-,-,-,-,"that (conjunction)","Ich denke, dass der Job gut ist.","I think that the job is good.","Er sagt, dass er später kommt.","He says that he is coming later."
+verb,wollen,-,-,-,-,"to want","Als Kind wollte ich Arzt werden.","As a child I wanted to be a doctor.","Er wollte nicht in die Schule gehen.","He didn't want to go to school."
+verb,können,-,-,-,-,"can / to be able to","Ich konnte das Fach nicht gut.","I couldn't do the subject well.","Er konnte gestern nicht arbeiten.","He couldn't work yesterday."
+verb,müssen,-,-,-,-,"must / to have to","Ich musste jeden Tag lernen.","I had to study every day.","Wir mussten pünktlich sein.","We had to be on time."
+verb,dürfen,-,-,-,-,"may / to be allowed to","Als Kind durfte ich nicht fernsehen.","As a child I wasn't allowed to watch TV.","Durftest du das?","Were you allowed to do that?"
+verb,sollen,-,-,-,-,"should / to be supposed to","Ich sollte meine Hausaufgaben machen.","I was supposed to do my homework.","Der Chef sagte, ich sollte kommen.","The boss said I should come."
+verb,mögen,-,-,-,-,"to like","Ich mochte Mathe sehr.","I liked math a lot.","Er mochte seinen Lehrer nicht.","He didn't like his teacher."
+verb,organisieren,-,-,-,-,"to organize","Er organisiert das Meeting.","He organizes the meeting.","Wer organisiert die Party?","Who is organizing the party?"
+verb,präsentieren,-,-,-,-,"to present","Ich muss das Projekt präsentieren.","I have to present the project.","Sie präsentiert ihre Idee gut.","She presents her idea well."
+verb,unterscheiden,-,-,-,-,"to distinguish","Man muss formell und informell unterscheiden.","One must distinguish formal and informal.","Das ist schwer zu unterscheiden.","That is hard to distinguish."
+adj,formell,-,-,-,-,"formal","Das Bewerbungsschreiben ist formell.","The application letter is formal.","Sie trägt formelle Kleidung.","She wears formal clothing."
+adj,informell,-,-,-,-,"informal","Eine E-Mail an Freunde ist informell.","An email to friends is informal.","Die Sprache ist sehr informell.","The language is very informal."
+noun,Nachricht,die,f,"die Nachricht — feminine.",Nachrichten,"message / news","Ich schreibe dem Chef eine Nachricht.","I am writing the boss a message.","Hast du meine Nachricht gelesen?","Did you read my message?"
+noun,Bedingung,die,f,"die Bedingung — feminine.",Bedingungen,"condition","Unter dieser Bedingung arbeite ich.","Under this condition I will work.","Die Arbeitsbedingungen sind gut.","The working conditions are good."
+noun,Konsequenz,die,f,"die Konsequenz — feminine.",Konsequenzen,"consequence","Das hat eine Konsequenz.","That has a consequence.","Konsequenzen nennen.","Name consequences."
+adj,schlecht,-,-,-,-,"bad / poor","Ich war schlecht in Physik.","I was bad at physics.","Das Wetter ist schlecht.","The weather is bad."
+adj,gut,-,-,-,-,"good","Meine Noten waren sehr gut.","My grades were very good.","Er ist ein guter Kollege.","He is a good colleague."
+noun,Gymnasium,das,n,"das Gymnasium — neuter.",Gymnasien,"high school / grammar school","Ich war auf dem Gymnasium.","I went to the high school.","Das Gymnasium war schwer.","The high school was difficult."
+noun,Abitur,das,n,"das Abitur — neuter.",-,"high school diploma","Ich habe mein Abitur gemacht.","I did my high school diploma.","Mit dem Abitur kann man studieren.","With the high school diploma one can study at university."
+noun,Prüfung,die,f,"die Prüfung — feminine.",Prüfungen,"exam / test","Morgen habe ich eine Prüfung.","Tomorrow I have an exam.","Die Prüfung in Mathe war schwer.","The math exam was hard."
+verb,lernen,-,-,-,-,"to learn / study (for school)","Ich muss für die Prüfung lernen.","I have to study for the exam.","Wir lernen Deutsch.","We are learning German."
+verb,studieren,-,-,-,-,"to study (at university)","Sie möchte Medizin studieren.","She wants to study medicine.","Wo hast du studiert?","Where did you study?"

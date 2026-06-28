@@ -1,23 +1,84 @@
-pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en,ex3_de,ex3_en
-noun,Glück,das,n,das Glück - neuter.,,happiness / luck,Glück bedeutet für mich Gesundheit.,"For me, happiness means health.",,,,
-noun,Gesundheit,die,f,die Gesundheit - feminine.,,health,Gesundheit ist sehr wichtig.,Health is very important.,,,,
-noun,Körper,der,m,der Körper - masculine.,Körper,body,Mein Körper braucht Ruhe.,My body needs rest.,,,,
-noun,Kopf,der,m,der Kopf - masculine.,Köpfe,head,Ich habe Kopfschmerzen.,I have a headache.,,,,
-noun,Rücken,der,m,der Rücken - masculine.,Rücken,back,Mein Rücken tut weh.,My back hurts.,,,,
-noun,Arm,der,m,der Arm - masculine.,Arme,arm,Der rechte Arm schmerzt.,The right arm hurts.,,,,
-noun,Bein,das,n,das Bein - neuter.,Beine,leg,Mein Bein tut weh.,My leg hurts.,,,,
-noun,Apotheke,die,f,die Apotheke - feminine.,Apotheken,pharmacy,Ich gehe in die Apotheke.,I am going to the pharmacy.,,,,
-noun,Medikament,das,n,das Medikament - neuter.,Medikamente,medicine,Nehmen Sie das Medikament zweimal täglich.,Take the medicine twice daily.,,,,
-noun,Tablette,die,f,die Tablette - feminine.,Tabletten,tablet / pill,Die Tablette hilft gegen Schmerzen.,The tablet helps against pain.,,,,
-noun,Krankheit,die,f,die Krankheit - feminine.,Krankheiten,illness,Diese Krankheit dauert oft eine Woche.,This illness often lasts a week.,,,,
-noun,Stress,der,m,der Stress - masculine.,,stress,Bei Stress hilft Bewegung.,Exercise helps with stress.,,,,
-noun,Bedeutung,die,f,die Bedeutung - feminine.,Bedeutungen,meaning,Welche Bedeutung hat dieses Wort?,What meaning does this word have?,,,,
-noun,Eigenschaft,die,f,die Eigenschaft - feminine.,Eigenschaften,quality / characteristic,Geduld ist eine gute Eigenschaft.,Patience is a good quality.,,,,
-adj,glücklich,,,,,happy,Ich bin heute glücklich.,I am happy today.,,,,
-adj,gestresst,,,,,stressed,Nach der Arbeit bin ich oft gestresst.,After work I am often stressed.,,,,
-adj,geduldig,,,,,patient,Ein guter Arzt ist geduldig.,A good doctor is patient.,,,,
-adj,genauso,,,,,just as,Yoga ist genauso gut wie Spazierengehen.,Yoga is just as good as walking.,,,,
-verb,wehtun,,,,,to hurt,Mein Kopf tut weh.,My head hurts.,,,,
-verb,einnehmen,,,,,to take medicine,Wie muss ich die Tabletten einnehmen?,How do I have to take the pills?,,,,
-verb,beschreiben,,,,,to describe,Beschreiben Sie die Symptome.,Describe the symptoms.,,,,
-phrase,von ... bis,,,,,from ... to,Die Apotheke ist von acht bis sechs geöffnet.,The pharmacy is open from eight to six.,,,,
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Körper,der,m,"der Körper — masculine.",Körper,"body","Mein Körper ist fit.","My body is fit.","Sport ist gut für den Körper.","Sports are good for the body."
+noun,Kopf,der,m,"der Kopf — masculine.",Köpfe,"head","Mein Kopf tut weh.","My head hurts.","Er hat einen großen Kopf.","He has a big head."
+noun,Hals,der,m,"der Hals — masculine.",Hälse,"neck / throat","Ich habe Schmerzen im Hals.","I have pain in my throat.","Mein Hals ist rot.","My throat is red."
+noun,Rücken,der,m,"der Rücken — masculine.",Rücken,"back","Mein Rücken tut weh.","My back hurts.","Er liegt auf dem Rücken.","He is lying on his back."
+noun,Bauch,der,m,"der Bauch — masculine.",Bäuche,"stomach / belly","Ich habe Bauchschmerzen.","I have a stomachache.","Der Bauch ist voll.","The stomach is full."
+noun,Arm,der,m,"der Arm — masculine.",Arme,"arm","Mein linker Arm tut weh.","My left arm hurts.","Sie hat lange Arme.","She has long arms."
+noun,Bein,das,n,"das Bein — neuter.",Beine,"leg","Er hat sich das Bein gebrochen.","He broke his leg.","Meine Beine sind müde.","My legs are tired."
+noun,Hand,die,f,"die Hand — feminine.",Hände,"hand","Gib mir deine Hand.","Give me your hand.","Wasche deine Hände!","Wash your hands!"
+noun,Fuß,der,m,"der Fuß — masculine.",Füße,"foot","Mein Fuß tut weh.","My foot hurts.","Er hat große Füße.","He has big feet."
+noun,Finger,der,m,"der Finger — masculine.",Finger,"finger","Ich habe mir in den Finger geschnitten.","I cut my finger.","Die Hand hat fünf Finger.","The hand has five fingers."
+noun,Zeh,der,m,"der Zeh — masculine (weak noun).",Zehen,"toe","Ich habe zehn Zehen.","I have ten toes.","Mein Zeh tut weh.","My toe hurts."
+noun,Auge,das,n,"das Auge — neuter.",Augen,"eye","Meine Augen sind müde.","My eyes are tired.","Sie hat blaue Augen.","She has blue eyes."
+noun,Ohr,das,n,"das Ohr — neuter.",Ohren,"ear","Meine Ohren tun weh.","My ears hurt.","Er hat kleine Ohren.","He has small ears."
+noun,Nase,die,f,"die Nase — feminine.",Nasen,"nose","Meine Nase läuft.","My nose is running.","Putzt du dir die Nase?","Are you blowing your nose?"
+noun,Mund,der,m,"der Mund — masculine.",Münder,"mouth","Mach den Mund auf!","Open your mouth!","Sie hat einen kleinen Mund.","She has a small mouth."
+noun,Zahn,der,m,"der Zahn — masculine.",Zähne,"tooth","Ich muss mir die Zähne putzen.","I have to brush my teeth.","Mein Zahn tut weh.","My tooth hurts."
+noun,Knie,das,n,"das Knie — neuter.",Knie,"knee","Das Knie tut weh beim Laufen.","The knee hurts when walking.","Sie ist auf das Knie gefallen.","She fell on her knee."
+verb,wehtun,-,-,-,-,"to hurt","Mein Kopf tut weh.","My head hurts.","Wo tut es weh?","Where does it hurt?"
+noun,Schmerz,der,m,"der Schmerz — masculine.",Schmerzen,"pain / ache","Ich habe starke Schmerzen.","I have severe pain.","Die Schmerzen sind weg.","The pain is gone."
+noun,Kopfschmerzen,die,pl,"die Kopfschmerzen — plural only.",-,"headache","Hast du Kopfschmerzen?","Do you have a headache?","Gegen Kopfschmerzen nehme ich Tabletten.","I take pills for a headache."
+noun,Bauchschmerzen,die,pl,"die Bauchschmerzen — plural only.",-,"stomachache","Nach dem Essen hatte ich Bauchschmerzen.","After eating I had a stomachache.","Das Kind hat Bauchschmerzen.","The child has a stomachache."
+noun,Halsschmerzen,die,pl,"die Halsschmerzen — plural only.",-,"sore throat","Ich kann nicht sprechen, ich habe Halsschmerzen.","I can't speak, I have a sore throat.","Tee hilft gegen Halsschmerzen.","Tea helps against a sore throat."
+noun,Zahnschmerzen,die,pl,"die Zahnschmerzen — plural only.",-,"toothache","Ich muss zum Zahnarzt, ich habe Zahnschmerzen.","I have to go to the dentist, I have a toothache.","Zahnschmerzen sind schrecklich.","Toothaches are terrible."
+adj,krank,-,-,-,-,"sick / ill","Ich bin heute leider krank.","I am sick today unfortunately.","Bist du krank?","Are you ill?"
+adj,gesund,-,-,-,-,"healthy / well","Ich bin wieder gesund.","I am healthy again.","Gesundes Essen ist wichtig.","Healthy food is important."
+noun,Gesundheit,die,f,"die Gesundheit — feminine.",-,"health","Gesundheit ist das Wichtigste im Leben.","Health is the most important thing in life.","Ich wünsche dir viel Gesundheit.","I wish you much health."
+noun,Fieber,das,n,"das Fieber — neuter.",-,"fever","Er hat hohes Fieber.","He has a high fever.","Messen Sie das Fieber.","Measure the fever."
+noun,Husten,der,m,"der Husten — masculine.",-,"cough","Ich habe starken Husten.","I have a bad cough.","Der Hustensaft hilft.","The cough syrup helps."
+verb,husten,-,-,-,-,"to cough","Sie hustet die ganze Nacht.","She coughs all night.","Er muss ständig husten.","He constantly has to cough."
+noun,Schnupfen,der,m,"der Schnupfen — masculine.",-,"sniffles / runny nose","Ich habe Schnupfen.","I have the sniffles.","Hast du Taschentücher für meinen Schnupfen?","Do you have tissues for my runny nose?"
+noun,Erkältung,die,f,"die Erkältung — feminine.",Erkältungen,"cold (illness)","Das ist eine starke Erkältung.","That is a bad cold.","Ich habe eine Erkältung.","I have a cold."
+verb,fehlen,-,-,-,-,"to be missing / to ail","Was fehlt Ihnen?","What ails you? (What is the matter with you?)","Mir fehlt nichts.","Nothing is missing/wrong with me."
+noun,Arzt,der,m,"der Arzt — masculine.",Ärzte,"doctor (male)","Ich muss zum Arzt gehen.","I have to go to the doctor.","Der Arzt untersucht mich.","The doctor examines me."
+noun,Ärztin,die,f,"die Ärztin — feminine.",Ärztinnen,"doctor (female)","Die Ärztin schreibt ein Rezept.","The doctor writes a prescription.","Ich habe einen Termin bei der Ärztin.","I have an appointment with the doctor."
+noun,Praxis,die,f,"die Praxis — feminine.",Praxen,"practice (doctor's)","Die Praxis ist heute geschlossen.","The practice is closed today.","Wann öffnet die Praxis?","When does the practice open?"
+verb,untersuchen,-,-,-,-,"to examine","Der Arzt muss dich untersuchen.","The doctor must examine you.","Bitte untersuchen Sie meinen Hals.","Please examine my throat."
+noun,Apotheke,die,f,"die Apotheke — feminine.",Apotheken,"pharmacy","Ich hole das Medikament in der Apotheke.","I get the medicine at the pharmacy.","Wo ist die nächste Apotheke?","Where is the nearest pharmacy?"
+noun,Medikament,das,n,"das Medikament — neuter.",Medikamente,"medicine / medication","Nehmen Sie dieses Medikament.","Take this medicine.","Die Medikamente sind teuer.","The medications are expensive."
+noun,Tablette,die,f,"die Tablette — feminine.",Tabletten,"pill / tablet","Ich nehme eine Tablette gegen Schmerzen.","I take a pill for pain.","Nehmen Sie zwei Tabletten am Tag.","Take two pills a day."
+noun,Salbe,die,f,"die Salbe — feminine.",Salben,"ointment","Diese Salbe hilft gegen den Schmerz.","This ointment helps against the pain.","Reiben Sie die Salbe ein.","Rub the ointment in."
+noun,Pflaster,das,n,"das Pflaster — neuter.",Pflaster,"Band-Aid / plaster","Hast du ein Pflaster für mich?","Do you have a Band-Aid for me?","Ich brauche ein Pflaster für meinen Finger.","I need a Band-Aid for my finger."
+noun,Rezept,das,n,"das Rezept — neuter.",Rezepte,"prescription / recipe","Der Arzt gibt mir ein Rezept.","The doctor gives me a prescription.","Haben Sie das Rezept dabei?","Do you have the prescription with you?"
+verb,verschreiben,-,-,-,-,"to prescribe","Der Arzt verschreibt mir ein Medikament.","The doctor prescribes me a medication.","Hat er Tabletten verschrieben?","Did he prescribe pills?"
+verb,einnehmen,-,-,-,-,"to take (medicine)","Wie muss ich die Tabletten einnehmen?","How must I take the pills?","Nehmen Sie das Medikament nach dem Essen ein.","Take the medicine after eating."
+adj,täglich,-,-,-,-,"daily","Nehmen Sie das täglich ein.","Take that daily.","Ich gehe täglich spazieren.","I go for a walk daily."
+noun,Tropfen,der,m,"der Tropfen — masculine.",Tropfen,"drop","Nehmen Sie 20 Tropfen vor dem Schlafen.","Take 20 drops before sleeping.","Die Augentropfen brennen.","The eye drops sting."
+verb,brennen,-,-,-,-,"to burn / sting","Meine Augen brennen.","My eyes burn/sting.","Die Wunde brennt ein bisschen.","The wound stings a little."
+noun,Glück,das,n,"das Glück — neuter.",-,"luck / happiness","Was ist Glück für dich?","What is happiness for you?","Viel Glück!","Good luck!"
+noun,Pech,das,n,"das Pech — neuter.",-,"bad luck","So ein Pech!","Such bad luck!","Heute habe ich nur Pech.","Today I only have bad luck."
+adj,glücklich,-,-,-,-,"happy","Geld macht nicht immer glücklich.","Money doesn't always make you happy.","Ich bin sehr glücklich.","I am very happy."
+adj,unglücklich,-,-,-,-,"unhappy","Warum bist du unglücklich?","Why are you unhappy?","Das ist eine unglückliche Situation.","That is an unhappy situation."
+noun,Wunsch,der,m,"der Wunsch — masculine.",Wünsche,"wish","Ich habe einen Wunsch.","I have a wish.","Was sind deine Wünsche für die Zukunft?","What are your wishes for the future?"
+verb,wünschen,-,-,-,-,"to wish","Was wünschst du dir?","What do you wish for?","Ich wünsche dir gute Besserung.","I wish you a good recovery."
+noun,Besserung,die,f,"die Besserung — feminine.",-,"recovery / improvement","Gute Besserung!","Get well soon! (Good recovery!)","Ich hoffe auf eine schnelle Besserung.","I hope for a quick recovery."
+noun,Stress,der,m,"der Stress — masculine.",-,"stress","Ich habe viel Stress auf der Arbeit.","I have a lot of stress at work.","Stress macht krank.","Stress makes you sick."
+adj,gestresst,-,-,-,-,"stressed","Ich bin heute total gestresst.","I am totally stressed today.","Sie sieht gestresst aus.","She looks stressed."
+noun,Entspannung,die,f,"die Entspannung — feminine.",-,"relaxation","Yoga ist gute Entspannung.","Yoga is good relaxation.","Ich brauche Entspannung.","I need relaxation."
+verb,helfen,-,-,-,-,"to help (requires Dative)","Was hilft bei Stress?","What helps with stress?","Die Tabletten helfen mir.","The pills help me."
+noun,Yoga,das,n,"das Yoga — neuter.",-,"yoga","Yoga hilft mir bei Stress.","Yoga helps me with stress.","Machst du oft Yoga?","Do you often do yoga?"
+noun,Bedeutung,die,f,"die Bedeutung — feminine.",Bedeutungen,"meaning","Was ist die Bedeutung von diesem Wort?","What is the meaning of this word?","Die Bedeutung ist unklar.","The meaning is unclear."
+noun,Vokabel,die,f,"die Vokabel — feminine.",Vokabeln,"vocabulary word","Ich muss Vokabeln lernen.","I have to learn vocabulary words.","Diese Vokabel kenne ich nicht.","I don't know this vocabulary word."
+verb,erklären,-,-,-,-,"to explain","Kannst du mir das erklären?","Can you explain that to me?","Der Arzt erklärt die Medikamente.","The doctor explains the medications."
+noun,Schwede,der,m,"der Schwede — masculine (weak noun).",Schweden,"Swede (male)","Er ist Schwede.","He is a Swede.","Die Schweden sind freundlich.","The Swedes are friendly."
+noun,Schwedin,die,f,"die Schwedin — feminine.",Schwedinnen,"Swede (female)","Sie ist Schwedin.","She is a Swede.","Kennst du eine Schwedin?","Do you know a Swedish woman?"
+noun,Brite,der,m,"der Brite — masculine (weak noun).",Briten,"Briton (male)","Der Brite trinkt gern Tee.","The Briton likes drinking tea.","Er ist Brite.","He is British."
+noun,Britin,die,f,"die Britin — feminine.",Britinnen,"Briton (female)","Die Britin kommt aus London.","The British woman comes from London.","Sie ist Britin.","She is British."
+noun,Grieche,der,m,"der Grieche — masculine (weak noun).",Griechen,"Greek (male)","Der Grieche spricht gut Deutsch.","The Greek speaks German well.","Er ist Grieche.","He is Greek."
+noun,Griechin,die,f,"die Griechin — feminine.",Griechinnen,"Greek (female)","Sie ist Griechin.","She is Greek.","Die Griechin kocht lecker.","The Greek woman cooks deliciously."
+adj,genauso,-,-,-,-,"just as / equally","Ich bin genauso groß wie du.","I am just as tall as you.","Sie ist genauso nett.","She is just as nice."
+conj,wie,-,-,-,-,"as / like (for equal comparisons)","Er ist genauso alt wie ich.","He is just as old as I am.","Kalt wie Eis.","Cold as ice."
+conj,als,-,-,-,-,"than (for unequal comparisons)","Berlin ist größer als München.","Berlin is bigger than Munich.","Sie lernt schneller als er.","She learns faster than him."
+adj,besser,-,-,-,-,"better","Das ist besser als gestern.","That is better than yesterday.","Geht es dir besser?","Are you feeling better?"
+adj,lieber,-,-,-,-,"rather / preferably","Ich trinke lieber Tee als Kaffee.","I prefer drinking tea over coffee.","Bleibst du lieber hier?","Would you rather stay here?"
+adj,mehr,-,-,-,-,"more","Ich habe mehr Stress als du.","I have more stress than you.","Sie verdient mehr Geld.","She earns more money."
+adj,am besten,-,-,-,-,"best (superlative)","Das Medikament hilft am besten.","This medication helps best.","Er singt am besten.","He sings the best."
+adj,am liebsten,-,-,-,-,"most of all (superlative)","Am liebsten schlafe ich.","Most of all, I like to sleep.","Was isst du am liebsten?","What do you prefer to eat the most?"
+adj,am meisten,-,-,-,-,"most (superlative)","Wer arbeitet am meisten?","Who works the most?","Ich lerne am meisten.","I study the most."
+prep,bis,-,-,-,-,"until","Ich arbeite bis 17 Uhr.","I work until 5 PM.","Bis morgen!","Until tomorrow!"
+prep,von ... bis,-,-,-,-,"from ... to","Die Praxis ist von 8 bis 12 Uhr offen.","The practice is open from 8 to 12 o'clock.","Von Montag bis Freitag.","From Monday to Friday."
+adj,reich,-,-,-,-,"rich","Ich wäre gern reich.","I would like to be rich.","Der Mann ist sehr reich.","The man is very rich."
+adj,berühmt,-,-,-,-,"famous","Sie wäre gern berühmt.","She would like to be famous.","Er ist ein berühmter Schauspieler.","He is a famous actor."
+adj,fit,-,-,-,-,"fit","Mein Körper ist sehr fit.","My body is very fit.","Ich möchte fitter werden.","I want to become fitter."
+noun,Millionär,der,m,"der Millionär — masculine.",Millionäre,"millionaire","Wenn ich Millionär wäre...","If I were a millionaire...","Der Millionär kauft ein Haus.","The millionaire buys a house."
