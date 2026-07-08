@@ -1,13 +1,51 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Ich freue mich null den Urlaub.,auf,Präpositionalergänzung,look forward to,I am looking forward to the vacation.,sich freuen auf takes accusative.
-Wir warten null den Bus.,auf,Präpositionalergänzung,wait for,We are waiting for the bus.,warten auf takes accusative.
-Denkst du null die Fahrkarten?,an,Präpositionalergänzung,think of,Are you thinking about the tickets?,denken an takes accusative.
-Wir sprechen null unsere Reisepläne.,über,Präpositionalergänzung,talk about,We are talking about our travel plans.,sprechen über takes accusative.
-null freust du dich?,Worauf,Präpositionaladverb,what are you looking forward to,What are you looking forward to?,"For things, use wo(r)- + preposition."
-Ich freue mich null.,darauf,Präpositionaladverb,on it / to it,I am looking forward to it.,Use da(r)- + preposition to refer back to things.
-Wir fahren null den See.,an,Wechselpräposition,destination,We are going to the lake.,an + accusative for direction to water/edge.
-Wir sind null See.,am,Wechselpräposition,location,We are at the lake.,"am = an dem, dative location."
-Das Selfie hängt null der Wand.,an,Wechselpräposition,static location,The selfie is hanging on the wall.,an + dative article follows: an der Wand.
-Ich komme null dem Iran.,aus,lokale Präposition,origin,I come from Iran.,aus marks origin.
-Wir fahren null Bahnhof null Hotel.,vom,von ... bis zu,from,We travel from the station to the hotel.,vom = von dem.
-Wir bleiben null eine Woche.,für,temporale Präposition,duration,We are staying for one week.,für expresses planned duration.
+"null wartest du? - Auf den Bus. (For what)","Worauf","warten","For what (thing)","What are you waiting for? - For the bus.","Präpositionaladverbien für Sachen: Wo + r + auf -> Worauf."
+"null wartest du? - Auf Maria. (For whom)","Auf wen","warten","For whom (person)","Who are you waiting for? - For Maria.","Präposition für Personen: Auf + Akkusativ (wen)."
+"Ich warte auf den Zug. Ich warte null. (for it)","darauf","warten","for it (thing)","I am waiting for the train. I am waiting for it.","Präpositionaladverbien für Sachen: Da + r + auf -> darauf."
+"null freust du dich? - Auf die Reise. (To what)","Worauf","freuen","To what (thing)","What are you looking forward to? - To the trip.","Präpositionaladverbien für Sachen: Wo + r + auf -> Worauf."
+"null freust du dich? - Auf meinen Onkel. (To whom)","Auf wen","freuen","To whom (person)","Who are you looking forward to? - To my uncle.","Präposition für Personen: Auf + Akkusativ (wen)."
+"Ich freue mich auf den Urlaub. Ich freue mich null. (to it)","darauf","freuen","to it (thing)","I look forward to the vacation. I look forward to it.","Präpositionaladverbien für Sachen: Da + r + auf -> darauf."
+"null träumst du? - Von einem Haus am Meer. (Of what)","Wovon","träumen","Of what (thing)","What do you dream of? - Of a house by the sea.","Präpositionaladverbien für Sachen: Wo + von -> Wovon."
+"null träumst du? - Von dem Schauspieler. (Of whom)","Von wem","träumen","Of whom (person)","Who do you dream of? - Of the actor.","Präposition für Personen: Von + Dativ (wem)."
+"Er träumt von einem Auto. Er träumt null. (of it)","davon","träumen","of it (thing)","He dreams of a car. He dreams of it.","Präpositionaladverbien für Sachen: Da + von -> davon."
+"null interessierst du dich? - Für Kunst. (For what)","Wofür","interessieren","For what (thing)","What are you interested in? - In art.","Präpositionaladverbien für Sachen: Wo + für -> Wofür."
+"null interessierst du dich? - Für den Sänger. (For whom)","Für wen","interessieren","For whom (person)","Who are you interested in? - In the singer.","Präposition für Personen: Für + Akkusativ (wen)."
+"Ich interessiere mich für Mode. Ich interessiere mich null. (for it)","dafür","interessieren","for it (thing)","I am interested in fashion. I am interested in it.","Präpositionaladverbien für Sachen: Da + für -> dafür."
+"null erinnerst du dich? - An das alte Haus. (To what/of what)","Woran","erinnern","Of what (thing)","What do you remember? - The old house.","Präpositionaladverbien für Sachen: Wo + r + an -> Woran."
+"null erinnerst du dich? - An meine Lehrerin. (Of whom)","An wen","erinnern","Of whom (person)","Who do you remember? - My teacher.","Präposition für Personen: An + Akkusativ (wen)."
+"Wir sprechen über den Urlaub. Wir sprechen null. (about it)","darüber","sprechen","about it (thing)","We are talking about the vacation. We are talking about it.","Präpositionaladverbien für Sachen: Da + r + über -> darüber."
+"null sprecht ihr? - Über Politik. (About what)","Worüber","sprechen","About what (thing)","What are you talking about? - About politics.","Präpositionaladverbien für Sachen: Wo + r + über -> Worüber."
+"null sprecht ihr? - Über den Chef. (About whom)","Über wen","sprechen","About whom (person)","Who are you talking about? - About the boss.","Präposition für Personen: Über + Akkusativ (wen)."
+"Wir fahren null Ostsee. (to the - f)","an die","fahren","to the Baltic Sea (Akkusativ, f)","We are driving to the Baltic Sea.","Wechselpräposition 'an' + Akkusativ (Wohin?) -> an die."
+"Ich fahre null Meer. (to the - n)","ans","fahren","to the sea (an + das)","I am driving to the sea.","Wechselpräposition 'an' + Akkusativ: an das -> ans."
+"Sie fliegen null eine Insel. (to/onto)","auf","fliegen","onto an island (Akkusativ, f)","They are flying to an island.","Wechselpräposition 'auf' + Akkusativ (Wohin?)."
+"Wir reisen null USA. (into the - pl)","in die","reisen","into the USA (Akkusativ, pl)","We are traveling to the USA.","Wechselpräposition 'in' + Akkusativ (Länder mit Pluralartikel)."
+"Ich fahre null Süden. (into the - m)","in den","fahren","into the South (Akkusativ, m)","I am driving to the South.","Wechselpräposition 'in' + Akkusativ."
+"Wir wandern null Berge. (into the - pl)","in die","wandern","into the mountains (Akkusativ, pl)","We hike into the mountains.","Wechselpräposition 'in' + Akkusativ."
+"Er fährt null Schweiz. (to the - f)","in die","fahren","to Switzerland (Akkusativ, f)","He is driving to Switzerland.","Wechselpräposition 'in' + Akkusativ (Länder mit Femininartikel)."
+"Wir gehen null Strand. (to the - m)","an den","gehen","to the beach (Akkusativ, m)","We are going to the beach.","Wechselpräposition 'an' + Akkusativ."
+"Der Bus fährt null die Stadt. (through)","durch","fahren","through + Akkusativ","The bus drives through the city.","Lokale Präposition 'durch' + Akkusativ."
+"Gehen Sie null den Park. (through)","durch","gehen","through + Akkusativ (m)","Walk through the park.","Lokale Präposition 'durch' + Akkusativ: der Park -> den Park."
+"Gehen Sie an der Post null. (past)","vorbei","vorbeigehen","past","Walk past the post office.","vorbeigehen an + Dativ."
+"Kommst du an der Ampel null? (past)","vorbei","vorbeikommen","past","Do you pass by the traffic light?","vorbeikommen an + Dativ."
+"Wir fahren von Berlin null München. (to / as far as)","bis nach","fahren","as far as / to (cities)","We drive from Berlin to Munich.","von [Stadt] bis nach [Stadt]."
+"Fahren Sie null zur Kreuzung. (up to)","bis","fahren","up to / as far as","Drive up to the intersection.","bis zu + Dativ (zur = zu der)."
+"Gehen Sie null zum Bahnhof. (up to)","bis","gehen","up to / as far as","Walk to the train station.","bis zu + Dativ (zum = zu dem)."
+"Der Zug kommt null Berlin. (from/out of)","aus","kommen","out of / from","The train comes from Berlin.","Lokale Präposition 'aus' + Dativ."
+"Ich fahre null eine Woche nach Italien. (for)","für","fahren","for + Akkusativ (time)","I am going to Italy for a week.","Temporale Präposition 'für' + Akkusativ."
+"Wir buchen das Hotel null zwei Nächte. (for)","für","buchen","for + Akkusativ (time)","We book the hotel for two nights.","Temporale Präposition 'für' + Akkusativ."
+"Ich reise null einen Monat durch Asien. (for)","für","reisen","for + Akkusativ (m)","I travel through Asia for a month.","Temporale Präposition 'für' + Akkusativ: der Monat -> einen Monat."
+"null wen kaufst du das Geschenk? - Für Lisa. (For whom)","Für","kaufen","For whom (Akkusativ)","For whom are you buying the gift? - For Lisa.","Präposition für Personen: Für + wen."
+"Ich ärgere mich über das Wetter. Ich ärgere mich null. (about it)","darüber","ärgern","about it","I am angry about the weather. I am angry about it.","Präpositionaladverb: Da + r + über -> darüber."
+"Fahren wir null Nordsee? (to the - f)","an die","fahren","to the North Sea (Akkusativ)","Are we driving to the North Sea?","Wechselpräposition 'an' + Akkusativ."
+"Im Urlaub liege ich gerne null Strand. (on the - m)","am","liegen","on the beach (Dativ)","On vacation I like to lie on the beach.","Wechselpräposition 'an' + Dativ (Wo?): an dem -> am."
+"Wir sind null USA gewesen. (in the - pl)","in den","sein","in the USA (Dativ, pl)","We were in the USA.","Wechselpräposition 'in' + Dativ (Wo?): den (Plural)."
+"Er reist oft null Berge. (into the - pl)","in die","reisen","into the mountains (Akkusativ)","He travels often to the mountains.","Wechselpräposition 'in' + Akkusativ (Wohin?)."
+"Sie waren auf null Insel. (an - f)","einer","sein","on an island (Dativ, f)","They were on an island.","Wechselpräposition 'auf' + Dativ (Wo?): einer Insel."
+"Gehen Sie null die Brücke. (over/across)","über","gehen","over + Akkusativ","Walk over the bridge.","Lokale Präposition 'über' + Akkusativ (Wohin/Welchen Weg?)."
+"Wir laufen null den Wald. (through)","durch","laufen","through + Akkusativ (m)","We run through the forest.","Lokale Präposition 'durch' + Akkusativ."
+"Von meinem Haus null sind es 10 Minuten. (from ... outwards)","aus","sein","von ... aus","From my house it is 10 minutes.","von [Dativ] aus = starting from [location]."
+"Fahren Sie von hier null immer geradeaus. (from here outwards)","aus","fahren","from here outwards","Drive straight ahead from here on.","von [Dativ/Adverb] aus."
+"Ich interessiere mich nicht null. (for it)","dafür","interessieren","for it","I am not interested in it.","Präpositionaladverb: Da + für -> dafür."
+"null hast du Angst? - Vor Spinnen. (Of what)","Wovor","haben","Of what","What are you afraid of? - Of spiders.","Präpositionaladverb: Wo + vor -> Wovor."
+"null wem hast du das gehört? - Von meinem Chef. (From whom)","Von","hören","From whom (Dativ)","Who did you hear that from? - From my boss.","Präposition für Personen: Von + wem."

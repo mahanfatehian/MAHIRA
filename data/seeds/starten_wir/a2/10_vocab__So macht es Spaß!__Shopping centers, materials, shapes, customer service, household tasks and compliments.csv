@@ -1,23 +1,84 @@
-pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en,ex3_de,ex3_en
-noun,Einkaufszentrum,das,n,das Einkaufszentrum - neuter.,Einkaufszentren,shopping center,Das Einkaufszentrum ist sehr groß.,The shopping center is very big.,,,,
-noun,Eingang,der,m,der Eingang - masculine.,Eingänge,entrance,Der Eingang ist links.,The entrance is on the left.,,,,
-noun,Ausgang,der,m,der Ausgang - masculine.,Ausgänge,exit,Der Ausgang ist neben dem Café.,The exit is next to the cafe.,,,,
-noun,Rolltreppe,die,f,die Rolltreppe - feminine.,Rolltreppen,escalator,Die Rolltreppe fährt nach oben.,The escalator goes up.,,,,
-noun,Form,die,f,die Form - feminine.,Formen,shape,Welche Form hat die Lampe?,What shape is the lamp?,,,,
-noun,Material,das,n,das Material - neuter.,Materialien,material,Aus welchem Material ist der Tisch?,What material is the table made of?,,,,
-noun,Holz,das,n,das Holz - neuter.,Hölzer,wood,Der Tisch ist aus Holz.,The table is made of wood.,,,,
-noun,Glas,das,n,das Glas - neuter.,Gläser,glass,Die Vase ist aus Glas.,The vase is made of glass.,,,,
-noun,Metall,das,n,das Metall - neuter.,Metalle,metal,Der Stuhl ist aus Metall.,The chair is made of metal.,,,,
-noun,Wolle,die,f,die Wolle - feminine.,,wool,Der Pullover ist aus Wolle.,The sweater is made of wool.,,,,
-noun,Haushaltsaufgabe,die,f,die Haushaltsaufgabe - feminine.,Haushaltsaufgaben,household task,Staubsaugen ist eine Haushaltsaufgabe.,Vacuuming is a household task.,,,,
-noun,Kompliment,das,n,das Kompliment - neuter.,Komplimente,compliment,Sie macht ihm ein Kompliment.,She gives him a compliment.,,,,
-noun,Kundenforum,das,n,das Kundenforum - neuter.,Kundenforen,customer forum,Ich schreibe einen Text im Kundenforum.,I write a text in the customer forum.,,,,
-noun,Geschenkidee,die,f,die Geschenkidee - feminine.,Geschenkideen,gift idea,Diese Geschenkidee gefällt mir.,I like this gift idea.,,,,
-noun,Zufriedenheit,die,f,die Zufriedenheit - feminine.,,satisfaction,Die Zufriedenheit der Kunden ist wichtig.,Customer satisfaction is important.,,,,
-adj,rund,,,,,round,Der Tisch ist rund.,The table is round.,,,,
-adj,eckig,,,,,angular / square,Die Form ist eckig.,The shape is angular.,,,,
-adj,zufrieden,,,,,satisfied,Ich bin mit dem Einkauf zufrieden.,I am satisfied with the purchase.,,,,
-verb,lassen,,,,,to let / have something done,Ich lasse das Fahrrad reparieren.,I have the bicycle repaired.,,,,
-verb,reparieren,,,,,to repair,Der Laden repariert Handys.,The shop repairs phones.,,,,
-verb,selbst machen,,,,,to do oneself,Ich mache viele Dinge selbst.,I do many things myself.,,,,
-prep,aus,,,,,made of / from,Die Tasche ist aus Leder.,The bag is made of leather.,,,,
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Einkaufszentrum,das,n,"das Einkaufszentrum — neuter.",Einkaufszentren,"shopping mall","Wir gehen heute ins Einkaufszentrum.","We are going to the shopping mall today.","Das Einkaufszentrum ist sehr groß.","The shopping mall is very big."
+noun,Kaufhaus,das,n,"das Kaufhaus — neuter.",Kaufhäuser,"department store","Das Kaufhaus hat viele Etagen.","The department store has many floors.","Ich arbeite im Kaufhaus.","I work in the department store."
+noun,Rolltreppe,die,f,"die Rolltreppe — feminine.",Rolltreppen,"escalator","Wir nehmen die Rolltreppe nach oben.","We are taking the escalator up.","Die Rolltreppe ist leider kaputt.","The escalator is unfortunately broken."
+noun,Aufzug,der,m,"der Aufzug — masculine.",Aufzüge,"elevator","Wo ist der Aufzug?","Where is the elevator?","Wir fahren mit dem Aufzug in den 3. Stock.","We are taking the elevator to the 3rd floor."
+noun,Treppe,die,f,"die Treppe — feminine.",Treppen,"stairs","Ich laufe lieber die Treppe.","I prefer to walk the stairs.","Vorsicht auf der Treppe!","Careful on the stairs!"
+noun,Erdgeschoss,das,n,"das Erdgeschoss (EG) — neuter.",Erdgeschosse,"ground floor","Die Kasse ist im Erdgeschoss.","The cash register is on the ground floor.","Wir treffen uns im Erdgeschoss.","We'll meet on the ground floor."
+noun,Obergeschoss,das,n,"das Obergeschoss (OG) — neuter.",Obergeschosse,"upper floor","Schuhe gibt es im 1. Obergeschoss.","Shoes are on the 1st upper floor.","Das Café ist im Obergeschoss.","The café is on the upper floor."
+noun,Untergeschoss,das,n,"das Untergeschoss (UG) — neuter.",Untergeschosse,"basement / lower floor","Der Supermarkt ist im Untergeschoss.","The supermarket is in the basement.","Parken kann man im Untergeschoss.","You can park in the basement."
+noun,Stock,der,m,"der Stock — masculine.",Stockwerke,"floor / story","Die Boutique ist im zweiten Stock.","The boutique is on the second floor.","In welchem Stock wohnst du?","Which floor do you live on?"
+noun,Eingang,der,m,"der Eingang — masculine.",Eingänge,"entrance","Wir warten am Eingang.","We are waiting at the entrance.","Der Eingang ist sehr breit.","The entrance is very wide."
+noun,Ausgang,der,m,"der Ausgang — masculine.",Ausgänge,"exit","Wo ist der Ausgang?","Where is the exit?","Gehen Sie bitte zum Ausgang.","Please go to the exit."
+noun,Kasse,die,f,"die Kasse — feminine.",Kassen,"cash register / checkout","Bitte zahlen Sie an der Kasse.","Please pay at the cash register.","Die Kasse ist dort drüben.","The checkout is over there."
+noun,Kassenbon,der,m,"der Kassenbon — masculine.",Kassenbons,"receipt","Brauchen Sie den Kassenbon?","Do you need the receipt?","Hier ist Ihr Kassenbon.","Here is your receipt."
+noun,Quittung,die,f,"die Quittung — feminine.",Quittungen,"receipt","Haben Sie die Quittung noch?","Do you still have the receipt?","Ich brauche eine Quittung.","I need a receipt."
+noun,Garantie,die,f,"die Garantie — feminine.",Garantien,"warranty / guarantee","Auf das Gerät haben Sie zwei Jahre Garantie.","You have a two-year warranty on the device.","Ist das noch in der Garantie?","Is that still under warranty?"
+verb,umtauschen,-,-,-,-,"to exchange / return","Ich möchte diesen Pullover umtauschen.","I would like to exchange this sweater.","Kann man reduzierte Ware umtauschen?","Can one return discounted goods?"
+verb,zurückgeben,-,-,-,-,"to give back / return","Ich muss die Hose zurückgeben.","I have to return the pants.","Er gibt das Buch zurück.","He returns the book."
+noun,Kundenservice,der,m,"der Kundenservice — masculine.",-,"customer service","Gehen Sie bitte zum Kundenservice.","Please go to customer service.","Der Kundenservice war exzellent.","The customer service was excellent."
+noun,Material,das,n,"das Material — neuter.",Materialien,"material","Aus welchem Material ist das?","What material is that made of?","Das Material ist sehr weich.","The material is very soft."
+noun,Holz,das,n,"das Holz — neuter.",Hölzer,"wood","Der Tisch ist aus Holz.","The table is made of wood.","Ich liebe Möbel aus Holz.","I love furniture made of wood."
+noun,Metall,das,n,"das Metall — neuter.",Metalle,"metal","Das Regal ist aus Metall.","The shelf is made of metal.","Metall ist sehr hart.","Metal is very hard."
+noun,Plastik,das,n,"das Plastik — neuter.",-,"plastic","Spielzeug ist oft aus Plastik.","Toys are often made of plastic.","Plastik ist schlecht für die Umwelt.","Plastic is bad for the environment."
+noun,Glas,das,n,"das Glas — neuter.",Gläser,"glass","Die Flasche ist aus Glas.","The bottle is made of glass.","Vorsicht, das ist Glas!","Careful, that is glass!"
+noun,Papier,das,n,"das Papier — neuter.",Papiere,"paper","Das Buch ist aus Papier.","The book is made of paper.","Wir brauchen mehr Papier.","We need more paper."
+noun,Leder,das,n,"das Leder — neuter.",Leder,"leather","Die Tasche ist aus Leder.","The bag is made of leather.","Ich trage Schuhe aus Leder.","I wear shoes made of leather."
+noun,Stoff,der,m,"der Stoff — masculine.",Stoffe,"fabric / cloth","Die Jacke ist aus weichem Stoff.","The jacket is made of soft fabric.","Der Stoff ist bunt.","The fabric is colorful."
+noun,Gold,das,n,"das Gold — neuter.",-,"gold","Der Ring ist aus Gold.","The ring is made of gold.","Gold ist sehr teuer.","Gold is very expensive."
+noun,Silber,das,n,"das Silber — neuter.",-,"silver","Ich habe eine Kette aus Silber.","I have a necklace made of silver.","Silber glänzt schön.","Silver shines beautifully."
+noun,Baumwolle,die,f,"die Baumwolle — feminine.",-,"cotton","Das T-Shirt ist aus 100% Baumwolle.","The t-shirt is made of 100% cotton.","Baumwolle ist angenehm.","Cotton is comfortable."
+noun,Pappe,die,f,"die Pappe — feminine.",Pappen,"cardboard","Der Karton ist aus Pappe.","The box is made of cardboard.","Pappe kann man recyceln.","You can recycle cardboard."
+noun,Form,die,f,"die Form — feminine.",Formen,"shape / form","Der Tisch hat eine runde Form.","The table has a round shape.","Welche Form hat das Geschenk?","What shape is the gift?"
+adj,rund,-,-,-,-,"round","Der Ball ist rund.","The ball is round.","Wir sitzen an einem runden Tisch.","We are sitting at a round table."
+adj,eckig,-,-,-,-,"square / angular","Der Kasten ist eckig.","The box is square.","Ich brauche einen eckigen Teller.","I need a square plate."
+adj,flach,-,-,-,-,"flat","Der Bildschirm ist sehr flach.","The screen is very flat.","Das Land hier ist ganz flach.","The land here is completely flat."
+adj,weich,-,-,-,-,"soft","Das Bett ist sehr weich.","The bed is very soft.","Der Stoff fühlt sich weich an.","The fabric feels soft."
+adj,hart,-,-,-,-,"hard","Das Holz ist hart.","The wood is hard.","Das Brot ist schon ganz hart.","The bread is already completely hard."
+adj,schwer,-,-,-,-,"heavy / difficult","Der Schrank ist zu schwer.","The cabinet is too heavy.","Das Paket ist sehr schwer.","The package is very heavy."
+adj,leicht,-,-,-,-,"light / easy","Der Laptop ist ganz leicht.","The laptop is very light.","Plastik ist sehr leicht.","Plastic is very light."
+noun,Haushalt,der,m,"der Haushalt — masculine.",Haushalte,"household / chores","Ich mache den Haushalt.","I do the household chores.","Wer hilft im Haushalt?","Who helps in the household?"
+verb,putzen,-,-,-,-,"to clean","Ich putze das Bad.","I clean the bathroom.","Sie putzt die Fenster.","She cleans the windows."
+verb,aufräumen,-,-,-,-,"to tidy up / clean up","Er räumt sein Zimmer auf.","He is tidying up his room.","Wir müssen die Küche aufräumen.","We have to clean up the kitchen."
+verb,waschen,-,-,-,-,"to wash","Ich wasche die Wäsche.","I wash the laundry.","Hast du das Auto gewaschen?","Did you wash the car?"
+verb,bügeln,-,-,-,-,"to iron","Sie bügelt die Hemden.","She irons the shirts.","Ich hasse es zu bügeln.","I hate ironing."
+verb,saugen,-,-,-,-,"to vacuum","Er saugt den Teppich.","He vacuums the rug.","Ich muss noch staubsaugen.","I still have to vacuum."
+verb,reparieren,-,-,-,-,"to repair / fix","Kannst du das Fahrrad reparieren?","Can you fix the bike?","Der Laptop muss repariert werden.","The laptop needs to be repaired."
+verb,lassen,-,-,-,-,"to let / to have something done","Ich lasse mein Auto reparieren.","I am having my car repaired.","Lass mich in Ruhe!","Leave me alone!"
+verb,schneiden,-,-,-,-,"to cut","Ich schneide das Papier.","I cut the paper.","Sie lässt sich die Haare schneiden.","She is having her hair cut."
+verb,liefern,-,-,-,-,"to deliver","Wir lassen die Pizza liefern.","We are having the pizza delivered.","Das Paket wurde geliefert.","The package was delivered."
+verb,reinigen,-,-,-,-,"to clean / dry-clean","Ich lasse den Anzug reinigen.","I am having the suit dry-cleaned.","Die Jacke muss gereinigt werden.","The jacket needs to be cleaned."
+noun,Friseur,der,m,"der Friseur — masculine.",Friseure,"hairdresser","Ich gehe morgen zum Friseur.","I am going to the hairdresser tomorrow.","Der Friseur schneidet meine Haare.","The hairdresser cuts my hair."
+noun,Handwerker,der,m,"der Handwerker — masculine.",Handwerker,"craftsman / repairman","Wir rufen einen Handwerker.","We are calling a repairman.","Der Handwerker repariert das Fenster.","The craftsman fixes the window."
+noun,Kompliment,das,n,"das Kompliment — neuter.",Komplimente,"compliment","Ich mache dir ein Kompliment.","I am giving you a compliment.","Sie bekommt gerne Komplimente.","She likes receiving compliments."
+adj,charmant,-,-,-,-,"charming","Er ist sehr charmant.","He is very charming.","Das war ein charmantes Kompliment.","That was a charming compliment."
+adj,intelligent,-,-,-,-,"intelligent","Deine Freundin ist sehr intelligent.","Your friend is very intelligent.","Er gab eine intelligente Antwort.","He gave an intelligent answer."
+adj,attraktiv,-,-,-,-,"attractive","Du bist sehr attraktiv.","You are very attractive.","Das ist ein attraktives Angebot.","That is an attractive offer."
+adj,humorvoll,-,-,-,-,"humorous","Sie ist sehr humorvoll.","She is very humorous.","Ich mag humorvolle Menschen.","I like humorous people."
+adj,höflich,-,-,-,-,"polite","Der Kellner war sehr höflich.","The waiter was very polite.","Bitte sei höflich.","Please be polite."
+verb,lächeln,-,-,-,-,"to smile","Sie lächelt immer.","She always smiles.","Er lächelte freundlich.","He smiled friendly."
+verb,bewundern,-,-,-,-,"to admire","Ich bewundere deinen Mut.","I admire your courage.","Wir bewundern das Bild.","We admire the picture."
+noun,Forum,das,n,"das Forum — neuter.",Foren,"forum","Ich schreibe einen Beitrag im Forum.","I am writing a post in the forum.","Das Kundenforum ist online.","The customer forum is online."
+noun,Bewertung,die,f,"die Bewertung — feminine.",Bewertungen,"review / rating","Die Bewertung des Produkts ist gut.","The rating of the product is good.","Schreiben Sie eine Bewertung.","Write a review."
+verb,bewerten,-,-,-,-,"to rate / evaluate","Wie bewerten Sie das Hotel?","How do you rate the hotel?","Ich bewerte den Service mit 5 Sternen.","I rate the service with 5 stars."
+adj,zufrieden,-,-,-,-,"satisfied","Ich bin mit dem Einkauf sehr zufrieden.","I am very satisfied with the purchase.","Bist du zufrieden?","Are you satisfied?"
+adj,unzufrieden,-,-,-,-,"dissatisfied","Der Kunde ist unzufrieden.","The customer is dissatisfied.","Ich war mit dem Essen unzufrieden.","I was dissatisfied with the food."
+noun,Stern,der,m,"der Stern — masculine.",Sterne,"star","Das Produkt hat fünf Sterne bekommen.","The product got five stars.","Die Sterne leuchten am Himmel.","The stars shine in the sky."
+prep,aus,-,-,-,-,"from / made of (requires Dative)","Der Ring ist aus purem Gold.","The ring is made of pure gold.","Ich komme aus der Stadt.","I come from the city."
+prep,über,-,-,-,-,"about (requires Akkusativ)","Ich freue mich über das Kompliment.","I am happy about the compliment.","Wir reden über den Film.","We are talking about the movie."
+noun,Geschenkidee,die,f,"die Geschenkidee — feminine.",Geschenkideen,"gift idea","Hast du eine gute Geschenkidee?","Do you have a good gift idea?","Das ist eine tolle Geschenkidee.","That is a great gift idea."
+verb,beurteilen,-,-,-,-,"to judge / assess","Wir beurteilen die Geschenkideen.","We assess the gift ideas.","Wie beurteilen Sie die Qualität?","How do you judge the quality?"
+noun,Qualität,die,f,"die Qualität — feminine.",Qualitäten,"quality","Die Qualität des Stoffes ist hoch.","The quality of the fabric is high.","Wir achten auf gute Qualität.","We pay attention to good quality."
+noun,Rap,der,m,"der Rap — masculine.",Raps,"rap (music)","Er hat einen Rap geschrieben.","He wrote a rap.","Hörst du gerne Rap?","Do you like listening to rap?"
+noun,Verkäufer,der,m,"der Verkäufer — masculine.",Verkäufer,"salesman","Der Verkäufer berät uns.","The salesman advises us.","Fragen Sie den Verkäufer.","Ask the salesman."
+noun,Verkäuferin,die,f,"die Verkäuferin — feminine.",Verkäuferinnen,"saleswoman","Die Verkäuferin an der Kasse ist nett.","The saleswoman at the register is nice.","Die Verkäuferin hilft mir.","The saleswoman helps me."
+noun,Einkauf,der,m,"der Einkauf — masculine.",Einkäufe,"purchase / shopping","Bist du zufrieden mit deinem Einkauf?","Are you satisfied with your purchase?","Wir machen den Einkauf für die Woche.","We do the shopping for the week."
+verb,beraten,-,-,-,-,"to advise","Können Sie mich bitte beraten?","Can you please advise me?","Der Verkäufer berät die Kunden.","The salesman advises the customers."
+verb,funktionieren,-,-,-,-,"to function / work","Der Laptop funktioniert nicht.","The laptop doesn't work.","Wie funktioniert diese Maschine?","How does this machine work?"
+adj,kaputt,-,-,-,-,"broken","Mein Handy ist kaputt.","My cell phone is broken.","Das Glas ist kaputt gegangen.","The glass broke."
+verb,bedanken (sich),-,-,-,-,"to thank","Ich bedanke mich für das Kompliment.","I thank you for the compliment.","Wir bedanken uns für Ihre Hilfe.","We thank you for your help."
+noun,Verpackung,die,f,"die Verpackung — feminine.",Verpackungen,"packaging","Die Verpackung ist aus Pappe.","The packaging is made of cardboard.","Bitte werfen Sie die Verpackung weg.","Please throw the packaging away."
+noun,Tasche,die,f,"die Tasche — feminine.",Taschen,"bag","Ich brauche eine Tüte oder Tasche.","I need a bag.","Ihre Tasche ist sehr schick.","Her bag is very chic."
+noun,Hose,die,f,"die Hose — feminine.",Hosen,"pants / trousers","Die Hose passt mir nicht.","The pants don't fit me.","Ich möchte die Hose umtauschen.","I want to exchange the pants."
+noun,Hemd,das,n,"das Hemd — neuter.",Hemden,"shirt","Er trägt ein weißes Hemd.","He wears a white shirt.","Das Hemd ist aus reiner Baumwolle.","The shirt is made of pure cotton."
+noun,Größe,die,f,"die Größe — feminine.",Größen,"size","Haben Sie das in Größe M?","Do you have that in size M?","Das ist die falsche Größe.","That is the wrong size."

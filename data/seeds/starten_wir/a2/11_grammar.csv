@@ -1,13 +1,51 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Das Konto null online eröffnet.,wird,Passiv Präsens,passive present,The account is opened online.,Passiv Präsens: wird + Partizip II.
-Die Briefe null heute verschickt.,werden,Passiv Präsens,plural passive,The letters are sent today.,Plural: werden + participle.
-Das Passwort null geändert.,wird,Passiv Präsens,passive,The password is changed.,Singular passive uses wird.
-"Können Sie mir sagen, wo die Bank null?",ist,indirekte Frage,indirect question,Can you tell me where the bank is?,"In an indirect question, the verb goes to the end."
-"Ich möchte wissen, null das Konto kostenlos ist.",ob,indirekte Frage,whether,I would like to know whether the account is free.,Use ob for yes/no indirect questions.
-"Wissen Sie, wann die Post null?",öffnet,indirekte Frage,when,Do you know when the post office opens?,The conjugated verb is at the end.
-null gehört diese Kreditkarte?,Wem,Fragepronomen,to whom,Whose credit card is this?,Wem asks for a dative person.
-Das Geld gehört null.,mir,Dativpronomen,belong to me,The money belongs to me.,gehören takes dative.
-"Ist das null Konto, Frau Schneider?",Ihr,Possessivartikel Ihr,formal your,"Is that your account, Ms. Schneider?",Formal possessive is capitalized: Ihr.
-"Ich habe null Brief bekommen, Herr Bauer.",Ihren,Possessivartikel Ihr,formal your accusative,"I received your letter, Mr. Bauer.",Masculine accusative: Ihren Brief.
-Wofür hast du dein Geld null?,ausgegeben,ausgeben,Perfekt,What did you spend your money on?,ausgeben -> ausgegeben.
-Der Betrag null sofort überwiesen.,wird,Passiv Präsens,passive banking action,The amount is transferred immediately.,"Passiv focuses on the action, not the actor."
+"Das Geld null überwiesen. (is being)","wird","werden","is being (Passive Present)","The money is being transferred.","Passiv Präsens: werden + Partizip II (Geld -> wird)"
+"Der Brief null geschrieben. (is being)","wird","werden","is being (Passive Present)","The letter is being written.","Passiv Präsens: werden + Partizip II (Brief -> wird)"
+"Die Pakete null geliefert. (are being)","werden","werden","are being (Passive Present)","The packages are being delivered.","Passiv Präsens: werden + Partizip II (Pakete -> werden)"
+"Die Rechnung null bezahlt. (is being)","wird","werden","is being (Passive Present)","The bill is being paid.","Passiv Präsens: werden + Partizip II (Rechnung -> wird)"
+"Hier null ein Haus gebaut. (is being)","wird","werden","is being (Passive Present)","A house is being built here.","Passiv Präsens: werden + Partizip II (Haus -> wird)"
+"Die E-Mails null gelesen. (are being)","werden","werden","are being (Passive Present)","The emails are being read.","Passiv Präsens: werden + Partizip II (E-Mails -> werden)"
+"Die SMS null sofort geschickt. (is being)","wird","werden","is being (Passive Present)","The SMS is being sent immediately.","Passiv Präsens: werden + Partizip II (SMS -> wird)"
+"Das Konto null eröffnet. (is being)","wird","werden","is being (Passive Present)","The account is being opened.","Passiv Präsens: werden + Partizip II (Konto -> wird)"
+"Weißt du, null die Bank heute offen ist? (if/whether)","ob","ob","if / whether","Do you know if the bank is open today?","Indirekte Frage: Ja/Nein-Frage wird mit 'ob' eingeleitet (Verb am Ende)."
+"Können Sie mir sagen, null ich unterschreiben muss? (if/whether)","ob","ob","if / whether","Can you tell me if I have to sign?","Indirekte Frage: Ja/Nein-Frage wird mit 'ob' eingeleitet."
+"Ich frage, null er das Geld überwiesen hat. (if/whether)","ob","ob","if / whether","I am asking if he transferred the money.","Indirekte Frage: Ja/Nein-Frage wird mit 'ob' eingeleitet."
+"Weißt du, null der Geldautomat ist? (where)","wo","wo","where","Do you know where the ATM is?","Indirekte Frage mit Fragewort (wo): Verb am Ende."
+"Können Sie mir sagen, null die Post schließt? (when)","wann","wann","when","Can you tell me when the post office closes?","Indirekte Frage mit Fragewort (wann): Verb am Ende."
+"Ich weiß nicht, null dieses Paket kostet. (how much)","wie viel","wie viel","how much","I don't know how much this package costs.","Indirekte Frage mit Fragewort (wie viel): Verb am Ende."
+"Darf ich fragen, null das ist? (who)","wer","wer","who","May I ask who that is?","Indirekte Frage mit Fragewort (wer): Verb am Ende."
+"null gehört dieses Auto? (To whom)","Wem","wem","To whom (Dativ)","To whom does this car belong?","Fragepronomen (Dativ): wem (gehören + Dativ)."
+"null gehört das Geld? - Es gehört mir. (To whom)","Wem","wem","To whom (Dativ)","To whom does the money belong? - It belongs to me.","Fragepronomen (Dativ): wem (gehören + Dativ)."
+"null hast du den Brief gegeben? (To whom)","Wem","wem","To whom (Dativ)","Who did you give the letter to?","Fragepronomen (Dativ): wem (geben + Dativ)."
+"Ist das null Pass, Herr Müller? (your - formal)","Ihr","ihr","your (formal, Nominativ m)","Is that your passport, Mr. Müller?","Possessivartikel formell (Sie): Ihr (Nominativ Maskulin)."
+"Ist das null Geld, Frau Klein? (your - formal)","Ihr","ihr","your (formal, Nominativ n)","Is that your money, Ms. Klein?","Possessivartikel formell (Sie): Ihr (Nominativ Neutral)."
+"Sind das null Schlüssel, Herr Schneider? (your - formal)","Ihre","ihr","your (formal, Nominativ pl)","Are those your keys, Mr. Schneider?","Possessivartikel formell (Sie): Ihre (Nominativ Plural)."
+"Ist das null EC-Karte, Frau Yilmaz? (your - formal)","Ihre","ihr","your (formal, Nominativ f)","Is that your debit card, Ms. Yilmaz?","Possessivartikel formell (Sie): Ihre (Nominativ Feminin)."
+"Haben Sie null PIN vergessen? (your - formal)","Ihre","ihr","your (formal, Akkusativ f)","Did you forget your PIN?","Possessivartikel formell (Sie): Ihre (Akkusativ Feminin)."
+"Brauchen Sie null Kontoauszug? (your - formal)","Ihren","ihr","your (formal, Akkusativ m)","Do you need your bank statement?","Possessivartikel formell (Sie): Ihren (Akkusativ Maskulin)."
+"Wir haben null Brief bekommen, Frau Bach. (your - formal)","Ihren","ihr","your (formal, Akkusativ m)","We received your letter, Ms. Bach.","Possessivartikel formell (Sie): Ihren (Akkusativ Maskulin)."
+"Das Auto gehört null. (me)","mir","gehören","me (Dativ)","The car belongs to me.","gehören + Dativ: ich -> mir"
+"Gehört die Tasche null? (you)","dir","gehören","you (Dativ, informal)","Does the bag belong to you?","gehören + Dativ: du -> dir"
+"Das Geld gehört null. (him)","ihm","gehören","him (Dativ)","The money belongs to him.","gehören + Dativ: er -> ihm"
+"Das Handy gehört null. (her)","ihr","gehören","her (Dativ)","The cell phone belongs to her.","gehören + Dativ: sie (Sg) -> ihr"
+"Die Pakete gehören null. (us)","uns","gehören","us (Dativ)","The packages belong to us.","gehören + Dativ: wir -> uns"
+"Gehört das Haus null? (you all)","euch","gehören","you all (Dativ)","Does the house belong to you guys?","gehören + Dativ: ihr -> euch"
+"Der Koffer gehört null, Herr Baum. (you - formal)","Ihnen","gehören","you (formal, Dativ)","The suitcase belongs to you, Mr. Baum.","gehören + Dativ: Sie -> Ihnen"
+"Das Fenster null geöffnet. (is being)","wird","werden","is being (Passive Present)","The window is being opened.","Passiv Präsens: werden + Partizip II (Fenster -> wird)"
+"Die Türen null geschlossen. (are being)","werden","werden","are being (Passive Present)","The doors are being closed.","Passiv Präsens: werden + Partizip II (Türen -> werden)"
+"Ich frage mich, null das wahr ist. (if)","ob","ob","if / whether","I ask myself if that is true.","Indirekte Frage: ob"
+"Weißt du, null er heute kommt? (if)","ob","ob","if / whether","Do you know if he is coming today?","Indirekte Frage: ob"
+"Können Sie mir sagen, null ich hier parken darf? (if)","ob","ob","if / whether","Can you tell me if I am allowed to park here?","Indirekte Frage: ob"
+"Weißt du, null das kostet? (how much)","wie viel","wie viel","how much","Do you know how much that costs?","Indirekte Frage: Fragewort (wie viel)"
+"Ich möchte wissen, null das Päckchen ankommt. (when)","wann","wann","when","I want to know when the small package arrives.","Indirekte Frage: Fragewort (wann)"
+"null schenkst du den Gutschein? (To whom)","Wem","wem","To whom (Dativ)","To whom are you giving the voucher?","Fragepronomen: wem (schenken + Dativ)"
+"Hier ist null Paket, Frau Schmidt. (your - formal)","Ihr","ihr","your (formal, Nominativ n)","Here is your package, Ms. Schmidt.","Possessivartikel formell: Ihr (Nominativ Neutral)"
+"Haben Sie null Kreditkarte dabei? (your - formal)","Ihre","ihr","your (formal, Akkusativ f)","Do you have your credit card with you?","Possessivartikel formell: Ihre (Akkusativ Feminin)"
+"Geben Sie mir bitte null Ausweis! (your - formal)","Ihren","ihr","your (formal, Akkusativ m)","Please give me your ID!","Possessivartikel formell: Ihren (Akkusativ Maskulin)"
+"Die E-Mail null gelesen. (is being)","wird","werden","is being (Passive Present)","The email is being read.","Passiv Präsens: werden + Partizip II (E-Mail -> wird)"
+"Briefe null heute selten geschrieben. (are being)","werden","werden","are being (Passive Present)","Letters are rarely written today.","Passiv Präsens: werden + Partizip II (Briefe -> werden)"
+"Können Sie mir sagen, null die Post ist? (where)","wo","wo","where","Can you tell me where the post office is?","Indirekte Frage: Fragewort (wo)"
+"Ich weiß nicht, null dieses Buch gehört. (to whom)","wem","wem","to whom","I don't know who this book belongs to.","Indirekte Frage mit wem: Verb am Ende."
+"Gehört der Hund null? (them)","ihnen","gehören","them (Dativ, Plural)","Does the dog belong to them?","gehören + Dativ: sie (Pl) -> ihnen"
+"Das Paket null vom Postboten gebracht. (is being)","wird","werden","is being (Passive Present)","The package is being brought by the postman.","Passiv Präsens: werden + Partizip II (Paket -> wird)"
+"Wir wissen nicht, null wir das machen sollen. (how)","wie","wie","how","We don't know how we should do that.","Indirekte Frage: Fragewort (wie)"

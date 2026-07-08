@@ -1,23 +1,90 @@
-pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en,ex3_de,ex3_en
-noun,Urlaub,der,m,der Urlaub - masculine.,Urlaube,vacation,Wir planen einen Urlaub.,We are planning a vacation.,,,,
-noun,Kurzurlaub,der,m,der Kurzurlaub - masculine.,Kurzurlaube,short vacation,Ein Kurzurlaub am Meer wäre schön.,A short vacation by the sea would be nice.,,,,
-noun,Reiseziel,das,n,das Reiseziel - neuter.,Reiseziele,travel destination,Unser Reiseziel ist Salzburg.,Our destination is Salzburg.,,,,
-noun,Reiseutensil,das,n,das Reiseutensil - neuter.,Reiseutensilien,travel item,Der Pass ist ein wichtiges Reiseutensil.,The passport is an important travel item.,,,,
-noun,Koffer,der,m,der Koffer - masculine.,Koffer,suitcase,Der Koffer ist schwer.,The suitcase is heavy.,,,,
-noun,Rucksack,der,m,der Rucksack - masculine.,Rucksäcke,backpack,Ich nehme nur einen Rucksack mit.,I am only taking a backpack.,,,,
-noun,Fahrkarte,die,f,die Fahrkarte - feminine.,Fahrkarten,ticket,Die Fahrkarte kostet 25 Euro.,The ticket costs 25 euros.,,,,
-noun,Haltestelle,die,f,die Haltestelle - feminine.,Haltestellen,stop,Die Haltestelle ist vor dem Bahnhof.,The stop is in front of the station.,,,,
-noun,Wegbeschreibung,die,f,die Wegbeschreibung - feminine.,Wegbeschreibungen,directions,Die Wegbeschreibung ist auf der Webseite.,The directions are on the website.,,,,
-noun,Kreuzung,die,f,die Kreuzung - feminine.,Kreuzungen,intersection,An der Kreuzung gehen Sie links.,"At the intersection, go left.",,,,
-noun,Problem,das,n,das Problem - neuter.,Probleme,problem,Auf Reisen gibt es manchmal Probleme.,There are sometimes problems while traveling.,,,,
-noun,Verspätung,die,f,die Verspätung - feminine.,Verspätungen,delay,Der Zug hat zehn Minuten Verspätung.,The train is delayed by ten minutes.,,,,
-noun,Selfie,das,n,das Selfie - neuter.,Selfies,selfie,Wir machen ein Selfie am Strand.,We take a selfie at the beach.,,,,
-noun,Gefühl,das,n,das Gefühl - neuter.,Gefühle,feeling,Vor der Reise habe ich ein gutes Gefühl.,Before the trip I have a good feeling.,,,,
-noun,öffentliches Verkehrsmittel,das,n,das öffentliches Verkehrsmittel - neuter.,öffentliche Verkehrsmittel,public transport,Die Straßenbahn ist ein öffentliches Verkehrsmittel.,The tram is a form of public transport.,,,,
-verb,sich freuen auf,,,,,to look forward to,Ich freue mich auf den Urlaub.,I am looking forward to the vacation.,,,,
-verb,warten auf,,,,,to wait for,Wir warten auf den Bus.,We are waiting for the bus.,,,,
-verb,sprechen über,,,,,to talk about,Wir sprechen über unsere Interessen.,We talk about our interests.,,,,
-verb,denken an,,,,,to think about,Denkst du an die Fahrkarten?,Are you thinking about the tickets?,,,,
-adv,darauf,,,,,on it / for it,Ich freue mich darauf.,I am looking forward to it.,,,,
-adv,worauf,,,,,what on / what for,Worauf freust du dich?,What are you looking forward to?,,,,
-prep,für,,,,,for,Wir bleiben für drei Tage.,We are staying for three days.,,,,
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Urlaub,der,m,"der Urlaub — masculine.",Urlaube,"vacation / holiday","Wir planen unseren Urlaub.","We are planning our vacation.","Ich brauche dringend Urlaub.","I urgently need a vacation."
+noun,Kurzurlaub,der,m,"der Kurzurlaub — masculine.",Kurzurlaube,"short vacation","Wir machen einen Kurzurlaub.","We are taking a short vacation.","Ein Kurzurlaub am Wochenende ist toll.","A short vacation on the weekend is great."
+noun,Urlaubsplan,der,m,"der Urlaubsplan — masculine.",Urlaubspläne,"vacation plan","Was ist dein Urlaubsplan?","What is your vacation plan?","Der Urlaubsplan ist fertig.","The vacation plan is ready."
+noun,Reiseziel,das,n,"das Reiseziel — neuter.",Reiseziele,"travel destination","Was ist euer nächstes Reiseziel?","What is your next travel destination?","Italien ist ein beliebtes Reiseziel.","Italy is a popular travel destination."
+noun,Landschaft,die,f,"die Landschaft — feminine.",Landschaften,"landscape / scenery","Die Landschaft hier ist wunderschön.","The landscape here is beautiful.","Wir fotografieren die Landschaft.","We photograph the landscape."
+noun,Atlantik,der,m,"der Atlantik — masculine.",-,"Atlantic Ocean","Wir fliegen über den Atlantik.","We fly over the Atlantic.","Der Atlantik ist sehr groß.","The Atlantic is very large."
+noun,Ostsee,die,f,"die Ostsee — feminine.",-,"Baltic Sea","Wir fahren an die Ostsee.","We are driving to the Baltic Sea.","Die Ostsee ist im Sommer schön.","The Baltic Sea is beautiful in the summer."
+noun,Nordsee,die,f,"die Nordsee — feminine.",-,"North Sea","Urlaub an der Nordsee ist beliebt.","Vacation at the North Sea is popular.","Das Wasser der Nordsee ist kalt.","The water of the North Sea is cold."
+noun,Rhein,der,m,"der Rhein — masculine.",-,"Rhine (river)","Wir machen eine Fahrt auf dem Rhein.","We are taking a trip on the Rhine.","Der Rhein fließt durch Deutschland.","The Rhine flows through Germany."
+noun,Nationalpark,der,m,"der Nationalpark — masculine.",Nationalparks,"national park","Wir wandern im Nationalpark.","We are hiking in the national park.","Der Nationalpark schützt die Natur.","The national park protects nature."
+noun,Wüste,die,f,"die Wüste — feminine.",Wüsten,"desert","Die Wüste ist sehr trocken.","The desert is very dry.","Kamele leben in der Wüste.","Camels live in the desert."
+noun,Meer,das,n,"das Meer — neuter.",Meere,"sea / ocean","Wir fahren ans Meer.","We are going to the sea.","Ich schwimme gerne im Meer.","I like swimming in the sea."
+noun,Strand,der,m,"der Strand — masculine.",Strände,"beach","Wir liegen am Strand.","We are lying on the beach.","Lass uns an den Strand gehen.","Let's go to the beach."
+noun,Berg,der,m,"der Berg — masculine.",Berge,"mountain","Wir fahren in die Berge.","We are going to the mountains.","Der Berg ist sehr hoch.","The mountain is very high."
+noun,Insel,die,f,"die Insel — feminine.",Inseln,"island","Wir fliegen auf eine Insel.","We are flying to an island.","Die Insel ist autofrei.","The island is car-free."
+noun,Wald,der,m,"der Wald — masculine.",Wälder,"forest","Wir spazieren durch den Wald.","We are walking through the forest.","Im Wald ist es ruhig.","It is quiet in the forest."
+noun,See,der,m,"der See — masculine.",Seen,"lake","Wir baden im See.","We swim in the lake.","Der See ist sehr tief.","The lake is very deep."
+noun,Eiffelturm,der,m,"der Eiffelturm — masculine.",-,"Eiffel Tower","Der Eiffelturm steht in Paris.","The Eiffel Tower is in Paris.","Wir haben den Eiffelturm besichtigt.","We visited the Eiffel Tower."
+verb,einpacken,-,-,-,-,"to pack up / pack in","Was packst du für den Urlaub ein?","What are you packing for the vacation?","Ich muss meinen Koffer einpacken.","I have to pack my suitcase."
+verb,auspacken,-,-,-,-,"to unpack","Im Hotel packen wir sofort aus.","In the hotel we unpack immediately.","Hast du deinen Koffer schon ausgepackt?","Have you already unpacked your suitcase?"
+noun,Skijacke,die,f,"die Skijacke — feminine.",Skijacken,"ski jacket","Ich packe meine Skijacke ein.","I am packing my ski jacket.","Die Skijacke ist warm.","The ski jacket is warm."
+verb,planen,-,-,-,-,"to plan","Gemeinsam einen Urlaub planen.","To plan a vacation together.","Wir planen eine große Reise.","We are planning a big trip."
+verb,freuen (sich),-,-,-,-,"to look forward to / be happy about","Ich freue mich auf den Urlaub.","I look forward to the vacation.","Worauf freust du dich?","What are you looking forward to?"
+verb,träumen,-,-,-,-,"to dream","Ich träume von einer Weltreise.","I dream of a trip around the world.","Wovon träumst du?","What do you dream of?"
+noun,Wegbeschreibung,die,f,"die Wegbeschreibung — feminine.",Wegbeschreibungen,"directions (route)","Kannst du mir eine Wegbeschreibung geben?","Can you give me directions?","Die Wegbeschreibung im Internet ist gut.","The directions on the internet are good."
+noun,Kreuzung,die,f,"die Kreuzung — feminine.",Kreuzungen,"intersection / crossroad","Gehen Sie an der Kreuzung rechts.","Go right at the intersection.","Die Kreuzung ist gefährlich.","The intersection is dangerous."
+noun,Ampel,die,f,"die Ampel — feminine.",Ampeln,"traffic light","An der Ampel müssen Sie links abbiegen.","Turn left at the traffic light.","Die Ampel ist rot.","The traffic light is red."
+noun,Baustelle,die,f,"die Baustelle — feminine.",Baustellen,"construction site","Vorsicht, da ist eine Baustelle!","Careful, there is a construction site there!","Wir müssen um die Baustelle fahren.","We have to drive around the construction site."
+noun,Ecke,die,f,"die Ecke — feminine.",Ecken,"corner","Die Post ist gleich um die Ecke.","The post office is right around the corner.","Gehen Sie an der nächsten Ecke rechts.","Go right at the next corner."
+noun,Brücke,die,f,"die Brücke — feminine.",Brücken,"bridge","Gehen Sie über die Brücke.","Go over the bridge.","Die Brücke ist sehr alt.","The bridge is very old."
+noun,Kompass,der,m,"der Kompass — masculine.",Kompasse,"compass","Ein Kompass zeigt nach Norden.","A compass points north.","Wir brauchen keinen Kompass.","We don't need a compass."
+noun,Navi,das,n,"das Navi — neuter.",Navis,"GPS / navigation system","Das Navi zeigt uns den Weg.","The GPS shows us the way.","Hast du ein Navi im Auto?","Do you have a GPS in the car?"
+verb,abbiegen,-,-,-,-,"to turn (directions)","Biegen Sie hier links ab.","Turn left here.","An der Kreuzung müssen wir abbiegen.","We must turn at the intersection."
+verb,vorbeigehen,-,-,-,-,"to walk past","Gehen Sie an der Post vorbei.","Walk past the post office.","Wir sind am Museum vorbeigegangen.","We walked past the museum."
+verb,vorbeikommen,-,-,-,-,"to come past / drop by","Du kommst an einer Ampel vorbei.","You will pass a traffic light.","Kommst du morgen bei mir vorbei?","Are you dropping by my place tomorrow?"
+verb,überqueren,-,-,-,-,"to cross (street/bridge)","Überqueren Sie die Straße.","Cross the street.","Wir überqueren den Platz.","We are crossing the square."
+noun,Richtung,die,f,"die Richtung — feminine.",Richtungen,"direction","Gehen Sie in diese Richtung.","Go in this direction.","Das ist die falsche Richtung.","That is the wrong direction."
+adj,geradeaus,-,-,-,-,"straight ahead","Gehen Sie immer geradeaus.","Go straight ahead.","Der Weg geht geradeaus.","The path goes straight ahead."
+adj,links,-,-,-,-,"left","Gehen Sie nach links.","Go to the left.","Die Bank ist auf der linken Seite.","The bank is on the left side."
+adj,rechts,-,-,-,-,"right","An der Ampel rechts abbiegen.","Turn right at the traffic light.","Mein Haus ist rechts.","My house is on the right."
+noun,Verkehrsmittel,das,n,"das Verkehrsmittel — neuter.",Verkehrsmittel,"means of transport","Welches Verkehrsmittel nutzt du?","Which means of transport do you use?","Ich fahre mit öffentlichen Verkehrsmitteln.","I travel with public transport."
+adj,öffentlich,-,-,-,-,"public","Öffentliche Verkehrsmittel sind umweltfreundlich.","Public means of transport are environmentally friendly.","Das ist ein öffentlicher Platz.","That is a public square."
+noun,Fahrt,die,f,"die Fahrt — feminine.",Fahrten,"trip / drive / ride","Gute Fahrt!","Have a good trip!","Die Fahrt dauert zwei Stunden.","The trip takes two hours."
+noun,Ticket,das,n,"das Ticket — neuter.",Tickets,"ticket","Wo kann ich ein Ticket kaufen?","Where can I buy a ticket?","Das Ticket kostet 5 Euro.","The ticket costs 5 euros."
+adj,gültig,-,-,-,-,"valid","Ist das Ticket noch gültig?","Is the ticket still valid?","Der Pass ist nicht mehr gültig.","The passport is no longer valid."
+verb,warten,-,-,-,-,"to wait","Wir warten auf den Bus.","We are waiting for the bus.","Worauf wartest du?","What are you waiting for?"
+noun,Selfie,das,n,"das Selfie — neuter.",Selfies,"selfie","Wir machen ein Selfie am Strand.","We are taking a selfie on the beach.","Das Selfie lade ich hoch.","I upload the selfie."
+noun,Interesse,das,n,"das Interesse — neuter.",Interessen,"interest","Wir tauschen uns über Interessen aus.","We share about interests.","Das ist von großem Interesse.","That is of great interest."
+verb,tauschen,-,-,-,-,"to exchange","Wir tauschen die Plätze.","We swap seats.","Ich möchte das Hemd tauschen.","I want to exchange the shirt."
+verb,austauschen (sich),-,-,-,-,"to exchange views / talk","Wir tauschen uns über den Urlaub aus.","We exchange views about the vacation.","Sich über Interessen austauschen.","To share interests."
+prep,durch,-,-,-,-,"through (requires Akkusativ)","Wir laufen durch die Stadt.","We walk through the city.","Der Zug fährt durch den Tunnel.","The train drives through the tunnel."
+prep,von ... aus,-,-,-,-,"from (starting point)","Von Berlin aus fahren wir nach Rom.","From Berlin we drive to Rome.","Vom Hotel aus sind es 5 Minuten.","From the hotel it is 5 minutes."
+prep,bis zu,-,-,-,-,"up to / as far as","Fahren Sie bis zur Kreuzung.","Drive up to the intersection.","Gehen Sie bis zum Bahnhof.","Walk to the train station."
+prep,für,-,-,-,-,"for (temporal/Akkusativ)","Wir fahren für eine Woche weg.","We are going away for a week.","Ich buche das Hotel für zwei Nächte.","I book the hotel for two nights."
+adv,darauf,-,-,-,-,"forward to it / for it (things)","Ich freue mich darauf!","I am looking forward to it!","Darauf warte ich schon lange.","I have been waiting for that for a long time."
+adv,worauf,-,-,-,-,"what ... for / what ... forward to","Worauf wartest du?","What are you waiting for?","Worauf freust du dich am meisten?","What are you looking forward to the most?"
+adv,daran,-,-,-,-,"of it / about it (things)","Ich erinnere mich daran.","I remember it.","Erkenne ich dich daran?","Will I recognize you by that?"
+adv,woran,-,-,-,-,"what ... of / about what","Woran denkst du?","What are you thinking about?","Woran erinnerst du dich?","What do you remember?"
+adv,davon,-,-,-,-,"of it / about it (things)","Davon träume ich nachts.","I dream of it at night.","Ich habe nichts davon gewusst.","I knew nothing about it."
+adv,wovon,-,-,-,-,"of what / about what","Wovon träumst du?","What do you dream of?","Wovon handelt das Buch?","What is the book about?"
+adv,darüber,-,-,-,-,"about it (things)","Wir sprechen oft darüber.","We often talk about it.","Ich ärgere mich darüber.","I am annoyed about it."
+adv,worüber,-,-,-,-,"about what","Worüber sprecht ihr?","What are you talking about?","Worüber ärgerst du dich?","What are you angry about?"
+adv,dafür,-,-,-,-,"for it (things)","Ich interessiere mich dafür.","I am interested in it.","Dafür habe ich keine Zeit.","I have no time for that."
+adv,wofür,-,-,-,-,"for what","Wofür interessierst du dich?","What are you interested in?","Wofür brauchst du das Geld?","What do you need the money for?"
+adv,egal wo,-,-,-,-,"no matter where","Wir können schlafen, egal wo.","We can sleep, no matter where.","Egal wo wir sind, es ist schön.","No matter where we are, it is beautiful."
+adv,wo auch immer,-,-,-,-,"wherever","Wo auch immer du bist, ruf mich an.","Wherever you are, call me.","Ich folge dir, wo auch immer du hingehst.","I will follow you wherever you go."
+noun,Bäcker,der,m,"der Bäcker — masculine.",Bäcker,"baker / bakery","Gehen Sie am Bäcker vorbei.","Walk past the bakery.","Ich kaufe Brötchen beim Bäcker.","I buy rolls at the baker's."
+noun,Vorsicht,die,f,"die Vorsicht — feminine.",-,"caution / care","Vorsicht an der Ampel!","Caution at the traffic light!","Fahren Sie mit Vorsicht.","Drive with care."
+verb,präsentieren,-,-,-,-,"to present","Wir präsentieren unsere Gruppenarbeit.","We present our group work.","Können Sie die Ergebnisse präsentieren?","Can you present the results?"
+noun,Problem,das,n,"das Problem — neuter.",Probleme,"problem","Haben Sie Probleme auf Reisen?","Do you have problems while traveling?","Das ist kein Problem für mich.","That is no problem for me."
+noun,Sprachschule,die,f,"die Sprachschule — feminine.",Sprachschulen,"language school","Die Sprachschule ist im Zentrum.","The language school is in the center.","Er lernt Deutsch in der Sprachschule.","He learns German in the language school."
+noun,Webseite,die,f,"die Webseite — feminine.",Webseiten,"website","Die Wegbeschreibung ist auf der Webseite.","The directions are on the website.","Unsere Webseite ist neu.","Our website is new."
+noun,Art,die,f,"die Art — feminine.",Arten,"kind / type","Welche Art von Urlaub magst du?","Which kind of vacation do you like?","Es gibt viele Arten von Tieren.","There are many types of animals."
+noun,Auskunft,die,f,"die Auskunft — feminine.",Auskünfte,"information","Ich brauche eine Auskunft.","I need some information.","Die Auskunft am Bahnhof hilft uns.","Information at the train station helps us."
+noun,Reisebüro,das,n,"das Reisebüro — neuter.",Reisebüros,"travel agency","Wir buchen den Urlaub im Reisebüro.","We book the vacation in the travel agency.","Das Reisebüro hat gute Angebote.","The travel agency has good offers."
+verb,buchen,-,-,-,-,"to book","Wir müssen das Hotel buchen.","We have to book the hotel.","Hast du den Flug gebucht?","Did you book the flight?"
+noun,Flug,der,m,"der Flug — masculine.",Flüge,"flight","Der Flug dauert zehn Stunden.","The flight takes ten hours.","Ich habe Angst vor dem Flug.","I am afraid of the flight."
+noun,Passagier,der,m,"der Passagier — masculine.",Passagiere,"passenger","Der Passagier steigt in den Zug ein.","The passenger gets on the train.","Bitte anschnallen, liebe Passagiere.","Please fasten seatbelts, dear passengers."
+noun,Gleis,das,n,"das Gleis — neuter.",Gleise,"track / platform","Der Zug fährt auf Gleis 4 ab.","The train departs on track 4.","Wo ist Gleis 10?","Where is track 10?"
+verb,abfahren,-,-,-,-,"to depart","Wann fährt der Bus ab?","When does the bus depart?","Der Zug fährt in fünf Minuten ab.","The train departs in five minutes."
+verb,ankommen,-,-,-,-,"to arrive","Wann kommen wir an?","When do we arrive?","Der Zug kommt pünktlich an.","The train arrives on time."
+noun,Verspätung,die,f,"die Verspätung — feminine.",Verspätungen,"delay","Der Zug hat 20 Minuten Verspätung.","The train has a 20-minute delay.","Entschuldigung für die Verspätung.","Apologies for the delay."
+noun,Fahrplan,der,m,"der Fahrplan — masculine.",Fahrpläne,"timetable / schedule","Wir müssen den Fahrplan checken.","We have to check the timetable.","Der Fahrplan hat sich geändert.","The schedule has changed."
+noun,Schiff,das,n,"das Schiff — neuter.",Schiffe,"ship / boat","Wir fahren mit dem Schiff auf dem Rhein.","We travel by ship on the Rhine.","Das Schiff ist sehr groß.","The ship is very big."
+noun,Grenze,die,f,"die Grenze — feminine.",Grenzen,"border","Wir fahren über die Grenze nach Frankreich.","We drive over the border to France.","An der Grenze müssen wir warten.","We have to wait at the border."
+noun,Aussicht,die,f,"die Aussicht — feminine.",Aussichten,"view / prospect","Vom Berg hat man eine tolle Aussicht.","From the mountain you have a great view.","Die Aussicht auf das Meer ist fantastisch.","The view of the sea is fantastic."
+adj,direkt,-,-,-,-,"direct / straight","Das ist der direkte Weg.","That is the direct way.","Gibt es einen direkten Flug?","Is there a direct flight?"
+noun,Reiseführer,der,m,"der Reiseführer — masculine.",Reiseführer,"travel guide (book or person)","Ich kaufe einen Reiseführer für Rom.","I am buying a travel guide for Rome.","Der Reiseführer erklärt die Geschichte.","The tour guide explains the history."
+adj,weltweit,-,-,-,-,"worldwide","Das Unternehmen agiert weltweit.","The company operates worldwide.","Der Trend ist weltweit bekannt.","The trend is known worldwide."

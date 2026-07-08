@@ -1,23 +1,76 @@
-pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en,ex3_de,ex3_en
-noun,Geld,das,n,das Geld - neuter.,,money,Geld allein macht nicht glücklich.,Money alone does not make you happy.,,,,
-noun,Wert,der,m,der Wert - masculine.,Werte,value,Familie ist ein wichtiger Wert.,Family is an important value.,,,,
-noun,Bank,die,f,die Bank - feminine.,Banken,bank,Ich gehe heute zur Bank.,I am going to the bank today.,,,,
-noun,Konto,das,n,das Konto - neuter.,Konten,bank account,Ich möchte ein Konto eröffnen.,I would like to open an account.,,,,
-noun,Überweisung,die,f,die Überweisung - feminine.,Überweisungen,bank transfer,Die Überweisung dauert einen Tag.,The transfer takes one day.,,,,
-noun,Geldautomat,der,m,der Geldautomat - masculine.,Geldautomaten,ATM,Der Geldautomat ist neben der Bank.,The ATM is next to the bank.,,,,
-noun,Kreditkarte,die,f,die Kreditkarte - feminine.,Kreditkarten,credit card,Kann ich mit Kreditkarte bezahlen?,Can I pay by credit card?,,,,
-noun,Passwort,das,n,das Passwort - neuter.,Passwörter,password,Das Passwort muss sicher sein.,The password must be secure.,,,,
-noun,Online-Banking,das,n,das Online-Banking - neuter.,,online banking,Online-Banking ist praktisch.,Online banking is practical.,,,,
-noun,Vorteil,der,m,der Vorteil - masculine.,Vorteile,advantage,Ein Vorteil ist die Zeitersparnis.,One advantage is saving time.,,,,
-noun,Nachteil,der,m,der Nachteil - masculine.,Nachteile,disadvantage,Ein Nachteil ist das Risiko.,One disadvantage is the risk.,,,,
-noun,Post,die,f,die Post - feminine.,,mail / post office,Die Post ist schon angekommen.,The mail has already arrived.,,,,
-noun,Brief,der,m,der Brief - masculine.,Briefe,letter,Ich schreibe einen Brief.,I am writing a letter.,,,,
-noun,Umschlag,der,m,der Umschlag - masculine.,Umschläge,envelope,Der Brief ist im Umschlag.,The letter is in the envelope.,,,,
-noun,SMS,die,f,die SMS - feminine.,SMS,text message,Ich schicke dir eine SMS.,I am sending you a text message.,,,,
-noun,E-Mail,die,f,die E-Mail - feminine.,E-Mails,email,Die E-Mail ist sehr kurz.,The email is very short.,,,,
-verb,gehören,,,,,to belong,Wem gehört dieses Konto?,Who does this account belong to?,,,,
-verb,ausgeben,,,,,to spend,Wofür hast du das Geld ausgegeben?,What did you spend the money on?,,,,
-verb,überweisen,,,,,to transfer,Ich überweise das Geld online.,I transfer the money online.,,,,
-verb,eröffnen,,,,,to open,Sie eröffnet ein Konto.,She opens an account.,,,,
-verb,verschicken,,,,,to send,Wir verschicken die Briefe morgen.,We send the letters tomorrow.,,,,
-phrase,höfliche Frage,,,,,polite question,Eine indirekte Frage klingt höflich.,An indirect question sounds polite.,,,,
+pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
+noun,Wandel,der,m,"der Wandel — masculine.",-,"change / transformation","Die Welt ist im Wandel.","The world is changing (in transformation).","Der Wandel der Technik ist schnell.","The change of technology is fast."
+noun,Geld,das,n,"das Geld — neuter.",Gelder,"money","Ich habe kein Geld dabei.","I have no money with me.","Was kann man mit Geld machen?","What can one do with money?"
+noun,Bank,die,f,"die Bank — feminine.",Banken,"bank (financial institution)","Ich muss zur Bank gehen.","I have to go to the bank.","Die Bank schließt um 16 Uhr.","The bank closes at 4 PM."
+noun,Konto,das,n,"das Konto — neuter.",Konten,"account / bank account","Ich möchte ein Konto eröffnen.","I would like to open an account.","Das Geld ist auf meinem Konto.","The money is on my account."
+noun,Girokonto,das,n,"das Girokonto — neuter.",Girokonten,"checking account","Mein Gehalt geht auf das Girokonto.","My salary goes to the checking account.","Ein Girokonto ist wichtig für die Miete.","A checking account is important for the rent."
+verb,eröffnen,-,-,-,-,"to open (an account)","Ich möchte ein Bankkonto eröffnen.","I would like to open a bank account.","Die Bank eröffnet eine neue Filiale.","The bank is opening a new branch."
+noun,Geldautomat,der,m,"der Geldautomat — masculine (weak noun).",Geldautomaten,"ATM / cash machine","Ich hole Geld am Geldautomaten.","I am getting money at the ATM.","Der Geldautomat ist leider kaputt.","The ATM is unfortunately broken."
+verb,abheben,-,-,-,-,"to withdraw (money)","Ich muss 100 Euro abheben.","I have to withdraw 100 euros.","Wo kann ich Geld abheben?","Where can I withdraw money?"
+verb,einzahlen,-,-,-,-,"to deposit (money)","Er zahlt das Geld auf sein Konto ein.","He deposits the money into his account.","Ich möchte Bargeld einzahlen.","I would like to deposit cash."
+verb,überweisen,-,-,-,-,"to transfer (money)","Bitte überweisen Sie die Miete.","Please transfer the rent.","Ich habe das Geld gestern überwiesen.","I transferred the money yesterday."
+noun,Überweisung,die,f,"die Überweisung — feminine.",Überweisungen,"bank transfer","Die Überweisung dauert einen Tag.","The bank transfer takes one day.","Haben Sie die Überweisung gemacht?","Did you do the bank transfer?"
+noun,EC-Karte,die,f,"die EC-Karte — feminine.",EC-Karten,"debit card","Ich zahle mit EC-Karte.","I pay with debit card.","Ich habe meine EC-Karte verloren.","I lost my debit card."
+noun,Kreditkarte,die,f,"die Kreditkarte — feminine.",Kreditkarten,"credit card","Akzeptieren Sie Kreditkarten?","Do you accept credit cards?","Mit der Kreditkarte kann man online zahlen.","With the credit card one can pay online."
+noun,PIN,die,f,"die PIN — feminine.",PINs,"PIN (code)","Bitte geben Sie Ihre PIN ein.","Please enter your PIN.","Ich habe meine PIN vergessen!","I forgot my PIN."
+noun,Geheimzahl,die,f,"die Geheimzahl — feminine.",Geheimzahlen,"secret number / PIN","Die Geheimzahl ist streng geheim.","The secret number is strictly secret.","Verraten Sie niemandem Ihre Geheimzahl.","Do not tell anyone your secret number."
+noun,Zinsen,die,pl,"die Zinsen — plural only.",-,"interest (financial)","Auf dem Sparkonto gibt es Zinsen.","There is interest on the savings account.","Die Zinsen sind im Moment niedrig.","The interest rates are currently low."
+noun,Gebühr,die,f,"die Gebühr — feminine.",Gebühren,"fee / charge","Die Überweisung kostet keine Gebühr.","The transfer costs no fee.","Gibt es Gebühren für das Konto?","Are there fees for the account?"
+adj,bar,-,-,-,-,"in cash","Zahlen Sie bar oder mit Karte?","Are you paying in cash or with card?","Ich habe nicht genug bar.","I don't have enough in cash."
+noun,Bargeld,das,n,"das Bargeld — neuter.",-,"cash","Wir akzeptieren nur Bargeld.","We accept only cash.","Ich brauche Bargeld.","I need cash."
+noun,Geldschein,der,m,"der Geldschein — masculine.",Geldscheine,"banknote / bill","Ich habe einen 50-Euro-Geldschein.","I have a 50 euro bill.","Der Geldschein ist neu.","The banknote is new."
+noun,Münze,die,f,"die Münze — feminine.",Münzen,"coin","Hast du ein paar Münzen für den Automaten?","Do you have a few coins for the machine?","Ich sammle alte Münzen.","I collect old coins."
+verb,sparen,-,-,-,-,"to save (money)","Ich spare für einen neuen Laptop.","I am saving for a new laptop.","Wer spart, hat später mehr Geld.","Whoever saves has more money later."
+verb,ausgeben,-,-,-,-,"to spend (money)","Er gibt viel Geld für Kleidung aus.","He spends a lot of money on clothes.","Wofür hast du das Geld ausgegeben?","What did you spend the money on?"
+noun,Tabu,das,n,"das Tabu — neuter.",Tabus,"taboo","Über Geld zu sprechen ist oft ein Tabu.","Talking about money is often a taboo.","Das ist ein Tabu-Thema.","That is a taboo topic."
+noun,Gehalt,das,n,"das Gehalt — neuter.",Gehälter,"salary","Das Gehalt ist auf dem Konto.","The salary is on the account.","Wie hoch ist dein Gehalt?","How high is your salary?"
+noun,Wert,der,m,"der Wert — masculine.",Werte,"value","Was sind Ihre persönlichen Werte?","What are your personal values?","Das Haus hat einen hohen Wert.","The house has a high value."
+noun,Liebe,die,f,"die Liebe — feminine.",-,"love","Liebe ist wichtiger als Geld.","Love is more important than money.","Glaubst du an die wahre Liebe?","Do you believe in true love?"
+noun,Gesundheit,die,f,"die Gesundheit — feminine.",-,"health","Gesundheit kann man nicht kaufen.","You cannot buy health.","Geld ist nichts ohne Gesundheit.","Money is nothing without health."
+noun,Familie,die,f,"die Familie — feminine.",Familien,"family","Meine Familie ist mein größtes Glück.","My family is my greatest happiness.","Ich liebe meine Familie.","I love my family."
+noun,Freundschaft,die,f,"die Freundschaft — feminine.",Freundschaften,"friendship","Unsere Freundschaft ist mir sehr wichtig.","Our friendship is very important to me.","Eine echte Freundschaft hält ewig.","A true friendship lasts forever."
+noun,Freiheit,die,f,"die Freiheit — feminine.",Freiheiten,"freedom","Die Freiheit des Menschen ist ein hohes Gut.","The freedom of man is a high good.","Freiheit ist mehr wert als Gold.","Freedom is worth more than gold."
+noun,Frieden,der,m,"der Frieden — masculine.",-,"peace","Wir wünschen uns Frieden auf der Welt.","We wish for peace in the world.","Frieden ist das wichtigste Ziel.","Peace is the most important goal."
+verb,gehören,-,-,-,-,"to belong to","Wem gehört dieses Auto?","Who does this car belong to?","Das Buch gehört mir.","The book belongs to me."
+pron,wem,-,-,-,-,"to whom (dative)","Wem gehört das?","To whom does that belong?","Wem hast du das Geld gegeben?","Who did you give the money to?"
+noun,Spruch,der,m,"der Spruch — masculine.",Sprüche,"saying / quote","Es gibt viele Sprüche über Geld.","There are many sayings about money.","Kennst du diesen Spruch?","Do you know this saying?"
+noun,Sprichwort,das,n,"das Sprichwort — neuter.",Sprichwörter,"proverb","Ein altes Sprichwort sagt...","An old proverb says...","Das Sprichwort ist wahr.","The proverb is true."
+noun,Gedicht,das,n,"das Gedicht — neuter.",Gedichte,"poem","Er hat ein Gedicht über die Liebe geschrieben.","He wrote a poem about love.","Wir lernen ein Gedicht in der Schule.","We are learning a poem in school."
+noun,Reim,der,m,"der Reim — masculine.",Reime,"rhyme","Dieses Gedicht hat keinen Reim.","This poem has no rhyme.","Der Reim ist lustig.","The rhyme is funny."
+verb,reimen,-,-,-,-,"to rhyme","Herz reimt sich auf Schmerz.","Heart rhymes with pain (Schmerz).","Kannst du reimen?","Can you rhyme?"
+noun,Online-Banking,das,n,"das Online-Banking — neuter.",-,"online banking","Ich mache meine Überweisungen per Online-Banking.","I do my transfers via online banking.","Online-Banking ist sehr praktisch.","Online banking is very practical."
+noun,Vorteil,der,m,"der Vorteil — masculine.",Vorteile,"advantage","Was ist der Vorteil von E-Mails?","What is the advantage of emails?","Es hat viele Vorteile.","It has many advantages."
+noun,Nachteil,der,m,"der Nachteil — masculine.",Nachteile,"disadvantage","Ein Nachteil ist die Sicherheit.","A disadvantage is the security.","Gibt es auch Nachteile?","Are there also disadvantages?"
+adj,sicher,-,-,-,-,"safe / secure","Online-Banking ist heute sehr sicher.","Online banking is very safe today.","Bist du sicher?","Are you sure?"
+adj,unsicher,-,-,-,-,"unsafe / insecure","Das Passwort ist zu unsicher.","The password is too insecure.","Ich bin mir unsicher.","I am unsure."
+noun,Passwort,das,n,"das Passwort — neuter.",Passwörter,"password","Du musst dein Passwort ändern.","You must change your password.","Das Passwort ist geheim.","The password is secret."
+verb,ändern,-,-,-,-,"to change / alter","Ich ändere meine Meinung.","I am changing my opinion.","Man sollte sein Passwort oft ändern.","One should change one's password often."
+noun,Post,die,f,"die Post — feminine.",-,"mail / post office","Ich muss zur Post gehen.","I have to go to the post office.","Ist heute Post für mich gekommen?","Did mail come for me today?"
+noun,Brief,der,m,"der Brief — masculine.",Briefe,"letter","Ich schreibe einen Brief an meine Oma.","I am writing a letter to my grandma.","Der Brief kostet 80 Cent.","The letter costs 80 cents."
+noun,Briefmarke,die,f,"die Briefmarke — feminine.",Briefmarken,"postage stamp","Ich brauche eine Briefmarke für den Brief.","I need a stamp for the letter.","Hast du eine Briefmarke?","Do you have a stamp?"
+noun,Umschlag,der,m,"der Umschlag — masculine.",Umschläge,"envelope","Steck den Brief in den Umschlag.","Put the letter in the envelope.","Der Umschlag ist weiß.","The envelope is white."
+noun,Paket,das,n,"das Paket — neuter.",Pakete,"package / parcel","Ich schicke das Paket nach Spanien.","I am sending the package to Spain.","Das Paket ist sehr schwer.","The package is very heavy."
+noun,Päckchen,das,n,"das Päckchen — neuter.",Päckchen,"small package","Das Päckchen ist leichter als das Paket.","The small package is lighter than the parcel.","Ich habe ein Päckchen bekommen.","I received a small package."
+verb,schicken,-,-,-,-,"to send","Ich schicke dir eine E-Mail.","I will send you an email.","Hast du das Paket geschickt?","Did you send the package?"
+verb,empfangen,-,-,-,-,"to receive","Ich habe den Brief empfangen.","I received the letter.","Können Sie SMS empfangen?","Can you receive SMS?"
+noun,Absender,der,m,"der Absender — masculine.",Absender,"sender","Wer ist der Absender von diesem Paket?","Who is the sender of this package?","Bitte schreiben Sie den Absender auf den Brief.","Please write the sender on the letter."
+noun,Empfänger,der,m,"der Empfänger — masculine.",Empfänger,"recipient / receiver","Der Name des Empfängers fehlt.","The name of the recipient is missing.","Die E-Mail hat den Empfänger nicht erreicht.","The email did not reach the recipient."
+adj,elektronisch,-,-,-,-,"electronic","Ich lese gerne elektronische Post.","I like reading electronic mail.","Das Gerät ist elektronisch.","The device is electronic."
+noun,Kommunikation,die,f,"die Kommunikation — feminine.",Kommunikationen,"communication","Die Kommunikation heute ist sehr schnell.","Communication today is very fast.","Die moderne Kommunikation hat viele Vorteile.","Modern communication has many advantages."
+noun,Messenger,der,m,"der Messenger — masculine.",Messenger,"messenger app","Ich schreibe dir über den Messenger.","I am writing to you via the messenger.","Welchen Messenger nutzt du?","Which messenger do you use?"
+verb,werden,-,-,-,-,"to become / auxiliary for passive","Das Geld wird überwiesen.","The money is being transferred.","Das Paket wird heute geliefert.","The package is being delivered today."
+verb,geliefert werden,-,-,-,-,"to be delivered (passive)","Das Sofa wird morgen geliefert.","The sofa is being delivered tomorrow.","Die Post wird morgens geliefert.","The mail is delivered in the morning."
+verb,geschrieben werden,-,-,-,-,"to be written (passive)","Der Brief wird von Hand geschrieben.","The letter is being written by hand.","Die E-Mail wird gerade geschrieben.","The email is being written right now."
+conj,ob,-,-,-,-,"if / whether (indirect questions)","Weißt du, ob er kommt?","Do you know if he is coming?","Ich frage, ob die Bank offen ist.","I ask whether the bank is open."
+verb,wissen,-,-,-,-,"to know (a fact)","Weißt du, wo die Bank ist?","Do you know where the bank is?","Ich weiß es nicht.","I don't know."
+adj,öffentlich,-,-,-,-,"public","Das ist eine öffentliche Bank.","That is a public bank.","Das ist ein öffentliches WLAN.","That is a public Wi-Fi."
+adj,privat,-,-,-,-,"private","Geld ist eine private Sache.","Money is a private matter.","Das ist mein privates Konto.","That is my private account."
+verb,verdienen,-,-,-,-,"to earn","Er verdient sehr viel Geld.","He earns a lot of money.","Ich verdiene nicht schlecht.","I don't earn badly."
+noun,Schalter,der,m,"der Schalter — masculine.",Schalter,"counter / desk","Gehen Sie bitte zum Schalter 3.","Please go to counter 3.","Am Schalter kann man Geld abheben.","At the counter one can withdraw money."
+noun,Mitarbeiter,der,m,"der Mitarbeiter — masculine.",Mitarbeiter,"employee / staff member","Der Mitarbeiter der Bank hilft Ihnen.","The bank employee will help you.","Sprechen Sie mit unserem Mitarbeiter.","Speak with our staff member."
+noun,Mitarbeiterin,die,f,"die Mitarbeiterin — feminine.",Mitarbeiterinnen,"employee (female)","Die Mitarbeiterin ist sehr freundlich.","The employee is very friendly.","Fragen Sie die Mitarbeiterin.","Ask the employee."
+noun,Filiale,die,f,"die Filiale — feminine.",Filialen,"branch (office)","Unsere Bank hat eine neue Filiale.","Our bank has a new branch.","Gehen Sie in die nächste Filiale.","Go to the nearest branch."
+adj,wichtig,-,-,-,-,"important","Geld ist wichtig, aber nicht alles.","Money is important, but not everything.","Es ist eine wichtige E-Mail.","It is an important email."
+noun,Reichtum,der,m,"der Reichtum — masculine.",Reichtümer,"wealth","Reichtum macht nicht immer glücklich.","Wealth does not always make you happy.","Sein Reichtum ist bekannt.","His wealth is known."
+adj,reich,-,-,-,-,"rich","Er ist sehr reich.","He is very rich.","Die reiche Frau kauft ein Auto.","The rich woman buys a car."
+adj,arm,-,-,-,-,"poor","Viele Menschen auf der Welt sind arm.","Many people in the world are poor.","Ein armer Mann bat um Geld.","A poor man asked for money."
