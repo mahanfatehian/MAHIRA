@@ -174,6 +174,50 @@ def test_page_renders_known_verb_and_handles_unknown():
         page.deleteLater()
 
 
+def test_page_reuses_paradigm_widgets_and_skips_same_request(monkeypatch):
+    _qapp()
+    from ui.pages.conjugation import ConjugationPage, _Speaker, _TenseCard
+
+    page = ConjugationPage()
+    try:
+        calls = []
+        real_conjugate = page._conj.conjugate
+
+        def counted(verb):
+            calls.append(verb)
+            return real_conjugate(verb)
+
+        monkeypatch.setattr(page._conj, "conjugate", counted)
+
+        page.set_verb("gehen", "to go")
+        page.on_show()
+        card_ids = {id(card) for card in page.findChildren(_TenseCard)}
+        speaker_ids = {id(spk) for spk in page.findChildren(_Speaker)}
+        assert len(card_ids) == 7
+        assert len(speaker_ids) == 39
+        assert calls == ["gehen"]
+
+        # Re-showing the same semantic request is a true no-op: no lookup and no
+        # replacement card/button tree, even if casing/outer spacing differs.
+        page.on_show()
+        page.set_verb("  GEHEN  ", "to go")
+        page.on_show()
+        assert calls == ["gehen"]
+        assert {id(card) for card in page.findChildren(_TenseCard)} == card_ids
+        assert {id(spk) for spk in page.findChildren(_Speaker)} == speaker_ids
+
+        # A different verb updates those same widgets in place.
+        page.set_verb("machen", "to make")
+        page.on_show()
+        assert calls == ["gehen", "machen"]
+        assert {id(card) for card in page.findChildren(_TenseCard)} == card_ids
+        assert {id(spk) for spk in page.findChildren(_Speaker)} == speaker_ids
+        assert page._header_infinitive.text() == "machen"
+        assert page._tense_cards["Präsens"]._rows[0][1].text() == "mache"
+    finally:
+        page.deleteLater()
+
+
 def test_page_speakers_read_pronoun_plus_form():
     _qapp()
     from ui.pages.conjugation import ConjugationPage, _Speaker

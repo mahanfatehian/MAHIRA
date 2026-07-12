@@ -171,3 +171,117 @@ def test_page_empty_state_when_no_rows():
         assert page.scroll.isHidden() is True
     finally:
         page.deleteLater()
+
+
+def test_page_virtualizes_large_deck_and_skips_same_context_reload():
+    app = _qapp()
+    from PySide6.QtWidgets import QWidget
+    from ui.pages.vocab_table import VocabTablePage
+
+    class CountingSession(_FakeSession):
+        def __init__(self, rows):
+            super().__init__(rows)
+            self.loads = 0
+
+        def vocab_table_rows(self):
+            self.loads += 1
+            return super().vocab_table_rows()
+
+    rows = [
+        {
+            "word": f"Wort {i}",
+            "article": "das",
+            "plural": f"Wörter {i}",
+            "meaning": f"word {i}",
+            "pos": "noun",
+        }
+        for i in range(500)
+    ]
+    session = CountingSession(rows)
+    page = VocabTablePage(session)
+    try:
+        assert session.loads == 1
+        assert page._table_model.rowCount() == 500
+        # Model/view keeps QWidget count constant instead of creating five
+        # frames and labels per row (which would exceed 5,000 here).
+        assert len(page.findChildren(QWidget)) < 80
+
+        page.on_show()
+        app.processEvents()
+        assert session.loads == 1, "returning from conjugation must reuse the unchanged deck"
+    finally:
+        page.deleteLater()
+
+
+def test_word_pronunciation_is_keyboard_accessible_and_respects_masking():
+    _qapp()
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+    from ui.pages.vocab_table import VocabTablePage, _COLUMN_INDEX
+
+    word = "frühstücken"
+    page = VocabTablePage(
+        _FakeSession([
+            {"word": word, "article": "", "plural": "", "meaning": "to have breakfast", "pos": "verb"}
+        ])
+    )
+    try:
+        spoken = []
+        page.table.audio_requested.connect(lambda text, row: spoken.append((text, row)))
+        index = page._table_model.index(0, _COLUMN_INDEX["word"])
+        page.table.setCurrentIndex(index)
+        assert word in str(index.data(Qt.ItemDataRole.AccessibleTextRole))
+        assert "Space" in str(index.data(Qt.ItemDataRole.AccessibleTextRole))
+
+        space = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Space, Qt.KeyboardModifier.NoModifier)
+        page.table.keyPressEvent(space)
+        assert spoken == [(word, 0)]
+
+        # Hiding the headword also hides its listening action.  The first key
+        # press reveals the word; only the next press is allowed to speak it.
+        page._toggle_column("word")
+        assert page._table_model.is_hidden(0, "word")
+        page.table.keyPressEvent(
+            QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Space, Qt.KeyboardModifier.NoModifier)
+        )
+        assert spoken == [(word, 0)]
+        assert not page._table_model.is_hidden(0, "word")
+        page.table.keyPressEvent(
+            QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Space, Qt.KeyboardModifier.NoModifier)
+        )
+        assert spoken == [(word, 0), (word, 0)]
+    finally:
+        page.deleteLater()
+
+
+def test_word_pronunciation_hit_target_emits_exact_visible_word():
+    app = _qapp()
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from ui.pages.vocab_table import VocabTablePage, _COLUMN_INDEX
+
+    word = "aufstehen"
+    page = VocabTablePage(
+        _FakeSession([
+            {"word": word, "article": "", "plural": "", "meaning": "to get up", "pos": "verb"}
+        ])
+    )
+    try:
+        page.resize(760, 520)
+        page.show()
+        QTest.qWait(25)
+        app.processEvents()
+        page._play_word = lambda _text, _row: None
+        heard = []
+        page.table.audio_requested.connect(lambda text, row: heard.append((text, row)))
+        index = page._table_model.index(0, _COLUMN_INDEX["word"])
+        target = page.table.itemDelegate().audio_rect(page.table.visualRect(index)).center()
+        QTest.mouseClick(page.table.viewport(), Qt.MouseButton.LeftButton, pos=target)
+        assert heard == [(word, 0)]
+
+        page._toggle_column("word")
+        QTest.mouseClick(page.table.viewport(), Qt.MouseButton.LeftButton, pos=target)
+        assert heard == [(word, 0)], "the listening action must not reveal a masked answer by sound"
+    finally:
+        page.hide()
+        page.deleteLater()

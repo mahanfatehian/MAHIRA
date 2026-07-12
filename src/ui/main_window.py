@@ -155,6 +155,11 @@ class MainWindow(QMainWindow):
         if hasattr(self.pages["progress"], "go_learn"):
             self.pages["progress"].go_learn.connect(lambda: self.go("practice"))
 
+        # Objective availability depends only on level/book/Lektion.  Page
+        # navigation inside that context (especially Table <-> Conjugation)
+        # must not reopen SQLite six times on every hop.
+        self._last_nav_context: tuple[str, str, int] | None = None
+
         alias = {
             "practice_select": "setup",
             "level_select": "setup",
@@ -319,7 +324,7 @@ class MainWindow(QMainWindow):
         except Exception:
             return None
 
-    def _sync_nav(self) -> None:
+    def _sync_nav(self, force: bool = False) -> None:
         """Enable the objective tabs that have a deck for the current Lektion;
         disable them all while the user is still choosing a Lektion in Setup."""
         enabled: set[str] = set()
@@ -327,6 +332,9 @@ class MainWindow(QMainWindow):
         level = (getattr(st, "level", "") or "").strip()
         book = (getattr(st, "book_slug", "") or "").strip()
         lek_n = int(getattr(st, "lektion_number", 0) or 0)
+        signature = (level.upper(), book, lek_n)
+        if not force and signature == self._last_nav_context:
+            return
         if level and book and lek_n:
             lek_id = self._current_lektion_id()
             if lek_id is not None:
@@ -337,6 +345,7 @@ class MainWindow(QMainWindow):
                     except Exception:
                         pass
         self.nav.set_objective_states(enabled)
+        self._last_nav_context = signature
 
     def _show(self, page_key: str) -> None:
         w = self.pages[page_key]

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 import hashlib
+import os
 import re
 import wave
 from pathlib import Path
@@ -10,15 +12,18 @@ from .model_manager import PiperModelManager
 
 class PronunciationService:
     """
-    German pronunciation generator with temporary WAV cache.
+    German pronunciation generator with a bounded, reusable WAV cache.
 
     Cache behavior:
     - files are stored in .mahira/audio_cache
     - same normalized text maps to same filename
     - if file exists, it is reused
-    - caller can explicitly delete files when no longer needed
-    - caller can clear all cache on startup to avoid stale files after crashes
+    - least-recently-used files are pruned beyond 256 clips / 128 MiB
+    - callers can still explicitly delete clips or clear the cache
     """
+
+    MAX_CACHE_FILES = 256
+    MAX_CACHE_BYTES = 128 * 1024 * 1024
 
     def __init__(self, model_manager: PiperModelManager | None = None) -> None:
         self.model_manager = model_manager or PiperModelManager()
@@ -86,9 +91,8 @@ class PronunciationService:
         out_path = self.get_cached_path(normalized, length_scale)
 
         if out_path.exists() and not force:
+            self._mark_cache_used(out_path)
             return out_path
-
-        voice = self.model_manager.get_german_voice()
 
         syn_config = None
         if length_scale is not None:
@@ -102,22 +106,83 @@ class PronunciationService:
         # straight to out_path would leave a 0-byte WAV there if synthesize_wav
         # raises — and the cache-hit check above would then serve that empty file
         # forever, silencing the word until the whole cache is cleared.
-        tmp_path = out_path.with_name(out_path.name + ".part")
-        try:
-            with wave.open(str(tmp_path), "wb") as wav_file:
-                if syn_config is not None:
-                    voice.synthesize_wav(normalized, wav_file, syn_config=syn_config)
-                else:
-                    voice.synthesize_wav(normalized, wav_file)
-            tmp_path.replace(out_path)
-        except Exception:
+        # Real managers expose one process-wide lock; the fallback keeps the
+        # service compatible with duck-typed managers used by callers and tests.
+        # Accept either a lock property or a context-manager factory.
+        synthesis_lock = getattr(self.model_manager, "synthesis_lock", None)
+        if callable(synthesis_lock):
+            synthesis_lock = synthesis_lock()
+        synthesis_guard = synthesis_lock or nullcontext()
+
+        with synthesis_guard:
+            # Another page may have rendered this same cache key while this
+            # worker waited. Avoid duplicate work unless force asks for it.
+            if out_path.exists() and not force:
+                self._mark_cache_used(out_path)
+                return out_path
+
+            voice = self.model_manager.get_german_voice()
+            tmp_path = out_path.with_name(out_path.name + ".part")
             try:
-                tmp_path.unlink()
-            except OSError:
-                pass
-            raise
+                with wave.open(str(tmp_path), "wb") as wav_file:
+                    if syn_config is not None:
+                        voice.synthesize_wav(normalized, wav_file, syn_config=syn_config)
+                    else:
+                        voice.synthesize_wav(normalized, wav_file)
+                tmp_path.replace(out_path)
+                self._mark_cache_used(out_path)
+                self._prune_cache(protect=out_path)
+            except Exception:
+                try:
+                    tmp_path.unlink()
+                except OSError:
+                    pass
+                raise
 
         return out_path
+
+    @staticmethod
+    def _mark_cache_used(path: Path) -> None:
+        """Refresh mtime so pruning behaves like a small on-disk LRU."""
+        try:
+            os.utime(path, None)
+        except OSError:
+            pass
+
+    def _prune_cache(self, *, protect: Path | None = None) -> int:
+        """Bound pronunciation storage without penalizing repeat playback."""
+        entries: list[tuple[float, int, Path]] = []
+        for path in self.cache_dir.glob("*.wav"):
+            try:
+                stat = path.stat()
+                entries.append((stat.st_mtime, stat.st_size, path))
+            except OSError:
+                continue
+        entries.sort(key=lambda item: item[0], reverse=True)
+
+        kept_files = 0
+        kept_bytes = 0
+        deleted = 0
+        protected = protect.resolve() if protect is not None else None
+        for _mtime, size, path in entries:
+            try:
+                is_protected = protected is not None and path.resolve() == protected
+            except OSError:
+                is_protected = False
+            fits = (
+                kept_files < self.MAX_CACHE_FILES
+                and kept_bytes + size <= self.MAX_CACHE_BYTES
+            )
+            if is_protected or fits:
+                kept_files += 1
+                kept_bytes += size
+                continue
+            try:
+                path.unlink()
+                deleted += 1
+            except OSError:
+                pass
+        return deleted
 
     def delete_cached_audio(self, text: str, length_scale: float | None = None) -> bool:
         """

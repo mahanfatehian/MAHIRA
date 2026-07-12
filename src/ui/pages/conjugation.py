@@ -57,6 +57,7 @@ class _Speaker(QPushButton):
         self._available = True
         self._busy = False
         self._playing = False
+        self._audio_text = ""
         self.setObjectName("ConjSpeaker")
         self.setCursor(QCursor(Qt.PointingHandCursor))
         self.setFixedSize(28, 24)
@@ -64,7 +65,20 @@ class _Speaker(QPushButton):
         self._sync()
 
     def set_available(self, v: bool) -> None:
-        self._available = bool(v); self._sync()
+        available = bool(v)
+        if available == self._available:
+            return
+        self._available = available
+        self._sync()
+
+    def set_audio_text(self, text: str) -> None:
+        self._audio_text = (text or "").strip()
+        label = self._audio_text or "this form"
+        self.setAccessibleName(f"Play pronunciation for {label}")
+        self.setToolTip(f"Play pronunciation for {label}")
+
+    def audio_text(self) -> str:
+        return self._audio_text
 
     def set_busy(self, v: bool) -> None:
         self._busy = bool(v)
@@ -79,6 +93,8 @@ class _Speaker(QPushButton):
         self._sync()
 
     def reset_state(self) -> None:
+        if not self._busy and not self._playing:
+            return
         self._busy = False
         self._playing = False
         self._sync()
@@ -86,12 +102,13 @@ class _Speaker(QPushButton):
     def _sync(self) -> None:
         self.setText("…" if self._busy else ("🔈" if self._playing else "🔊"))
         self.setEnabled(self._available and not self._busy and not self._playing)
-        self.setStyleSheet(
-            "QPushButton#ConjSpeaker { background:#1B1B1B; color:#FFFFFF; border:1px solid #2E2E2E;"
-            " border-radius:7px; font-size:11px; padding:0px; }"
-            "QPushButton#ConjSpeaker:hover { background:#232323; border:1px solid #FFFFFF; }"
-            "QPushButton#ConjSpeaker:disabled { background:#151515; color:#6B6B6B; border:1px solid #252525; }"
-        )
+        label = self._audio_text or "this form"
+        if self._busy:
+            self.setToolTip(f"Preparing pronunciation for {label}…")
+        elif self._playing:
+            self.setToolTip(f"Playing pronunciation for {label}…")
+        else:
+            self.setToolTip(f"Play pronunciation for {label}")
 
 
 class _TtsWorker(QObject):
@@ -125,10 +142,20 @@ def _chip(text: str, color: str = "#D7DAE0") -> QLabel:
 
 
 class _TenseCard(QFrame):
-    """One tense as a card: an accented header + the six person/form rows."""
+    """One persistent tense card whose row values can be updated in place."""
 
-    def __init__(self, title_de: str, title_en: str, accent: str, rows: list, on_audio=None):
-        super().__init__()
+    def __init__(
+        self,
+        title_de: str,
+        title_en: str,
+        accent: str,
+        rows: list,
+        on_audio=None,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self._on_audio = on_audio
+        self._rows: list[tuple[QLabel, QLabel, _Speaker]] = []
         self.setObjectName("TenseCard")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setStyleSheet(
@@ -163,27 +190,68 @@ class _TenseCard(QFrame):
         grid.setColumnStretch(0, 0)   # pronoun
         grid.setColumnStretch(1, 1)   # form
         grid.setColumnStretch(2, 0)   # speaker
-        for r, (pronoun, form, speak) in enumerate(rows):
+        for r, (pronoun, _form, _speak) in enumerate(rows):
             pl = QLabel(pronoun)
             pl.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
             pl.setStyleSheet("QLabel { color:#8A8A8A; background:transparent; border:none; }")
             pl.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             pl.setMinimumWidth(64)
-            has = bool((form or "").strip())
-            fl = QLabel(form if has else "—")
+            fl = QLabel("—")
             fl.setFont(QFont("Segoe UI", 11, QFont.Weight.Black))
-            fl.setStyleSheet(
-                f"QLabel {{ color:{'#F0F0F0' if has else '#4E4E4E'}; background:transparent; border:none; }}"
-            )
+            fl.setStyleSheet("QLabel { color:#4E4E4E; background:transparent; border:none; }")
+            fl._conj_has_form = False
             fl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            spk = _Speaker(self)
+            spk.set_available(False)
+            spk.hide()
+            spk.clicked.connect(lambda _=False, b=spk: self._play_speaker(b))
             grid.addWidget(pl, r, 0)
             grid.addWidget(fl, r, 1)
-            # A speaker for every real form — reads the pronoun + form aloud.
-            if has and speak and callable(on_audio):
-                spk = _Speaker()
-                spk.clicked.connect(lambda _=False, t=speak, b=spk: on_audio(t, b))
-                grid.addWidget(spk, r, 2, Qt.AlignRight | Qt.AlignVCenter)
+            grid.addWidget(spk, r, 2, Qt.AlignRight | Qt.AlignVCenter)
+            self._rows.append((pl, fl, spk))
         lay.addLayout(grid)
+        self.set_rows(rows)
+
+    def _play_speaker(self, spk: _Speaker) -> None:
+        text = spk.audio_text()
+        if text and callable(self._on_audio):
+            self._on_audio(text, spk)
+
+    def set_rows(self, rows: list) -> bool:
+        """Update row labels/forms/audio payloads; return whether any form exists."""
+        values = list(rows or [])
+        any_form = False
+        for index, (pl, fl, spk) in enumerate(self._rows):
+            if index >= len(values):
+                pl.hide()
+                fl.hide()
+                spk.set_audio_text("")
+                spk.set_available(False)
+                spk.hide()
+                continue
+
+            pronoun, form, speak = values[index]
+            form = str(form or "")
+            speak = str(speak or "").strip()
+            has = bool(form.strip())
+            any_form = any_form or has
+
+            pl.setText(str(pronoun or ""))
+            pl.show()
+            fl.setText(form if has else "—")
+            fl.show()
+            if bool(getattr(fl, "_conj_has_form", False)) != has:
+                fl._conj_has_form = has
+                fl.setStyleSheet(
+                    f"QLabel {{ color:{'#F0F0F0' if has else '#4E4E4E'}; "
+                    "background:transparent; border:none; }"
+                )
+
+            available = has and bool(speak) and callable(self._on_audio)
+            spk.set_audio_text(speak if available else "")
+            spk.set_available(available)
+            spk.setVisible(available)
+        return any_form
 
 
 class ConjugationPage(QWidget):
@@ -209,12 +277,31 @@ class ConjugationPage(QWidget):
         self._cur_text = ""
         self._cur_path = ""
 
+        # The expensive paradigm widgets are created lazily on the first known
+        # verb, then retained for the lifetime of the page. Subsequent verbs only
+        # update their labels, audio payloads, and visibility.
+        self._rendered_key: tuple[str, str] | None = None
+        self._known_content_built = False
+        self._header_widget: Optional[QFrame] = None
+        self._grid_host: Optional[QWidget] = None
+        self._tense_grid: Optional[QGridLayout] = None
+        self._tense_cards: dict[str, _TenseCard] = {}
+        self._imperative_card: Optional[_TenseCard] = None
+        self._empty_widget: Optional[QFrame] = None
+        self._empty_subtitle: Optional[QLabel] = None
+
         self.setObjectName("ConjugationPage")
         self.setFont(QFont("Segoe UI", 10))
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setStyleSheet(
             "#ConjugationPage { background-color:#0E0E0E; }"
             "#ConjugationPage QLabel { background: transparent; }"
+            "#ConjugationPage QPushButton#ConjSpeaker { background:#1B1B1B; color:#FFFFFF; "
+            "border:1px solid #2E2E2E; border-radius:7px; font-size:11px; padding:0px; }"
+            "#ConjugationPage QPushButton#ConjSpeaker:hover { background:#232323; "
+            "border:1px solid #FFFFFF; }"
+            "#ConjugationPage QPushButton#ConjSpeaker:disabled { background:#151515; "
+            "color:#6B6B6B; border:1px solid #252525; }"
         )
         self._build_ui()
 
@@ -258,7 +345,7 @@ class ConjugationPage(QWidget):
         tb.addWidget(self.back_btn)
         outer.addWidget(self.top_bar)
 
-        # ---- Scroll area holding a content host we rebuild per verb ----
+        # ---- Scroll area holding persistent content updated per verb ----
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -271,6 +358,7 @@ class ConjugationPage(QWidget):
         self.host_lay = QVBoxLayout(self.host)
         self.host_lay.setContentsMargins(0, 0, 6, 0)
         self.host_lay.setSpacing(12)
+        self.host_lay.addStretch(1)
         self.scroll.setWidget(self.host)
         outer.addWidget(self.scroll, 1)
 
@@ -282,33 +370,19 @@ class ConjugationPage(QWidget):
     def on_show(self) -> None:
         self._render()
 
-    def _clear_host(self) -> None:
-        while self.host_lay.count():
-            item = self.host_lay.takeAt(0)
-            w = item.widget()
-            if w is not None:
-                w.setParent(None)
-                w.deleteLater()
-            else:
-                lay = item.layout()
-                if lay is not None:
-                    self._delete_layout(lay)
-
-    def _delete_layout(self, lay) -> None:
-        while lay.count():
-            it = lay.takeAt(0)
-            w = it.widget()
-            if w is not None:
-                w.setParent(None)
-                w.deleteLater()
-            elif it.layout() is not None:
-                self._delete_layout(it.layout())
+    def _request_key(self) -> tuple[str, str]:
+        # Match Conjugator's case/whitespace-insensitive input semantics while
+        # retaining a distinct key for reflexive "sich …" requests.
+        verb = " ".join((self._infinitive or "").casefold().split())
+        return verb, self._meaning
 
     def _render(self) -> None:
-        # Stop any playback and drop references to the speaker buttons we are
-        # about to delete, so handlers never touch a deleted widget.
+        key = self._request_key()
+        if key == self._rendered_key:
+            return
+
+        # Payloads on the persistent speaker buttons are about to change.
         self._stop_audio()
-        self._clear_host()
         verb = self._infinitive
         self.page_subtitle.setText(verb or "Full verb paradigm")
 
@@ -318,49 +392,118 @@ class ConjugationPage(QWidget):
         except Exception:
             conj = None
 
-        if conj is None:
-            self.host_lay.addWidget(self._empty_card(verb))
-            self.host_lay.addStretch(1)
+        self.host.setUpdatesEnabled(False)
+        try:
+            if conj is None:
+                self._show_empty(verb)
+            else:
+                self._show_conjugation(conj)
+            self._rendered_key = key
+            self.scroll.verticalScrollBar().setValue(0)
+        finally:
+            self.host.setUpdatesEnabled(True)
+            self.host.update()
+
+    def _dispatch_audio(self, text: str, spk: _Speaker) -> None:
+        # Resolve self._play at click time so tests and integrations can replace
+        # the audio handler without reconnecting all persistent buttons.
+        self._play(text, spk)
+
+    def _ensure_known_content(self, conj) -> None:
+        if self._known_content_built:
             return
 
-        self.host_lay.addWidget(self._header_card(conj))
+        self._header_widget = self._header_card()
+        self.host_lay.insertWidget(self.host_lay.count() - 1, self._header_widget)
 
-        # Tense cards, two per row.
-        grid_host = QWidget()
-        grid_host.setStyleSheet("background: transparent;")
-        grid = QGridLayout(grid_host)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(12)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
+        self._grid_host = QWidget(self.host)
+        self._grid_host.setStyleSheet("background: transparent;")
+        self._tense_grid = QGridLayout(self._grid_host)
+        self._tense_grid.setContentsMargins(0, 0, 0, 0)
+        self._tense_grid.setHorizontalSpacing(12)
+        self._tense_grid.setVerticalSpacing(12)
+        self._tense_grid.setColumnStretch(0, 1)
+        self._tense_grid.setColumnStretch(1, 1)
 
-        cards = []
-        for de, en, forms in conj.tenses():
-            if not any((f or "").strip() for f in forms):
-                continue  # skip a tense the dataset can't fill (rare verbs)
-            accent = _TENSE_ACCENT.get(de, "#9AA0A6")
-            # Speak the pronoun + the form, e.g. "ich liebe", "wir haben geliebt".
+        blank_rows = [(person, "", "") for person in PERSONS]
+        for de, en, _forms in conj.tenses():
+            card = _TenseCard(
+                de,
+                en,
+                _TENSE_ACCENT.get(de, "#9AA0A6"),
+                blank_rows,
+                on_audio=self._dispatch_audio,
+                parent=self._grid_host,
+            )
+            card.hide()
+            self._tense_cards[de] = card
+
+        imp_rows = [(person, "", "") for person in ("du", "ihr", "Sie")]
+        self._imperative_card = _TenseCard(
+            "Imperativ",
+            "Imperative",
+            _IMP_ACCENT,
+            imp_rows,
+            on_audio=self._dispatch_audio,
+            parent=self._grid_host,
+        )
+        self._imperative_card.hide()
+
+        self.host_lay.insertWidget(self.host_lay.count() - 1, self._grid_host)
+        self._known_content_built = True
+
+    def _show_conjugation(self, conj) -> None:
+        self._ensure_known_content(conj)
+        self._update_header(conj)
+        if self._empty_widget is not None:
+            self._empty_widget.hide()
+
+        grid = self._tense_grid
+        if grid is None:
+            return
+
+        all_cards = list(self._tense_cards.values())
+        if self._imperative_card is not None:
+            all_cards.append(self._imperative_card)
+        for card in all_cards:
+            grid.removeWidget(card)
+            card.hide()
+
+        visible_cards: list[_TenseCard] = []
+        for de, _en, forms in conj.tenses():
+            card = self._tense_cards.get(de)
+            if card is None:
+                continue
             rows = [
-                (p, f, (f"{_SPOKEN_PRONOUN.get(p, p)} {f}".strip() if (f or '').strip() else ""))
-                for p, f in zip(PERSONS, forms)
+                (
+                    person,
+                    form,
+                    f"{_SPOKEN_PRONOUN.get(person, person)} {form}".strip()
+                    if (form or "").strip()
+                    else "",
+                )
+                for person, form in zip(PERSONS, forms)
             ]
-            cards.append(_TenseCard(de, en, accent, rows, on_audio=self._play))
+            if card.set_rows(rows):
+                visible_cards.append(card)
 
-        # Imperativ as a final card (only when the verb actually has one). The
-        # form itself is the command, so it is spoken as-is ("geh", "gehen Sie").
-        if conj.imperativ:
-            order = [k for k in ("du", "ihr", "Sie") if k in conj.imperativ]
-            imp_rows = [(k, conj.imperativ[k], conj.imperativ[k]) for k in order]
-            cards.append(_TenseCard("Imperativ", "Imperative", _IMP_ACCENT, imp_rows, on_audio=self._play))
+        if self._imperative_card is not None:
+            order = [key for key in ("du", "ihr", "Sie") if key in conj.imperativ]
+            rows = [(key, conj.imperativ[key], conj.imperativ[key]) for key in order]
+            if self._imperative_card.set_rows(rows):
+                visible_cards.append(self._imperative_card)
 
-        for i, card in enumerate(cards):
-            grid.addWidget(card, i // 2, i % 2, Qt.AlignmentFlag.AlignTop)
+        # Compact the cards exactly as before when a rare verb lacks a tense.
+        for index, card in enumerate(visible_cards):
+            grid.addWidget(card, index // 2, index % 2, Qt.AlignmentFlag.AlignTop)
+            card.show()
 
-        self.host_lay.addWidget(grid_host)
-        self.host_lay.addStretch(1)
+        if self._header_widget is not None:
+            self._header_widget.show()
+        if self._grid_host is not None:
+            self._grid_host.show()
 
-    def _header_card(self, conj) -> QFrame:
+    def _header_card(self) -> QFrame:
         card = QFrame()
         card.setObjectName("ConjHeader")
         card.setStyleSheet(
@@ -372,33 +515,61 @@ class ConjugationPage(QWidget):
 
         top = QHBoxLayout()
         top.setSpacing(12)
-        inf = QLabel(conj.infinitive)
-        inf.setFont(QFont("Segoe UI", 22, QFont.Weight.Black))
-        inf.setStyleSheet("QLabel { color:#FFFFFF; background:transparent; border:none; }")
-        top.addWidget(inf, 0)
-        if self._meaning:
-            mean = QLabel(self._meaning)
-            mean.setFont(QFont("Segoe UI", 12, QFont.Weight.DemiBold))
-            mean.setStyleSheet("QLabel { color:#9AA0A6; background:transparent; border:none; }")
-            top.addWidget(mean, 0)
+        self._header_infinitive = QLabel("")
+        self._header_infinitive.setFont(QFont("Segoe UI", 22, QFont.Weight.Black))
+        self._header_infinitive.setStyleSheet(
+            "QLabel { color:#FFFFFF; background:transparent; border:none; }"
+        )
+        top.addWidget(self._header_infinitive, 0)
+        self._header_meaning = QLabel("")
+        self._header_meaning.setFont(QFont("Segoe UI", 12, QFont.Weight.DemiBold))
+        self._header_meaning.setStyleSheet(
+            "QLabel { color:#9AA0A6; background:transparent; border:none; }"
+        )
+        self._header_meaning.hide()
+        top.addWidget(self._header_meaning, 0)
         top.addStretch(1)
         lay.addLayout(top)
 
         chips = QHBoxLayout()
         chips.setSpacing(8)
-        aux = (conj.hilfsverb or "haben").strip()
-        chips.addWidget(_chip(f"Perfekt mit „{aux}“", "#66E39A" if aux == "haben" else "#34D2E0"))
-        if conj.partizip2:
-            chips.addWidget(_chip(f"Partizip II: {conj.partizip2}", "#FFB020"))
-        if conj.separable:
-            chips.addWidget(_chip("trennbar · separable", "#B983FF"))
-        if conj.reflexive:
-            chips.addWidget(_chip("reflexiv · sich", "#FF6FB5"))
+        self._aux_chip = _chip("")
+        self._participle_chip = _chip("", "#FFB020")
+        self._separable_chip = _chip("trennbar · separable", "#B983FF")
+        self._reflexive_chip = _chip("reflexiv · sich", "#FF6FB5")
+        chips.addWidget(self._aux_chip)
+        chips.addWidget(self._participle_chip)
+        chips.addWidget(self._separable_chip)
+        chips.addWidget(self._reflexive_chip)
+        self._participle_chip.hide()
+        self._separable_chip.hide()
+        self._reflexive_chip.hide()
         chips.addStretch(1)
         lay.addLayout(chips)
         return card
 
+    def _update_header(self, conj) -> None:
+        self._header_infinitive.setText(conj.infinitive)
+        self._header_meaning.setText(self._meaning)
+        self._header_meaning.setVisible(bool(self._meaning))
+
+        aux = (conj.hilfsverb or "haben").strip()
+        aux_color = "#66E39A" if aux == "haben" else "#34D2E0"
+        self._aux_chip.setText(f"Perfekt mit „{aux}“")
+        self._aux_chip.setStyleSheet(
+            f"QLabel {{ color:{aux_color}; border:1px solid #2E2E2E; background:#101010; "
+            "border-radius:9px; padding:3px 10px; }"
+        )
+        self._participle_chip.setText(f"Partizip II: {conj.partizip2}")
+        self._participle_chip.setVisible(bool(conj.partizip2))
+        self._separable_chip.setVisible(bool(conj.separable))
+        self._reflexive_chip.setVisible(bool(conj.reflexive))
+
     def _empty_card(self, verb: str) -> QFrame:
+        if self._empty_widget is not None:
+            self._update_empty_subtitle(verb)
+            return self._empty_widget
+
         card = QFrame()
         card.setObjectName("ConjEmpty")
         card.setStyleSheet(
@@ -411,15 +582,33 @@ class ConjugationPage(QWidget):
         title.setAlignment(Qt.AlignCenter)
         title.setFont(QFont("Segoe UI", 14, QFont.Weight.Black))
         title.setStyleSheet("QLabel { color:#D0D0D0; background:transparent; border:none; }")
-        sub = QLabel(
-            f"“{verb}” isn’t in the verb dataset."
-            if verb else "No verb selected."
+        self._empty_subtitle = QLabel("")
+        self._empty_subtitle.setAlignment(Qt.AlignCenter)
+        self._empty_subtitle.setStyleSheet(
+            "QLabel { color:#7C7C7C; font-size:12px; background:transparent; border:none; }"
         )
-        sub.setAlignment(Qt.AlignCenter)
-        sub.setStyleSheet("QLabel { color:#7C7C7C; font-size:12px; background:transparent; border:none; }")
         lay.addWidget(title)
-        lay.addWidget(sub)
+        lay.addWidget(self._empty_subtitle)
+        self._empty_widget = card
+        self._update_empty_subtitle(verb)
         return card
+
+    def _update_empty_subtitle(self, verb: str) -> None:
+        if self._empty_subtitle is None:
+            return
+        self._empty_subtitle.setText(
+            f"“{verb}” isn’t in the verb dataset." if verb else "No verb selected."
+        )
+
+    def _show_empty(self, verb: str) -> None:
+        card = self._empty_card(verb)
+        if card.parent() is None:
+            self.host_lay.insertWidget(self.host_lay.count() - 1, card)
+        if self._header_widget is not None:
+            self._header_widget.hide()
+        if self._grid_host is not None:
+            self._grid_host.hide()
+        card.show()
 
     # -------------------------------------------------------------- audio
     def _ensure_audio(self) -> bool:
@@ -462,19 +651,22 @@ class ConjugationPage(QWidget):
             self._play_svc.play_file(self._cur_path)
             return
 
-        # Switching to a new form: drop the previous clip so the per-form audio
-        # cache doesn't grow without bound as the user taps around the paradigm.
-        if self._cur_path and self._pron is not None:
-            try:
-                self._pron.delete_cached_file(self._cur_path)
-            except Exception:
-                pass
-
         self._cur_text = text
         self._cur_path = ""
         self._active_spk = spk
         self._play_svc.stop()
         spk.set_busy(True)
+
+        # Reuse any clip produced earlier in this page or another audio tab.
+        # PronunciationService maintains a bounded shared disk cache.
+        try:
+            cached = self._pron.get_cached_path(text)
+            if cached.exists():
+                self._cur_path = str(cached)
+                self._play_svc.play_file(cached)
+                return
+        except Exception:
+            pass
 
         self._audio_thread = QThread(self)
         self._audio_worker = _TtsWorker(self._pron, text)
@@ -493,13 +685,8 @@ class ConjugationPage(QWidget):
     @Slot(str, str)
     def _on_tts_done(self, text: str, path: str) -> None:
         if text != self._cur_text:
-            # Superseded (a newer click, or the user left the tab): drop the clip
-            # we just rendered so it doesn't linger in the audio cache.
-            if path and self._pron is not None:
-                try:
-                    self._pron.delete_cached_file(path)
-                except Exception:
-                    pass
+            # Superseded (a newer click, or the user left the tab): retain the
+            # completed clip in the bounded cache for a later visit.
             return
         self._cur_path = path
         if self._active_spk is not None:
@@ -542,13 +729,6 @@ class ConjugationPage(QWidget):
         if self._active_spk is not None:
             try:
                 self._active_spk.reset_state()
-            except Exception:
-                pass
-        # Drop the last synthesized clip so leaving the tab / re-rendering
-        # doesn't leave WAVs piling up in the audio cache.
-        if self._cur_path and self._pron is not None:
-            try:
-                self._pron.delete_cached_file(self._cur_path)
             except Exception:
                 pass
         self._active_spk = None
