@@ -532,6 +532,9 @@ class ListeningReviewPage(QWidget):
             self.counter_lbl.setText("0 / 30")
 
     def _show_milestone_banner(self) -> None:
+        if bool(getattr(getattr(getattr(self.session, "settings", None), "value", None), "reduced_motion", False)):
+            self._update_counter()
+            return
         answered = getattr(self.session, "study_answered", 0)
         self.milestone_lbl.setText(f"Milestone! {answered} items reviewed this session. Keep going!")
         self.counter_lbl.setStyleSheet(STYLE_COUNTER_HL)

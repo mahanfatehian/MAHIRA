@@ -2,17 +2,19 @@
 material is guaranteed a coverage quota."""
 
 import random
+from types import SimpleNamespace
 
 from core.session import SessionService
 
 
-def _session(eps=0.0, coverage=0.3):
+def _session(eps=0.0, coverage=0.3, new_limit=None):
     """A SessionService shell exercising only the pure assembly helpers
     (no DB / no Qt / no ML model)."""
     s = object.__new__(SessionService)
     s.rng = random.Random(0)
     s.ml_exploration_eps = eps
     s.unseen_coverage_fraction = coverage
+    s.plan = SimpleNamespace(new_limit=new_limit)
     return s
 
 
@@ -90,3 +92,44 @@ def test_exploration_disabled_is_deterministic():
     q1 = s1._assemble_queue(full_ids=FULL, unseen_ids=[], ranked_ids=RANKED, limit=10)
     q2 = s2._assemble_queue(full_ids=FULL, unseen_ids=[], ranked_ids=RANKED, limit=10)
     assert q1 == q2
+
+
+def test_new_card_limit_is_a_hard_maximum_for_the_final_queue():
+    s = _session(new_limit=3)
+    unseen = list(range(43, 51))
+    q = s._assemble_queue(
+        full_ids=FULL,
+        unseen_ids=unseen,
+        ranked_ids=RANKED,
+        limit=10,
+    )
+
+    assert len(q) == 10
+    assert len(set(q).intersection(unseen)) == 3
+    assert q[-1] == 50
+
+
+def test_new_card_limit_shortens_an_all_new_deck_instead_of_exceeding_it():
+    s = _session(new_limit=2)
+    q = s._assemble_queue(
+        full_ids=FULL,
+        unseen_ids=FULL,
+        ranked_ids=RANKED,
+        limit=10,
+    )
+
+    assert q == [49, 50]
+
+
+def test_zero_new_card_limit_excludes_all_unseen_cards_even_with_exploration():
+    s = _session(eps=1.0, new_limit=0)
+    unseen = list(range(1, 41))
+    q = s._assemble_queue(
+        full_ids=FULL,
+        unseen_ids=unseen,
+        ranked_ids=RANKED,
+        limit=10,
+    )
+
+    assert len(q) == 10
+    assert set(q).isdisjoint(unseen)

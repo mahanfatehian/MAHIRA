@@ -83,9 +83,22 @@ jobs:
           $env:PYTHONPATH = "src"
           python -c "import mahira, PySide6.QtWidgets, sklearn, scipy, numpy, joblib; print('imports OK')"
 
+      - name: Run fast test gate
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -m pytest -m "not slow" --timeout=60 -q
+
       - name: Build app (PyInstaller)
         shell: pwsh
         run: pyinstaller packaging/mahira.spec --noconfirm
+
+      - name: Verify packaged application
+        shell: pwsh
+        run: |
+          $env:MAHIRA_DATA_DIR = "$env:RUNNER_TEMP\mahira-health"
+          $process = Start-Process -FilePath "dist\MAHIRA\MAHIRA.exe" -ArgumentList "--health-check" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Packaged health check failed with exit code $($process.ExitCode)" }
 
       - name: Build installer (Inno Setup)
         shell: pwsh
@@ -144,6 +157,9 @@ jobs:
       - name: Smoke-check imports
         run: PYTHONPATH=src python -c "import mahira, PySide6.QtWidgets, sklearn, scipy, numpy, joblib; print('imports OK')"
 
+      - name: Run fast test gate
+        run: PYTHONPATH=src python -m pytest -m "not slow" --timeout=60 -q
+
       - name: Generate .icns from logo (best effort)
         run: |
           set -e
@@ -167,6 +183,11 @@ jobs:
       - name: Build app (PyInstaller)
         run: pyinstaller packaging/mahira.spec --noconfirm
 
+      - name: Verify packaged application
+        run: |
+          export MAHIRA_DATA_DIR="$RUNNER_TEMP/mahira-health"
+          "dist/MAHIRA.app/Contents/MacOS/MAHIRA" --health-check
+
       - name: Ad-hoc codesign (so the unsigned arm64 app launches)
         run: |
           set -e
@@ -176,7 +197,7 @@ jobs:
           # version of macOS"). A clean tree + clean ad-hoc signature fixes that.
           xattr -cr "dist/MAHIRA.app"
           codesign --force --deep --sign - "dist/MAHIRA.app"
-          codesign --verify --deep --strict --verbose=2 "dist/MAHIRA.app" || true
+          codesign --verify --deep --strict --verbose=2 "dist/MAHIRA.app"
 
       - name: Package DMG
         run: |

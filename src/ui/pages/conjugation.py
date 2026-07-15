@@ -735,6 +735,13 @@ class ConjugationPage(QWidget):
         self._cur_text = ""
         self._cur_path = ""
 
+    def _stop_background(self) -> None:
+        """Release the read-only conjugation database during app shutdown."""
+        try:
+            self._conj.close()
+        except Exception:
+            pass
+
     def hideEvent(self, event):
         # Leaving the tab stops any audio (and releases the speaker buttons we
         # are about to lose on the next render).

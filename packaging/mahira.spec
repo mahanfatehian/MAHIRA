@@ -9,17 +9,15 @@ Produces a self-contained "onedir" build in dist/MAHIRA:
     - Windows: dist/MAHIRA/MAHIRA.exe  (+ bundled libs)
     - macOS:   dist/MAHIRA.app
 
-Everything the app generates at runtime (SQLite DB, ML models, logs, audio
-cache) is written to a `.mahira` folder under data_root() — see
-src/mahira/config.py:data_root. On Windows/Linux that is next to the executable
-(a user-writable install dir); on macOS the .app bundle is read-only, so state
-goes to ~/Library/Application Support/MAHIRA instead.
+Everything generated at runtime (SQLite DB, ML models, logs, audio cache) is
+outside replaceable app bundles: %LOCALAPPDATA%/MAHIRA on Windows and
+~/Library/Application Support/MAHIRA on macOS. See mahira.config:data_root.
 """
 import os
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_data_files
 
 # SPECPATH is the directory containing this spec file (packaging/).
 ROOT = Path(SPECPATH).resolve().parent
@@ -34,6 +32,12 @@ IS_MAC = sys.platform == "darwin"
 _raw_version = os.environ.get("MAHIRA_VERSION", "0.1.0").lstrip("vV")
 APP_VERSION = _raw_version.split("-")[0] or "0.1.0"
 
+# Embed the resolved CI/tag version so the runtime update checker compares the
+# actual build, not a hard-coded source fallback.
+VERSION_FILE = ROOT / "build" / "version.json"
+VERSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+VERSION_FILE.write_text('{"version": "' + _raw_version + '"}', encoding="utf-8")
+
 # ---------------------------------------------------------------------------
 # Bundled (read-only) resources — resolved at runtime via config.resource_root()
 # ---------------------------------------------------------------------------
@@ -41,15 +45,13 @@ datas = [
     (str(ROOT / "data"), "data"),                       # seeds/ + pages/
     (str(ROOT / "assets"), "assets"),                   # logo + piper voice + MiniLM-L12 meaning model
     (str(ROOT / "src" / "db" / "schema.sql"), "src/db"),  # DB schema
+    (str(VERSION_FILE), "assets"),                         # runtime build version
 ]
 
-# Heavy / dynamically-imported packages need explicit collection.
-hiddenimports = []
-for pkg in ("sklearn", "scipy", "piper", "onnxruntime", "tokenizers"):
-    try:
-        hiddenimports += collect_submodules(pkg)
-    except Exception:
-        pass
+# Only genuinely dynamic packages need explicit collection. sklearn/scipy are
+# imported normally and have official PyInstaller hooks; collecting every
+# submodule would accidentally ship their test suites and optional Torch paths.
+hiddenimports = ["piper", "onnxruntime", "tokenizers"]
 
 for pkg in ("sklearn", "piper", "onnxruntime", "tokenizers"):
     try:
@@ -77,7 +79,11 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter"],
+    excludes=[
+        "tkinter", "pytest", "torch", "tensorflow", "onnx",
+        "sklearn.tests", "scipy.tests", "onnxruntime.tools",
+        "onnxruntime.transformers", "piper.train",
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

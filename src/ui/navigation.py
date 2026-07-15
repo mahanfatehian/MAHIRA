@@ -15,7 +15,10 @@ class NavBar(QWidget):
 
     def __init__(self):
         super().__init__()
+        # Match the original navigation footprint so feature pages do not lose
+        # content width on compact windows or enlarged text settings.
         self.setFixedWidth(160)
+        self.setAccessibleName("Main navigation")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -79,6 +82,7 @@ class NavBar(QWidget):
             "padding: 6px 0 2px 12px; background: transparent;"
         )
 
+        self.btn_today = QPushButton("Today")
         self.btn_setup = QPushButton("Setup")
 
         practice_lbl = QLabel("PRACTICE")
@@ -91,9 +95,16 @@ class NavBar(QWidget):
 
         self.btn_learn = QPushButton("Learn")
         self.btn_progress = QPushButton("Progress")
+        self.btn_mistakes = QPushButton("Mistakes")
+        self.btn_lab = QPushButton("Lab")
+        self.btn_settings = QPushButton("Settings")
+
+        insights_lbl = QLabel("INSIGHTS")
+        insights_lbl.setStyleSheet(group_lbl_style)
 
         # key -> button (used for active/enabled state)
         self._buttons = {
+            "today": self.btn_today,
             "setup": self.btn_setup,
             "vocab": self.btn_vocab,
             "grammar": self.btn_grammar,
@@ -101,25 +112,32 @@ class NavBar(QWidget):
             "listening": self.btn_listening,
             "learn": self.btn_learn,
             "progress": self.btn_progress,
+            "mistakes": self.btn_mistakes,
+            "lab": self.btn_lab,
+            "settings": self.btn_settings,
         }
 
         for key, btn in self._buttons.items():
             btn.setStyleSheet(self._btn_style)
             btn.clicked.connect(lambda _=False, k=key: self.go.emit(k))
 
+        layout.addWidget(self.btn_today)
         layout.addWidget(self.btn_setup)
         layout.addWidget(practice_lbl)
         layout.addWidget(self.btn_vocab)
         layout.addWidget(self.btn_grammar)
         layout.addWidget(self.btn_sentences)
         layout.addWidget(self.btn_listening)
-        layout.addSpacing(6)
+        layout.addWidget(self.btn_lab)
+        layout.addWidget(insights_lbl)
         layout.addWidget(self.btn_learn)
         layout.addWidget(self.btn_progress)
+        layout.addWidget(self.btn_mistakes)
 
         layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+        layout.addWidget(self.btn_settings)
 
-        self._active = "setup"
+        self._active = "today"
         self._enabled_objectives: set[str] = set()
         self._render()
 

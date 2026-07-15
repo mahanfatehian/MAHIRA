@@ -1,5 +1,11 @@
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version INTEGER PRIMARY KEY,
+  applied_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  description TEXT NOT NULL
+);
+
 -- =========================
 -- Books and Lektions
 -- German-only app: there is no language dimension.
@@ -96,12 +102,37 @@ CREATE TABLE IF NOT EXISTS vocab_states (
   -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
   stability REAL,
   difficulty REAL,
+  suspended INTEGER NOT NULL DEFAULT 0,
+  buried_until INTEGER,
   UNIQUE(vocab_id),
   FOREIGN KEY(vocab_id) REFERENCES vocab(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_vocab_states_due
 ON vocab_states(due_at);
+
+-- Productive recall and audio dictation are distinct memory skills.  Their
+-- scheduling state must never mutate the recognition state above.  Keeping
+-- both lanes in one additive table avoids duplicating vocabulary content while
+-- the compound uniqueness constraint guarantees exactly one state per lane.
+CREATE TABLE IF NOT EXISTS vocab_practice_states (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  vocab_id INTEGER NOT NULL,
+  practice_mode TEXT NOT NULL CHECK(practice_mode IN ('production', 'dictation')),
+  ease REAL NOT NULL DEFAULT 2.5,
+  interval_days REAL NOT NULL DEFAULT 0.0,
+  reps INTEGER NOT NULL DEFAULT 0,
+  lapses INTEGER NOT NULL DEFAULT 0,
+  due_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  last_review_at INTEGER,
+  stability REAL,
+  difficulty REAL,
+  UNIQUE(vocab_id, practice_mode),
+  FOREIGN KEY(vocab_id) REFERENCES vocab(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_vocab_practice_states_lane_due
+ON vocab_practice_states(practice_mode, due_at);
 
 CREATE TABLE IF NOT EXISTS reviews (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,6 +150,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   was_skipped INTEGER NOT NULL DEFAULT 0,
   rating INTEGER,
   response_ms INTEGER,
+  practice_mode TEXT NOT NULL DEFAULT 'recognition',
+  error_tags TEXT,
   FOREIGN KEY(vocab_id) REFERENCES vocab(id) ON DELETE CASCADE
 );
 
@@ -156,6 +189,8 @@ CREATE TABLE IF NOT EXISTS grammar_states (
   -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
   stability REAL,
   difficulty REAL,
+  suspended INTEGER NOT NULL DEFAULT 0,
+  buried_until INTEGER,
   UNIQUE(grammar_id),
   FOREIGN KEY(grammar_id) REFERENCES grammar(id) ON DELETE CASCADE
 );
@@ -176,6 +211,8 @@ CREATE TABLE IF NOT EXISTS grammar_reviews (
   was_skipped INTEGER NOT NULL DEFAULT 0,
   rating INTEGER,
   response_ms INTEGER,
+  practice_mode TEXT NOT NULL DEFAULT 'production',
+  error_tags TEXT,
   FOREIGN KEY(grammar_id) REFERENCES grammar(id) ON DELETE CASCADE
 );
 
@@ -211,6 +248,8 @@ CREATE TABLE IF NOT EXISTS sentence_states (
   -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
   stability REAL,
   difficulty REAL,
+  suspended INTEGER NOT NULL DEFAULT 0,
+  buried_until INTEGER,
   UNIQUE(sentence_id),
   FOREIGN KEY(sentence_id) REFERENCES sentences(id) ON DELETE CASCADE
 );
@@ -235,6 +274,8 @@ CREATE TABLE IF NOT EXISTS sentence_reviews (
   mismatch_count INTEGER,
   cap_errors INTEGER,
   punct_errors INTEGER,
+  practice_mode TEXT NOT NULL DEFAULT 'builder',
+  error_tags TEXT,
   FOREIGN KEY(sentence_id) REFERENCES sentences(id) ON DELETE CASCADE
 );
 
@@ -276,6 +317,8 @@ CREATE TABLE IF NOT EXISTS listening_states (
   -- FSRS memory model (NULL until first review; lazily migrated from ease/interval).
   stability REAL,
   difficulty REAL,
+  suspended INTEGER NOT NULL DEFAULT 0,
+  buried_until INTEGER,
   UNIQUE(listening_id),
   FOREIGN KEY(listening_id) REFERENCES listening(id) ON DELETE CASCADE
 );
@@ -294,8 +337,20 @@ CREATE TABLE IF NOT EXISTS listening_reviews (
   was_skipped INTEGER NOT NULL DEFAULT 0,
   rating INTEGER,
   response_ms INTEGER,
+  practice_mode TEXT NOT NULL DEFAULT 'comprehension',
+  error_tags TEXT,
   FOREIGN KEY(listening_id) REFERENCES listening(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_listening_reviews_item ON listening_reviews(listening_id);
 CREATE INDEX IF NOT EXISTS idx_listening_reviews_created ON listening_reviews(created_at);
+
+-- Learner controls kept separate from seeded content. `item_type` is one of
+-- vocab/grammar/sentences/listening and combines with item_id to form identity.
+CREATE TABLE IF NOT EXISTS card_flags (
+  item_type TEXT NOT NULL,
+  item_id INTEGER NOT NULL,
+  flagged_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+  note TEXT,
+  PRIMARY KEY(item_type, item_id)
+);

@@ -57,6 +57,26 @@ class VocabState:
 
 
 @dataclass(frozen=True)
+class VocabPracticeState:
+    """FSRS state for one active-recall vocabulary lane.
+
+    Recognition continues to use :class:`VocabState`; production and
+    dictation each receive an independent row keyed by ``practice_mode``.
+    """
+
+    vocab_id: int
+    practice_mode: str
+    ease: float
+    interval_days: float
+    reps: int
+    lapses: int
+    due_at: int
+    last_review_at: Optional[int]
+    stability: Optional[float] = None
+    difficulty: Optional[float] = None
+
+
+@dataclass(frozen=True)
 class GrammarItem:
     id: int
     deck_id: int
@@ -133,9 +153,31 @@ class ListeningState:
 class Repo:
     def __init__(self, db_path: Path):
         self.db_path = db_path
+        self._active_conn = None
+
+    @contextmanager
+    def transaction(self):
+        """Reuse one connection for bulk work such as first-run seed import."""
+        if self._active_conn is not None:
+            yield self._active_conn
+            return
+        conn = connect(self.db_path)
+        self._active_conn = conn
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            self._active_conn = None
+            conn.close()
 
     @contextmanager
     def _conn(self):
+        if self._active_conn is not None:
+            yield self._active_conn
+            return
         conn = connect(self.db_path)
         try:
             yield conn
@@ -496,10 +538,12 @@ class Repo:
                     WHERE v.deck_id=?
                     AND s.due_at<=?
                     AND (s.last_review_at IS NULL OR s.last_review_at<=?)
+                    AND s.suspended=0
+                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                     ORDER BY s.due_at ASC
                     LIMIT ?
                     """,
-                    (deck_id, now, cooldown_since, limit),
+                    (deck_id, now, cooldown_since, now, limit),
                 ).fetchall()
                 ids.extend([int(r["id"]) for r in due])
 
@@ -525,19 +569,203 @@ class Repo:
                     LEFT JOIN vocab_states s ON s.vocab_id=v.id
                     WHERE v.deck_id=?
                     AND (s.last_review_at IS NULL OR s.last_review_at<=?)
+                    AND COALESCE(s.suspended, 0)=0
+                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                     """,
-                    (deck_id, cooldown_since),
+                    (deck_id, cooldown_since, now),
                 ).fetchall()
                 pool = [int(r["id"]) for r in rows if int(r["id"]) not in set(ids)]
                 random.shuffle(pool)
                 ids.extend(pool[: (limit - len(ids))])
 
             if not ids:
-                rows2 = conn.execute("SELECT id FROM vocab WHERE deck_id=? LIMIT ?", (deck_id, limit)).fetchall()
+                rows2 = conn.execute(
+                    "SELECT v.id FROM vocab v LEFT JOIN vocab_states s ON s.vocab_id=v.id "
+                    "WHERE v.deck_id=? AND COALESCE(s.suspended,0)=0 "
+                    "AND (s.buried_until IS NULL OR s.buried_until<=?) LIMIT ?",
+                    (deck_id, now, limit),
+                ).fetchall()
                 ids = [int(r["id"]) for r in rows2]
 
         random.shuffle(ids)
         return ids[:limit]
+
+    @staticmethod
+    def _practice_lane(practice_mode: str) -> str:
+        lane = str(practice_mode or "").strip().lower()
+        if lane not in {"production", "dictation"}:
+            raise ValueError(
+                "practice_mode must be 'production' or 'dictation', "
+                f"not {practice_mode!r}"
+            )
+        return lane
+
+    def pick_vocab_practice_ids(
+        self,
+        deck_id: int,
+        practice_mode: str,
+        limit: int = 30,
+        *,
+        mode: str = "mixed",
+        cooldown_hours: int = 0,
+    ) -> list[int]:
+        """Select vocabulary for one isolated production/dictation lane.
+
+        Base recognition state is consulted only for learner controls.  A
+        suspended or currently buried card is therefore excluded everywhere,
+        including unseen and fallback paths, without sharing any FSRS values
+        with the selected practice lane.
+        """
+        lane = self._practice_lane(practice_mode)
+        limit = max(0, int(limit))
+        if limit == 0:
+            return []
+        selection_mode = str(mode or "mixed").strip().lower()
+        if selection_mode not in {"mixed", "due_only", "random_only"}:
+            raise ValueError(f"unknown selection mode: {mode!r}")
+
+        now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
+        ids: list[int] = []
+
+        with self._conn() as conn:
+            if selection_mode in {"mixed", "due_only"}:
+                rows = conn.execute(
+                    """
+                    SELECT v.id
+                      FROM vocab v
+                      JOIN vocab_practice_states ps
+                        ON ps.vocab_id=v.id AND ps.practice_mode=?
+                      LEFT JOIN vocab_states base ON base.vocab_id=v.id
+                     WHERE v.deck_id=?
+                       AND ps.due_at<=?
+                       AND (ps.last_review_at IS NULL OR ps.last_review_at<=?)
+                       AND COALESCE(base.suspended, 0)=0
+                       AND (base.buried_until IS NULL OR base.buried_until<=?)
+                     ORDER BY ps.due_at ASC, v.id ASC
+                     LIMIT ?
+                    """,
+                    (lane, int(deck_id), now, cooldown_since, now, limit),
+                ).fetchall()
+                ids.extend(int(row["id"]) for row in rows)
+
+            if len(ids) < limit and selection_mode == "mixed":
+                rows = conn.execute(
+                    """
+                    SELECT v.id
+                      FROM vocab v
+                      LEFT JOIN vocab_practice_states ps
+                        ON ps.vocab_id=v.id AND ps.practice_mode=?
+                      LEFT JOIN vocab_states base ON base.vocab_id=v.id
+                     WHERE v.deck_id=?
+                       AND ps.id IS NULL
+                       AND COALESCE(base.suspended, 0)=0
+                       AND (base.buried_until IS NULL OR base.buried_until<=?)
+                     ORDER BY v.id ASC
+                     LIMIT ?
+                    """,
+                    (lane, int(deck_id), now, limit - len(ids)),
+                ).fetchall()
+                ids.extend(int(row["id"]) for row in rows)
+
+            if len(ids) < limit and selection_mode == "random_only":
+                rows = conn.execute(
+                    """
+                    SELECT v.id
+                      FROM vocab v
+                      LEFT JOIN vocab_practice_states ps
+                        ON ps.vocab_id=v.id AND ps.practice_mode=?
+                      LEFT JOIN vocab_states base ON base.vocab_id=v.id
+                     WHERE v.deck_id=?
+                       AND (ps.last_review_at IS NULL OR ps.last_review_at<=?)
+                       AND COALESCE(base.suspended, 0)=0
+                       AND (base.buried_until IS NULL OR base.buried_until<=?)
+                    """,
+                    (lane, int(deck_id), cooldown_since, now),
+                ).fetchall()
+                already_selected = set(ids)
+                pool = [int(row["id"]) for row in rows if int(row["id"]) not in already_selected]
+                random.shuffle(pool)
+                ids.extend(pool[: limit - len(ids)])
+
+            # A due-only lane intentionally returns no unseen/not-due cards.
+            # Mixed/random selection has no flag-bypassing emergency fallback.
+
+        random.shuffle(ids)
+        return ids[:limit]
+
+    def pick_practice_vocab_ids(
+        self,
+        deck_id: int,
+        practice_mode: str,
+        limit: int = 30,
+        *,
+        mode: str = "mixed",
+        cooldown_hours: int = 0,
+    ) -> list[int]:
+        """UI-facing alias for :meth:`pick_vocab_practice_ids`."""
+        return self.pick_vocab_practice_ids(
+            deck_id,
+            practice_mode,
+            limit,
+            mode=mode,
+            cooldown_hours=cooldown_hours,
+        )
+
+    def ensure_vocab_practice_state(
+        self, vocab_id: int, practice_mode: str
+    ) -> VocabPracticeState:
+        lane = self._practice_lane(practice_mode)
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM vocab_practice_states WHERE vocab_id=? AND practice_mode=?",
+                (int(vocab_id), lane),
+            ).fetchone()
+            if row is None:
+                now = int(time.time())
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO vocab_practice_states(
+                        vocab_id, practice_mode, due_at
+                    ) VALUES (?, ?, ?)
+                    """,
+                    (int(vocab_id), lane, now),
+                )
+                row = conn.execute(
+                    "SELECT * FROM vocab_practice_states WHERE vocab_id=? AND practice_mode=?",
+                    (int(vocab_id), lane),
+                ).fetchone()
+            if row is None:  # defensive: FK failure should already have raised
+                raise RuntimeError("vocabulary practice state could not be created")
+            return self._row_to_vocab_practice_state(row)
+
+    def update_vocab_practice_state(self, state: VocabPracticeState) -> None:
+        lane = self._practice_lane(state.practice_mode)
+        with self._conn() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE vocab_practice_states
+                   SET ease=?, interval_days=?, reps=?, lapses=?, due_at=?,
+                       last_review_at=?, stability=?, difficulty=?
+                 WHERE vocab_id=? AND practice_mode=?
+                """,
+                (
+                    state.ease,
+                    state.interval_days,
+                    state.reps,
+                    state.lapses,
+                    state.due_at,
+                    state.last_review_at,
+                    state.stability,
+                    state.difficulty,
+                    state.vocab_id,
+                    lane,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise LookupError(
+                    f"no {lane!r} practice state exists for vocab {state.vocab_id}"
+                )
 
     def ensure_state(self, vocab_id: int) -> VocabState:
         with self._conn() as conn:
@@ -578,6 +806,8 @@ class Repo:
         was_skipped: int,
         rating: int | None,
         response_ms: int | None,
+        practice_mode: str = "recognition",
+        error_tags: str | None = None,
     ) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -588,9 +818,9 @@ class Repo:
                     meaning_correct, gender_correct, plural_correct,
                     tip_used, gender_tip_used,
                     was_checked, was_skipped,
-                    rating, response_ms
+                    rating, response_ms, practice_mode, error_tags
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     vocab_id,
@@ -598,7 +828,7 @@ class Repo:
                     meaning_correct, gender_correct, plural_correct,
                     int(tip_used), int(gender_tip_used),
                     int(was_checked), int(was_skipped),
-                    rating, response_ms,
+                    rating, response_ms, practice_mode, error_tags,
                 ),
             )
 
@@ -665,10 +895,12 @@ class Repo:
                     WHERE g.deck_id = ?
                     AND s.due_at <= ?
                     AND (s.last_review_at IS NULL OR s.last_review_at <= ?)
+                    AND s.suspended=0
+                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                     ORDER BY s.due_at ASC
                     LIMIT ?
                     """,
-                    (deck_id, now, cooldown_since, limit),
+                    (deck_id, now, cooldown_since, now, limit),
                 ).fetchall()
                 ids.extend([int(r["id"]) for r in due])
 
@@ -694,15 +926,22 @@ class Repo:
                     LEFT JOIN grammar_states s ON s.grammar_id = g.id
                     WHERE g.deck_id = ?
                     AND (s.last_review_at IS NULL OR s.last_review_at <= ?)
+                    AND COALESCE(s.suspended, 0)=0
+                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                     """,
-                    (deck_id, cooldown_since),
+                    (deck_id, cooldown_since, now),
                 ).fetchall()
                 pool = [int(r["id"]) for r in rows if int(r["id"]) not in set(ids)]
                 random.shuffle(pool)
                 ids.extend(pool[: (limit - len(ids))])
 
             if not ids:
-                rows2 = conn.execute("SELECT id FROM grammar WHERE deck_id=? LIMIT ?", (deck_id, limit)).fetchall()
+                rows2 = conn.execute(
+                    "SELECT g.id FROM grammar g LEFT JOIN grammar_states s ON s.grammar_id=g.id "
+                    "WHERE g.deck_id=? AND COALESCE(s.suspended,0)=0 "
+                    "AND (s.buried_until IS NULL OR s.buried_until<=?) LIMIT ?",
+                    (deck_id, now, limit),
+                ).fetchall()
                 ids = [int(r["id"]) for r in rows2]
 
         random.shuffle(ids)
@@ -851,10 +1090,12 @@ class Repo:
                     WHERE s.deck_id = ?
                       AND st.due_at <= ?
                       AND (st.last_review_at IS NULL OR st.last_review_at <= ?)
+                      AND st.suspended=0
+                      AND (st.buried_until IS NULL OR st.buried_until<=?)
                     ORDER BY st.due_at ASC
                     LIMIT ?
                     """,
-                    (deck_id, now, cooldown_since, int(limit)),
+                    (deck_id, now, cooldown_since, now, int(limit)),
                 ).fetchall()
                 ids.extend([int(r["id"]) for r in due])
 
@@ -881,8 +1122,10 @@ class Repo:
                     LEFT JOIN sentence_states st ON st.sentence_id = s.id
                     WHERE s.deck_id = ?
                       AND (st.last_review_at IS NULL OR st.last_review_at <= ?)
+                      AND COALESCE(st.suspended, 0)=0
+                      AND (st.buried_until IS NULL OR st.buried_until<=?)
                     """,
-                    (deck_id, cooldown_since),
+                    (deck_id, cooldown_since, now),
                 ).fetchall()
                 pool = [int(r["id"]) for r in rows if int(r["id"]) not in set(ids)]
                 random.shuffle(pool)
@@ -890,8 +1133,10 @@ class Repo:
 
             if not ids:
                 rows2 = conn.execute(
-                    "SELECT id FROM sentences WHERE deck_id=? LIMIT ?",
-                    (deck_id, int(limit)),
+                    "SELECT s.id FROM sentences s LEFT JOIN sentence_states st ON st.sentence_id=s.id "
+                    "WHERE s.deck_id=? AND COALESCE(st.suspended,0)=0 "
+                    "AND (st.buried_until IS NULL OR st.buried_until<=?) LIMIT ?",
+                    (deck_id, now, int(limit)),
                 ).fetchall()
                 ids = [int(r["id"]) for r in rows2]
 
@@ -956,62 +1201,22 @@ class Repo:
             mismatch_count: int | None = None,
             cap_errors: int | None = None,
             punct_errors: int | None = None,
+            practice_mode: str = "builder",
+            error_tags: str | None = None,
     ) -> None:
         with self._conn() as conn:
-            try:
-                conn.execute(
-                    """
-                    INSERT INTO sentence_reviews(sentence_id,
-                                                 typed_text, correct,
-                                                 tip_used, translation_used,
-                                                 was_checked, was_skipped,
-                                                 rating, response_ms,
-                                                 bank_size, tokens_used, mismatch_count, cap_errors, punct_errors)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        sentence_id,
-                        typed_text,
-                        correct,
-                        int(tip_used),
-                        int(translation_used),
-                        int(was_checked),
-                        int(was_skipped),
-                        rating,
-                        response_ms,
-                        bank_size,
-                        tokens_used,
-                        mismatch_count,
-                        cap_errors,
-                        punct_errors,
-                    ),
-                )
-            except Exception:
-                conn.execute(
-                    """
-                    INSERT INTO sentence_reviews(sentence_id,
-                                                 typed_text, correct,
-                                                 tip_used, was_checked, was_skipped,
-                                                 rating, response_ms,
-                                                 bank_size, tokens_used, mismatch_count, cap_errors, punct_errors)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        sentence_id,
-                        typed_text,
-                        correct,
-                        int(tip_used),
-                        int(was_checked),
-                        int(was_skipped),
-                        rating,
-                        response_ms,
-                        bank_size,
-                        tokens_used,
-                        mismatch_count,
-                        cap_errors,
-                        punct_errors,
-                    ),
-                )
+            conn.execute(
+                """
+                INSERT INTO sentence_reviews(sentence_id, typed_text, correct,
+                    tip_used, translation_used, was_checked, was_skipped,
+                    rating, response_ms, bank_size, tokens_used, mismatch_count,
+                    cap_errors, punct_errors, practice_mode, error_tags)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (sentence_id, typed_text, correct, int(tip_used), int(translation_used),
+                 int(was_checked), int(was_skipped), rating, response_ms, bank_size,
+                 tokens_used, mismatch_count, cap_errors, punct_errors, practice_mode, error_tags),
+            )
 
     # ======================
     # Listening
@@ -1084,10 +1289,12 @@ class Repo:
                     WHERE l.deck_id = ?
                       AND st.due_at <= ?
                       AND (st.last_review_at IS NULL OR st.last_review_at <= ?)
+                      AND st.suspended=0
+                      AND (st.buried_until IS NULL OR st.buried_until<=?)
                     ORDER BY st.due_at ASC
                     LIMIT ?
                     """,
-                    (deck_id, now, cooldown_since, int(limit)),
+                    (deck_id, now, cooldown_since, now, int(limit)),
                 ).fetchall()
                 ids.extend([int(r["id"]) for r in due])
 
@@ -1114,8 +1321,10 @@ class Repo:
                     LEFT JOIN listening_states st ON st.listening_id = l.id
                     WHERE l.deck_id = ?
                       AND (st.last_review_at IS NULL OR st.last_review_at <= ?)
+                      AND COALESCE(st.suspended, 0)=0
+                      AND (st.buried_until IS NULL OR st.buried_until<=?)
                     """,
-                    (deck_id, cooldown_since),
+                    (deck_id, cooldown_since, now),
                 ).fetchall()
                 pool = [int(r["id"]) for r in rows if int(r["id"]) not in set(ids)]
                 random.shuffle(pool)
@@ -1123,8 +1332,10 @@ class Repo:
 
             if not ids:
                 rows2 = conn.execute(
-                    "SELECT id FROM listening WHERE deck_id=? LIMIT ?",
-                    (deck_id, int(limit)),
+                    "SELECT l.id FROM listening l LEFT JOIN listening_states st ON st.listening_id=l.id "
+                    "WHERE l.deck_id=? AND COALESCE(st.suspended,0)=0 "
+                    "AND (st.buried_until IS NULL OR st.buried_until<=?) LIMIT ?",
+                    (deck_id, now, int(limit)),
                 ).fetchall()
                 ids = [int(r["id"]) for r in rows2]
 
@@ -1539,6 +1750,23 @@ class Repo:
             lapses=int(r["lapses"]),
             due_at=int(r["due_at"]),
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
+            stability=Repo._opt_float(r, "stability"),
+            difficulty=Repo._opt_float(r, "difficulty"),
+        )
+
+    @staticmethod
+    def _row_to_vocab_practice_state(r: sqlite3.Row) -> VocabPracticeState:
+        return VocabPracticeState(
+            vocab_id=int(r["vocab_id"]),
+            practice_mode=str(r["practice_mode"]),
+            ease=float(r["ease"]),
+            interval_days=float(r["interval_days"]),
+            reps=int(r["reps"]),
+            lapses=int(r["lapses"]),
+            due_at=int(r["due_at"]),
+            last_review_at=(
+                int(r["last_review_at"]) if r["last_review_at"] is not None else None
+            ),
             stability=Repo._opt_float(r, "stability"),
             difficulty=Repo._opt_float(r, "difficulty"),
         )

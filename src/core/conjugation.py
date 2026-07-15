@@ -361,3 +361,19 @@ class Conjugator:
             except Exception:
                 pass
             self._conn = None
+
+    def __enter__(self) -> "Conjugator":
+        return self
+
+    def __exit__(self, _exc_type, _exc, _traceback) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        # Python 3.13+ reports an unclosed sqlite3.Connection as a
+        # ResourceWarning. Keep this destructor tiny and exception-safe so a
+        # short-lived lookup helper and interpreter shutdown both release the
+        # read-only bundled database cleanly.
+        try:
+            self.close()
+        except Exception:
+            pass

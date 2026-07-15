@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 import re
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
@@ -11,6 +12,7 @@ from db.repo import Repo, VocabItem, GrammarItem, SentenceItem, ListeningItem
 from core.srs import schedule_next
 from core.ml.sklearn_ranker import SklearnRanker
 from core.semantic_match import get_matcher
+from core.german_feedback import classify_german_answer
 
 
 # ---------------------------------------------------------------------
@@ -129,6 +131,12 @@ def _unique_preserve_order(ids: Iterable[int]) -> list[int]:
         out.append(i)
 
     return out
+
+
+def _repo_transaction(repo):
+    """Use one atomic repository write scope when the backend supports it."""
+    transaction = getattr(repo, "transaction", None)
+    return transaction() if callable(transaction) else nullcontext()
 
 
 def _rating_0_3(value: int | str | None) -> int:
@@ -283,6 +291,7 @@ class SessionPlan:
     limit: int = 30
     mode: str = "mixed"  # mixed | due_only | random_only
     pool_factor: int = 8
+    new_limit: int | None = None
 
 
 class SessionService:
@@ -422,6 +431,39 @@ class SessionService:
         except Exception:
             return []
 
+    def pick_vocab_practice_ids(
+        self,
+        practice_mode: str,
+        *,
+        limit: int | None = None,
+        mode: str = "mixed",
+        cooldown_hours: int = 0,
+    ) -> list[int]:
+        """Build a production/dictation queue for the current vocabulary deck.
+
+        This deliberately bypasses the recognition queue and its ML ranking;
+        the repository selects against the requested lane's independent FSRS
+        state while still honoring base-card suspension and burial controls.
+        """
+        deck_id = self.vocab_deck_id()
+        if deck_id is None:
+            return []
+        picker = getattr(self.repo, "pick_practice_vocab_ids", None)
+        if not callable(picker):
+            picker = getattr(self.repo, "pick_vocab_practice_ids", None)
+        if not callable(picker):
+            return []
+        requested = self.plan.limit if limit is None else int(limit)
+        return _unique_preserve_order(
+            picker(
+                deck_id,
+                practice_mode,
+                max(0, requested),
+                mode=mode,
+                cooldown_hours=cooldown_hours,
+            )
+        )
+
     # -----------------------------------------------------------------
     # Compatibility helpers used by UI pages
     # -----------------------------------------------------------------
@@ -439,6 +481,27 @@ class SessionService:
 
     def clear_session(self) -> None:
         self._queue = []
+
+    def exclude_from_queue(self, objective: str, item_id: int) -> bool:
+        """Remove a learner-controlled card from the active in-memory queue.
+
+        Item identifiers are only unique within their objective table, so an
+        action from another lane must never evict a numerically equal ID.  The
+        database remains the source of truth; this method only prevents a queue
+        built before a suspend/bury action from serving stale work.
+        """
+        if _norm_objective(objective) != _norm_objective(
+            getattr(self.state, "objective", "")
+        ):
+            return False
+        try:
+            target = int(item_id)
+        except (TypeError, ValueError):
+            return False
+
+        previous_size = len(self._queue)
+        self._queue[:] = [queued for queued in self._queue if int(queued) != target]
+        return len(self._queue) != previous_size
 
     def record_item_answered(self) -> bool:
         """
@@ -556,7 +619,11 @@ class SessionService:
     def _all_vocab_ids_for_deck(self, deck_id: int) -> list[int]:
         try:
             with self.repo._conn() as conn:
-                rows = conn.execute("SELECT id FROM vocab WHERE deck_id=?", (deck_id,)).fetchall()
+                rows = conn.execute(
+                    "SELECT v.id FROM vocab v LEFT JOIN vocab_states s ON s.vocab_id=v.id "
+                    "WHERE v.deck_id=? AND COALESCE(s.suspended,0)=0 "
+                    "AND (s.buried_until IS NULL OR s.buried_until<=?)", (deck_id, int(time.time()))
+                ).fetchall()
 
             return [int(r["id"]) for r in rows if r and r["id"] is not None]
         except Exception:
@@ -565,7 +632,11 @@ class SessionService:
     def _all_grammar_ids_for_deck(self, deck_id: int) -> list[int]:
         try:
             with self.repo._conn() as conn:
-                rows = conn.execute("SELECT id FROM grammar WHERE deck_id=?", (deck_id,)).fetchall()
+                rows = conn.execute(
+                    "SELECT g.id FROM grammar g LEFT JOIN grammar_states s ON s.grammar_id=g.id "
+                    "WHERE g.deck_id=? AND COALESCE(s.suspended,0)=0 "
+                    "AND (s.buried_until IS NULL OR s.buried_until<=?)", (deck_id, int(time.time()))
+                ).fetchall()
 
             return [int(r["id"]) for r in rows if r and r["id"] is not None]
         except Exception:
@@ -574,7 +645,11 @@ class SessionService:
     def _all_sentence_ids_for_deck(self, deck_id: int) -> list[int]:
         try:
             with self.repo._conn() as conn:
-                rows = conn.execute("SELECT id FROM sentences WHERE deck_id=?", (deck_id,)).fetchall()
+                rows = conn.execute(
+                    "SELECT t.id FROM sentences t LEFT JOIN sentence_states s ON s.sentence_id=t.id "
+                    "WHERE t.deck_id=? AND COALESCE(s.suspended,0)=0 "
+                    "AND (s.buried_until IS NULL OR s.buried_until<=?)", (deck_id, int(time.time()))
+                ).fetchall()
 
             return [int(r["id"]) for r in rows if r and r["id"] is not None]
         except Exception:
@@ -583,7 +658,11 @@ class SessionService:
     def _all_listening_ids_for_deck(self, deck_id: int) -> list[int]:
         try:
             with self.repo._conn() as conn:
-                rows = conn.execute("SELECT id FROM listening WHERE deck_id=?", (deck_id,)).fetchall()
+                rows = conn.execute(
+                    "SELECT l.id FROM listening l LEFT JOIN listening_states s ON s.listening_id=l.id "
+                    "WHERE l.deck_id=? AND COALESCE(s.suspended,0)=0 "
+                    "AND (s.buried_until IS NULL OR s.buried_until<=?)", (deck_id, int(time.time()))
+                ).fetchall()
 
             return [int(r["id"]) for r in rows if r and r["id"] is not None]
         except Exception:
@@ -721,7 +800,55 @@ class SessionService:
         except Exception:
             frac = 0.3
         frac = max(0.0, min(1.0, frac))
-        return max(1, int(round(limit * frac))) if frac > 0 else 0
+        target = max(1, int(round(limit * frac))) if frac > 0 else 0
+        return min(target, self._new_item_limit(limit))
+
+    def _new_item_limit(self, limit: int) -> int:
+        """Maximum never-reviewed cards allowed in one assembled queue."""
+        configured = getattr(getattr(self, "plan", None), "new_limit", None)
+        if configured is None:
+            return max(0, int(limit))
+        try:
+            return max(0, min(int(limit), int(configured)))
+        except (TypeError, ValueError, OverflowError):
+            return max(0, int(limit))
+
+    def _enforce_new_item_limit(
+        self,
+        selected: list[int],
+        ranked: list[int],
+        unseen_set: set[int],
+        limit: int,
+    ) -> list[int]:
+        """Replace excess unseen cards with the best available reviewed ones.
+
+        A deck containing fewer reviewed cards may yield a shorter queue. That
+        is preferable to silently violating the learner's explicit new-card
+        maximum, especially when it is set to zero.
+        """
+        cap = self._new_item_limit(limit)
+        selected = _unique_preserve_order(selected)
+        excess = sum(item in unseen_set for item in selected) - cap
+        if excess <= 0:
+            return selected
+
+        # `selected` and `ranked` are low -> high priority. Remove only the
+        # lowest-priority excess new cards, retaining urgent new material.
+        selected_unseen = [item for item in selected if item in unseen_set]
+        remove = set(selected_unseen[:excess])
+        kept = [item for item in selected if item not in remove]
+        kept_set = set(kept)
+        replacements = [
+            item
+            for item in reversed(ranked)
+            if item not in unseen_set and item not in kept_set
+        ][:excess]
+
+        rank_position = {item: index for index, item in enumerate(ranked)}
+        return sorted(
+            kept + replacements,
+            key=lambda item: rank_position.get(item, -1),
+        )
 
     def _assemble_queue(
         self,
@@ -733,11 +860,12 @@ class SessionService:
     ) -> list[int]:
         """
         Turn a low->high priority ranking of the full deck into a session queue
-        of size `limit`, guaranteeing (a) the highest-priority items are never
-        dropped, and (b) a minimum quota of never-seen items for coverage.
+        of at most `limit`, prioritizing the most urgent items while enforcing
+        both the configured new-card maximum and the bounded coverage target.
         """
         full_ids = _unique_preserve_order(full_ids)
         ranked = _unique_preserve_order(ranked_ids)
+        unseen_set = set(_unique_preserve_order(unseen_ids))
 
         # Make sure every deck item appears in the ranking (missing -> lowest).
         ranked_set = set(ranked)
@@ -749,7 +877,6 @@ class SessionService:
         else:
             selected = list(ranked[-limit:])  # top `limit`, low->high priority
 
-            unseen_set = set(unseen_ids or [])
             if unseen_set:
                 sel_set = set(selected)
                 in_sel_unseen = [i for i in selected if i in unseen_set]
@@ -769,7 +896,15 @@ class SessionService:
                         selected = [i for i in selected if i not in evict]
                         selected = to_add + selected  # coverage shown after urgent items
 
+        selected = self._enforce_new_item_limit(
+            selected, ranked, unseen_set, limit
+        )
         selected = self._maybe_explore(selected, ranked, limit)
+        # Exploration may promote an unseen card, so enforce the hard maximum
+        # once more on the final queue rather than treating it as a soft hint.
+        selected = self._enforce_new_item_limit(
+            selected, ranked, unseen_set, limit
+        )
         return _unique_preserve_order(selected)
 
     def _maybe_explore(self, selected: list[int], ranked: list[int], limit: int) -> list[int]:
@@ -855,7 +990,14 @@ class SessionService:
         accepted = _split_answers(getattr(item, "meaning", "") or "")
         # Semantic meaning match (offline embedding model) — understands that
         # "work" == "to work" but "eight" != "eighty".
-        meaning_ok = get_matcher().matches(_norm(typed_meaning), accepted)
+        strict = bool(
+            getattr(getattr(getattr(self, "settings", None), "value", None), "strict_answers", False)
+        )
+        meaning_ok = (
+            _answer_matches(typed_meaning, accepted)
+            if strict
+            else get_matcher().matches(_norm(typed_meaning), accepted)
+        )
         expected_meaning = getattr(item, "meaning", "") or ""
 
         gender_ok: bool | None = None
@@ -931,24 +1073,25 @@ class SessionService:
         iid = snap.get("item_id")
         logged = bool(snap.get("logged"))
         try:
-            if obj == "vocab":
-                self.repo.update_state(prev)
-                if logged:
-                    self.repo.delete_last_review(iid)
-            elif obj == "grammar":
-                self.repo.update_grammar_state(prev)
-                if logged:
-                    self.repo.delete_last_grammar_review(iid)
-            elif obj == "sentence":
-                self.repo.update_sentence_state(prev)
-                if logged:
-                    self.repo.delete_last_sentence_review(iid)
-            elif obj == "listening":
-                self.repo.update_listening_state(prev)
-                if logged:
-                    self.repo.delete_last_listening_review(iid)
-            else:
-                return None
+            with _repo_transaction(self.repo):
+                if obj == "vocab":
+                    self.repo.update_state(prev)
+                    if logged:
+                        self.repo.delete_last_review(iid)
+                elif obj == "grammar":
+                    self.repo.update_grammar_state(prev)
+                    if logged:
+                        self.repo.delete_last_grammar_review(iid)
+                elif obj == "sentence":
+                    self.repo.update_sentence_state(prev)
+                    if logged:
+                        self.repo.delete_last_sentence_review(iid)
+                elif obj == "listening":
+                    self.repo.update_listening_state(prev)
+                    if logged:
+                        self.repo.delete_last_listening_review(iid)
+                else:
+                    return None
         except Exception:
             return None  # keep the snapshot so the undo can be retried
         self._undo = None  # one-deep: consume only after the DB reversal succeeded
@@ -978,8 +1121,8 @@ class SessionService:
         accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_state(item.id)
-        self._undo = {"objective": "vocab", "item": item, "item_id": item.id,
-                      "prev_state": st, "logged": not was_skipped}
+        undo_snapshot = {"objective": "vocab", "item": item, "item_id": item.id,
+                         "prev_state": st, "logged": not was_skipped}
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
 
         # Learner override ("Accept my answer"): they assert their meaning was a
@@ -1005,25 +1148,26 @@ class SessionService:
         # skips out of every "reviewed" count, the activity heatmap, mastery and
         # accuracy — they all read the reviews table. The card is still
         # rescheduled below (Again) so it comes back.
-        if not was_skipped:
-            self.repo.insert_review(
-                vocab_id=item.id,
-                typed_meaning=typed_meaning or None,
-                typed_gender=typed_gender or None,
-                typed_plural=typed_plural or None,
-                meaning_correct=1 if meaning_correct_bool else 0,
-                gender_correct=None if gender_correct_bool is None else (1 if gender_correct_bool else 0),
-                plural_correct=None if plural_correct_bool is None else (1 if plural_correct_bool else 0),
-                tip_used=1 if tip_used else 0,
-                gender_tip_used=1 if gender_tip_used else 0,
-                was_checked=1 if was_checked else 0,
-                was_skipped=1 if was_skipped else 0,
-                rating=effective_rating,
-                response_ms=response_ms,
-            )
-
         st2 = schedule_next(st, effective_rating)
-        self.repo.update_state(st2)
+        with _repo_transaction(self.repo):
+            if not was_skipped:
+                self.repo.insert_review(
+                    vocab_id=item.id,
+                    typed_meaning=typed_meaning or None,
+                    typed_gender=typed_gender or None,
+                    typed_plural=typed_plural or None,
+                    meaning_correct=1 if meaning_correct_bool else 0,
+                    gender_correct=None if gender_correct_bool is None else (1 if gender_correct_bool else 0),
+                    plural_correct=None if plural_correct_bool is None else (1 if plural_correct_bool else 0),
+                    tip_used=1 if tip_used else 0,
+                    gender_tip_used=1 if gender_tip_used else 0,
+                    was_checked=1 if was_checked else 0,
+                    was_skipped=1 if was_skipped else 0,
+                    rating=effective_rating,
+                    response_ms=response_ms,
+                )
+            self.repo.update_state(st2)
+        self._undo = undo_snapshot
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_vocab"):
@@ -1081,8 +1225,8 @@ class SessionService:
         accept_override: bool = False,
     ) -> dict:
         st = self.repo.ensure_grammar_state(item.id)
-        self._undo = {"objective": "grammar", "item": item, "item_id": item.id,
-                      "prev_state": st, "logged": not was_skipped}
+        undo_snapshot = {"objective": "grammar", "item": item, "item_id": item.id,
+                         "prev_state": st, "logged": not was_skipped}
         res = self.check_grammar(item, typed_blank)
 
         # Learner override ("Accept my answer"): count the answer as correct.
@@ -1102,23 +1246,24 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        # Skips are not logged (see submit_vocab) so they never count as reviews.
-        if not was_skipped:
-            self.repo.insert_grammar_review(
-                grammar_id=item.id,
-                typed_blank=(typed_blank or None),
-                correct=correct,
-                meaning_tip_used=(1 if meaning_tip_used else 0),
-                hint_used=(1 if hint_used else 0),
-                grammar_tip_used=(1 if grammar_tip_used else 0),
-                was_checked=(1 if was_checked else 0),
-                was_skipped=(1 if was_skipped else 0),
-                rating=effective_rating,
-                response_ms=response_ms,
-            )
-
         st2 = schedule_next(st, effective_rating)
-        self.repo.update_grammar_state(st2)
+        with _repo_transaction(self.repo):
+            # Skips are not logged (see submit_vocab) so they never count as reviews.
+            if not was_skipped:
+                self.repo.insert_grammar_review(
+                    grammar_id=item.id,
+                    typed_blank=(typed_blank or None),
+                    correct=correct,
+                    meaning_tip_used=(1 if meaning_tip_used else 0),
+                    hint_used=(1 if hint_used else 0),
+                    grammar_tip_used=(1 if grammar_tip_used else 0),
+                    was_checked=(1 if was_checked else 0),
+                    was_skipped=(1 if was_skipped else 0),
+                    rating=effective_rating,
+                    response_ms=response_ms,
+                )
+            self.repo.update_grammar_state(st2)
+        self._undo = undo_snapshot
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_grammar"):
@@ -1224,9 +1369,12 @@ class SessionService:
         response_ms: int | None,
     ) -> Dict[str, Any]:
         st = self.repo.ensure_sentence_state(item.id)
-        self._undo = {"objective": "sentence", "item": item, "item_id": item.id,
-                      "prev_state": st, "logged": not was_skipped}
+        undo_snapshot = {"objective": "sentence", "item": item, "item_id": item.id,
+                         "prev_state": st, "logged": not was_skipped}
         res = self.check_sentence(item, typed_text)
+        language_feedback = classify_german_answer(typed_text, getattr(item, "target_text", "") or "")
+        res["error_tags"] = list(language_feedback.tags)
+        res["feedback_message"] = language_feedback.message
 
         used_help = bool(tip_used or translation_used)
 
@@ -1242,27 +1390,30 @@ class SessionService:
         typed = (typed_text or "").strip() or None
         got_toks = _tokenize(typed_text)
 
-        # Skips are not logged (see submit_vocab) so they never count as reviews.
-        if not was_skipped:
-            self.repo.insert_sentence_review(
-                sentence_id=item.id,
-                typed_text=typed,
-                correct=correct,
-                tip_used=int(tip_used),
-                translation_used=int(translation_used),
-                was_checked=int(was_checked),
-                was_skipped=int(was_skipped),
-                rating=effective_rating,
-                response_ms=response_ms,
-                bank_size=len(getattr(item, "words", []) or []),
-                tokens_used=len(got_toks),
-                mismatch_count=int(res.get("mismatch_count") or 0),
-                cap_errors=int(res.get("cap_errors") or 0),
-                punct_errors=int(res.get("punct_errors") or 0),
-            )
-
         st2 = schedule_next(st, effective_rating)
-        self.repo.update_sentence_state(st2)
+        with _repo_transaction(self.repo):
+            # Skips are not logged (see submit_vocab) so they never count as reviews.
+            if not was_skipped:
+                self.repo.insert_sentence_review(
+                    sentence_id=item.id,
+                    typed_text=typed,
+                    correct=correct,
+                    tip_used=int(tip_used),
+                    translation_used=int(translation_used),
+                    was_checked=int(was_checked),
+                    was_skipped=int(was_skipped),
+                    rating=effective_rating,
+                    response_ms=response_ms,
+                    bank_size=len(getattr(item, "words", []) or []),
+                    tokens_used=len(got_toks),
+                    mismatch_count=int(res.get("mismatch_count") or 0),
+                    cap_errors=int(res.get("cap_errors") or 0),
+                    punct_errors=int(res.get("punct_errors") or 0),
+                    practice_mode="builder",
+                    error_tags=",".join(res.get("error_tags") or []) or None,
+                )
+            self.repo.update_sentence_state(st2)
+        self._undo = undo_snapshot
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_sentence"):
@@ -1343,8 +1494,8 @@ class SessionService:
         rating: int | None = None,
     ) -> dict:
         st = self.repo.ensure_listening_state(item.id)
-        self._undo = {"objective": "listening", "item": item, "item_id": item.id,
-                      "prev_state": st, "logged": not was_skipped}
+        undo_snapshot = {"objective": "listening", "item": item, "item_id": item.id,
+                         "prev_state": st, "logged": not was_skipped}
         res = self.check_listening(item, chosen)
 
         # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),
@@ -1362,21 +1513,22 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        # Skips are not logged (see submit_vocab) so they never count as reviews.
-        if not was_skipped:
-            self.repo.insert_listening_review(
-                listening_id=item.id,
-                chosen=(chosen or None),
-                correct=correct,
-                replay_count=int(replay_count or 0),
-                was_checked=1 if was_checked else 0,
-                was_skipped=1 if was_skipped else 0,
-                rating=effective_rating,
-                response_ms=response_ms,
-            )
-
         st2 = schedule_next(st, effective_rating)
-        self.repo.update_listening_state(st2)
+        with _repo_transaction(self.repo):
+            # Skips are not logged (see submit_vocab) so they never count as reviews.
+            if not was_skipped:
+                self.repo.insert_listening_review(
+                    listening_id=item.id,
+                    chosen=(chosen or None),
+                    correct=correct,
+                    replay_count=int(replay_count or 0),
+                    was_checked=1 if was_checked else 0,
+                    was_skipped=1 if was_skipped else 0,
+                    rating=effective_rating,
+                    response_ms=response_ms,
+                )
+            self.repo.update_listening_state(st2)
+        self._undo = undo_snapshot
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_listening"):
@@ -1396,3 +1548,55 @@ class SessionService:
 
         res["effective_rating"] = effective_rating
         return res
+
+    def submit_vocab_production(
+        self,
+        item: VocabItem,
+        typed_german: str,
+        *,
+        practice_mode: str = "production",
+        response_ms: int | None = None,
+    ) -> dict:
+        """Schedule one isolated German-production or audio-dictation attempt.
+
+        The review remains in the shared event log with a ``practice_mode``
+        tag, but only the matching practice lane state advances.  Recognition,
+        production, and dictation therefore cannot inflate one another's FSRS
+        stability or due dates.
+        """
+        article = (item.article or "").strip()
+        expected = f"{article} {item.word}".strip() if article else item.word
+        feedback = classify_german_answer(typed_german, expected)
+        # Non-nouns do not need an article. For nouns, accepting the bare word as
+        # fully correct would train exactly the gender omission MAHIRA aims to fix.
+        rating = 2 if feedback.correct else 0
+        with _repo_transaction(self.repo):
+            state = self.repo.ensure_vocab_practice_state(item.id, practice_mode)
+            lane = state.practice_mode
+            self.repo.insert_review(
+                vocab_id=item.id,
+                typed_meaning=typed_german or None,
+                typed_gender=None,
+                typed_plural=None,
+                meaning_correct=1 if feedback.correct else 0,
+                gender_correct=None,
+                plural_correct=None,
+                tip_used=0,
+                gender_tip_used=0,
+                was_checked=1,
+                was_skipped=0,
+                rating=rating,
+                response_ms=response_ms,
+                practice_mode=lane,
+                error_tags=",".join(feedback.tags) or None,
+            )
+            self.repo.update_vocab_practice_state(schedule_next(state, rating))
+        return {
+            "ok": feedback.correct,
+            "expected": expected,
+            "typed": typed_german,
+            "practice_mode": lane,
+            "error_tags": list(feedback.tags),
+            "message": feedback.message,
+            "effective_rating": rating,
+        }

@@ -11,9 +11,8 @@ from PySide6.QtWidgets import (
 from core.session import SessionService
 from ui.widgets.activity_heatmap import ActivityHeatmap
 
-# Reviews/day that sets a heatmap day "on fire" and counts as "goal reached".
-# A sensible fixed default; no settings UI yet.
-DAILY_GOAL = 20
+# Fallback for tests/legacy callers; normal UI reads the learner preference.
+DAILY_GOAL = 30
 _ACCENT_FIRE = "#FF7A2E"   # warm — a live streak / goal reached (fire)
 _ACCENT_COLD = "#6E7E8C"   # cold slate — broken streak / frozen
 
@@ -283,6 +282,9 @@ class ProgressPage(QWidget):
         return cur, longest, total_active
 
     def _refresh_activity(self) -> None:
+        daily_goal = int(
+            getattr(getattr(getattr(self.session, "settings", None), "value", None), "daily_goal", DAILY_GOAL)
+        )
         today = _dt.date.today()
         since = int(time.time()) - 372 * 86400  # ~53 weeks back
         try:
@@ -290,7 +292,7 @@ class ProgressPage(QWidget):
         except Exception:
             counts = {}
 
-        self.heatmap.set_data(counts, DAILY_GOAL, today)
+        self.heatmap.set_data(counts, daily_goal, today)
 
         cur, longest, active_days = self._compute_streaks(counts, today)
         today_count = int(counts.get(today.isoformat(), 0))
@@ -305,9 +307,9 @@ class ProgressPage(QWidget):
         )
 
         self.longest_value.setText(str(longest))
-        self.today_value.setText(f"{today_count} / {DAILY_GOAL}")
+        self.today_value.setText(f"{today_count} / {daily_goal}")
 
-        if today_count >= DAILY_GOAL:
+        if today_count >= daily_goal:
             self.today_value.setStyleSheet(
                 f"QLabel {{ font-size:22px; font-weight:900; color:{_ACCENT_FIRE}; "
                 f"background:transparent; border:none; }}"

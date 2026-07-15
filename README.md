@@ -85,6 +85,20 @@ Currently shipped: **Starten Wir A1** (Lektionen 1–12, complete) and **A2**
 ### 📈 Progress overview
 - Clear, focused review flow with a global session tracker and milestones.
 
+### Daily study workspace
+- **Today** combines due, unseen, and recurring-error pressure across vocabulary,
+  grammar, sentences, and listening, then recommends the lesson needing work.
+- **Mistake notebook** identifies repeated lapses and lets learners suspend or
+  resume troublesome cards without deleting history.
+- **Practice Lab** adds German production (meaning → German) and offline audio
+  dictation (audio → German), with actionable language-error feedback.
+
+### Learner-owned and offline-safe
+- Versioned, backup-first database migrations preserve FSRS state and reviews.
+- Verified backup, export, managed restore, and rotating diagnostic logs.
+- Persistent study/audio/accessibility preferences and independent learner profiles.
+- Resizable keyboard-friendly UI, high contrast, text scaling, and reduced motion.
+
 ---
 
 # ⚙️ Installation (from source)
@@ -116,17 +130,26 @@ cd src
 python -m mahira
 ```
 
-All runtime state (database, ML models, logs) is written to a `.mahira/` folder
-next to the app — never to `%APPDATA%` or `~/Library`. See
-[RELEASING.md](RELEASING.md) for packaging and the self‑contained layout.
+Runtime state is kept outside replaceable application bundles: under the project
+`.mahira/` folder from source, `%LOCALAPPDATA%/MAHIRA/.mahira` on Windows, and
+`~/Library/Application Support/MAHIRA/.mahira` on macOS. Frozen Linux builds use
+`$XDG_DATA_HOME/MAHIRA/.mahira` (or `~/.local/share/MAHIRA/.mahira`). Existing
+Windows state is copied forward automatically. See [RELEASING.md](RELEASING.md).
 
 ---
 
 # 🧪 Tests
 
 ```bash
-pip install pytest
+pip install pytest pytest-timeout
 pytest
+```
+
+Fast and model-backed tests can also be run separately:
+
+```bash
+pytest -m "not slow" --timeout=60
+pytest -m slow --timeout=60
 ```
 
 The suite covers the FSRS scheduler, the recall‑priority ordering, session

@@ -1,12 +1,8 @@
 ; Inno Setup script for MAHIRA (Windows 10/11)
 ; Builds a per-user installer from the PyInstaller onedir output (dist\MAHIRA).
 ;
-; Why per-user (PrivilegesRequired=lowest) + LocalAppData:
-;   MAHIRA keeps ALL of its runtime data (SQLite DB, ML models, logs) inside a
-;   `.mahira` folder NEXT TO the executable. Installing into a user-writable
-;   location means that data folder is writable without admin rights and the
-;   whole app stays self-contained — nothing is written to %APPDATA%\Roaming or
-;   any other per-user/OS metadata location.
+; The executable is installed per-user. Learner state is stored separately at
+; %LOCALAPPDATA%\MAHIRA so replacement, upgrade, and uninstall are data-safe.
 ;
 ; Compile:
 ;   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows\mahira.iss
@@ -57,6 +53,5 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
-[UninstallDelete]
-; Remove the self-contained runtime data folder on uninstall.
-Type: filesandordirs; Name: "{app}\.mahira"
+; Learner data is deliberately not listed in [UninstallDelete]. It lives under
+; %LOCALAPPDATA%\MAHIRA and survives application upgrades and uninstall.

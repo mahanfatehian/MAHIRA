@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+import logging
+import time
+
+from PySide6.QtCore import QSize, QTimer, Qt
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -22,8 +25,14 @@ from ui.pages.progress import ProgressPage
 from ui.pages.learn import LearnPage
 from ui.pages.vocab_table import VocabTablePage
 from ui.pages.conjugation import ConjugationPage
+from ui.pages.today import TodayPage
+from ui.pages.mistakes import MistakesPage
+from ui.pages.settings import SettingsPage
+from ui.pages.practice_lab import PracticeLabPage
+from ui.theme import apply_application_theme
 
 PAGE_KEYS = [
+    "today",
     "setup",
     "vocab_review",
     "grammar_review",
@@ -33,13 +42,44 @@ PAGE_KEYS = [
     "learn",
     "vocab_table",
     "conjugation",
+    "mistakes",
+    "settings",
+    "lab",
 ]
+
+
+class CurrentPageStack(QStackedWidget):
+    """Advertise only the visible page's height to the outer scroll area.
+
+    Settings is intentionally taller than a review page. A stock stacked
+    widget reports the largest hidden child's size, which would put a needless
+    scrollbar and empty tail on every legacy tab. Horizontal policy remains
+    Expanding, so this does not reintroduce the earlier clipping regression.
+    """
+
+    def sizeHint(self) -> QSize:
+        current = self.currentWidget()
+        return current.sizeHint() if current is not None else super().sizeHint()
+
+    def minimumSizeHint(self) -> QSize:
+        current = self.currentWidget()
+        if current is None:
+            return super().minimumSizeHint()
+        return QSize(0, current.minimumSizeHint().height())
+
+    def setCurrentWidget(self, widget: QWidget) -> None:
+        super().setCurrentWidget(widget)
+        self.updateGeometry()
 
 
 class MainWindow(QMainWindow):
     def __init__(self, session: SessionService, start_page: str | None = None):
         super().__init__()
         self.session = session
+        self._shutdown_started = False
+        self._close_pending = False
+        self._shutdown_started_at = 0.0
+        self._shutdown_delay_logged = False
 
         try:
             from mahira.config import resource_root
@@ -61,16 +101,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Mahira")
 
         root = QWidget()
+        root.setObjectName("MainWindowRoot")
         layout = QHBoxLayout(root)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(10)
 
         self.nav = NavBar()
 
-        self.stack = QStackedWidget()
+        self.stack = CurrentPageStack()
         self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
         self.page_scroll = QScrollArea()
+        self.page_scroll.setObjectName("PageScroll")
         self.page_scroll.setWidgetResizable(True)
         self.page_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         self.page_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -85,6 +127,7 @@ class MainWindow(QMainWindow):
                 return PageCls(session)
 
         self.pages = {
+            "today": make(TodayPage),
             "setup": make(SetupPage),
             "vocab_review": make(VocabReviewPage),
             "grammar_review": make(GrammarReviewPage),
@@ -94,6 +137,9 @@ class MainWindow(QMainWindow):
             "learn": make(LearnPage),
             "vocab_table": make(VocabTablePage),
             "conjugation": make(ConjugationPage),
+            "mistakes": make(MistakesPage),
+            "settings": make(SettingsPage),
+            "lab": make(PracticeLabPage),
         }
 
         for key in PAGE_KEYS:
@@ -103,7 +149,12 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.page_scroll, 1)
 
         self.setCentralWidget(root)
-        self.setFixedSize(1000, 900)
+        self.setMinimumSize(860, 680)
+        prefs = getattr(getattr(session, "settings", None), "value", None)
+        self.resize(
+            max(860, int(getattr(prefs, "window_width", 1080))),
+            max(680, int(getattr(prefs, "window_height", 820))),
+        )
 
         self.nav.go.connect(self.go)
 
@@ -155,6 +206,12 @@ class MainWindow(QMainWindow):
         if hasattr(self.pages["progress"], "go_learn"):
             self.pages["progress"].go_learn.connect(lambda: self.go("practice"))
 
+        self.pages["today"].practice_requested.connect(self._open_context_practice)
+        self.pages["today"].open_mistakes.connect(lambda: self.go("mistakes"))
+        self.pages["mistakes"].practice_requested.connect(self._open_context_practice)
+        self.pages["mistakes"].lab_requested.connect(self._open_context_lab)
+        self.pages["settings"].settings_changed.connect(self._apply_settings)
+
         # Objective availability depends only on level/book/Lektion.  Page
         # navigation inside that context (especially Table <-> Conjugation)
         # must not reopen SQLite six times on every hop.
@@ -171,33 +228,148 @@ class MainWindow(QMainWindow):
         self.go(start)
 
     def closeEvent(self, event) -> None:
-        # Stop any in-flight audio and JOIN the worker threads before the window
-        # (and the pages' child QThread objects) are destroyed. A page's own
-        # closeEvent never fires for a stacked child widget, so quitting while a
-        # Piper synthesis is still running would otherwise trip Qt's
-        # "QThread: Destroyed while thread is still running" abort.
+        # A QThread.quit() call cannot interrupt Piper/ONNX while its worker
+        # slot is inside a blocking synthesis call. Destroying the window after
+        # an arbitrary two-second wait can therefore abort Qt. Invalidate every
+        # page once, request orderly thread shutdown, and keep the event loop
+        # alive until the workers actually finish.
+        if not self._shutdown_started:
+            self._shutdown_started = True
+            self._begin_shutdown()
+
+        running = self._running_worker_threads()
+        if running:
+            for thread in running:
+                try:
+                    thread.requestInterruption()
+                    thread.quit()
+                except RuntimeError:
+                    pass
+            event.ignore()
+            if not self._close_pending:
+                self._close_pending = True
+                self._shutdown_started_at = time.monotonic()
+                self.setEnabled(False)
+                self.setWindowTitle("Mahira · Finishing background audio…")
+                QTimer.singleShot(50, self._finish_deferred_close)
+            return
+
+        settings = getattr(self.session, "settings", None)
+        if settings is not None:
+            state = self.session.state
+            try:
+                settings.update(
+                    level=state.level, objective=state.objective,
+                    book_slug=state.book_slug, lektion_number=state.lektion_number,
+                    last_page=self._current_page_key() or "today",
+                    window_width=self.width(), window_height=self.height(),
+                )
+            except Exception:
+                # Preference persistence must never keep the process alive after
+                # all learning transactions have already completed safely.
+                logging.exception("Could not persist window settings during shutdown")
+        self._close_pending = False
+        super().closeEvent(event)
+
+    def _begin_shutdown(self) -> None:
         for page in self.pages.values():
+            cleanup = getattr(page, "_cleanup_audio", None)
+            if callable(cleanup):
+                try:
+                    cleanup(delete=True)
+                except Exception:
+                    pass
+            clear = getattr(page, "_clear_current_audio_cache", None)
+            if callable(clear):
+                try:
+                    clear()
+                except Exception:
+                    pass
             stop = getattr(page, "_stop_audio", None)
             if callable(stop):
                 try:
                     stop()
                 except Exception:
                     pass
-            svc = getattr(page, "playback_service", None)
-            if svc is not None:
+            stop_background = getattr(page, "_stop_background", None)
+            if callable(stop_background):
                 try:
-                    svc.stop()
+                    stop_background()
                 except Exception:
                     pass
-            thread = getattr(page, "_audio_thread", None)
-            if thread is not None:
+            for service_name in ("playback_service", "_playback", "_play_svc"):
+                service = getattr(page, service_name, None)
+                if service is not None:
+                    try:
+                        service.stop()
+                    except Exception:
+                        pass
+
+    def _running_worker_threads(self) -> list:
+        running = []
+        seen: set[int] = set()
+        for page in self.pages.values():
+            for name in ("_audio_thread", "_update_thread"):
+                thread = getattr(page, name, None)
+                if thread is None or id(thread) in seen:
+                    continue
+                seen.add(id(thread))
                 try:
                     if thread.isRunning():
-                        thread.quit()
-                        thread.wait(2000)
-                except Exception:
-                    pass
-        super().closeEvent(event)
+                        running.append(thread)
+                except RuntimeError:
+                    continue
+        return running
+
+    def _finish_deferred_close(self) -> None:
+        if self._running_worker_threads():
+            elapsed = time.monotonic() - self._shutdown_started_at
+            if elapsed >= 5.0:
+                self.setWindowTitle("Mahira · Waiting for audio to finish safely…")
+            if elapsed >= 15.0 and not self._shutdown_delay_logged:
+                self._shutdown_delay_logged = True
+                logging.warning(
+                    "Shutdown is waiting for a blocking native worker; the window "
+                    "will close as soon as that operation returns"
+                )
+            QTimer.singleShot(50, self._finish_deferred_close)
+            return
+        self._close_pending = False
+        self.close()
+
+    def _apply_settings(self) -> None:
+        settings = getattr(self.session, "settings", None)
+        app = QApplication.instance()
+        if settings is not None and app is not None:
+            apply_application_theme(app, settings.value.font_scale, settings.value.theme)
+
+    def _open_context_practice(self, objective: str, level: str, book: str, lesson: int) -> None:
+        try:
+            self.session.set_context(level, objective, book, lesson)
+        except RuntimeError:
+            self.go("setup")
+            return
+        self._last_nav_context = None
+        self._show(self._OBJ_TO_PAGE.get(objective, "vocab_review"))
+
+    def _open_context_lab(
+        self,
+        level: str,
+        book: str,
+        lesson: int,
+        practice_mode: str,
+    ) -> None:
+        try:
+            self.session.set_context(level, "vocab", book, lesson)
+        except RuntimeError:
+            self.go("setup")
+            return
+        page = self.pages["lab"]
+        select_mode = getattr(page, "select_mode", None)
+        if callable(select_mode):
+            select_mode(practice_mode, reload=False)
+        self._last_nav_context = None
+        self.go("lab")
 
     def set_focus_mode(self, on: bool) -> None:
         self._focus_mode = bool(on)
@@ -298,6 +470,7 @@ class MainWindow(QMainWindow):
 
     def _nav_key_for_page(self, page_key: str) -> str:
         return {
+            "today": "today",
             "vocab_review": "vocab",
             "grammar_review": "grammar",
             "sentence_review": "sentences",
@@ -307,6 +480,9 @@ class MainWindow(QMainWindow):
             "progress": "progress",
             "vocab_table": "setup",
             "conjugation": "setup",
+            "mistakes": "mistakes",
+            "settings": "settings",
+            "lab": "lab",
         }.get(page_key, "setup")
 
     def _current_lektion_id(self) -> int | None:

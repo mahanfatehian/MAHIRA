@@ -19,7 +19,7 @@ threadpoolctl==3.6.0
 typing_extensions==4.15.0
 
 # Text-to-speech / pronunciation audio
-piper-tts
+piper-tts==1.4.2
 # onnxruntime is pinned to the last release that still publishes a macOS
 # *universal2* wheel (1.20.1). Newer releases (>=1.26) ship an arm64-only macOS
 # wheel, so `pip install` would fail on the Intel (x86_64) macOS build runner and

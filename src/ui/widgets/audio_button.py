@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QPushButton
 
 
@@ -29,6 +30,12 @@ class AudioButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedSize(42, 42)
         self.setObjectName("AudioButton")
+        icon_font = QFont(self.font())
+        # Point units avoid the pointSize == -1 state produced by a pixel-sized
+        # QSS font while keeping the established 18px-equivalent icon scale.
+        icon_font.setPointSize(13)
+        icon_font.setWeight(QFont.Weight.Black)
+        self.setFont(icon_font)
 
         self._sync_state()
 
@@ -74,9 +81,8 @@ class AudioButton(QPushButton):
                     color: #8A8A8A;
                     border: 1px solid #242424;
                     border-radius: 12px;
-                    font-size: 18px;
-                    font-weight: 900;
                 }
+                QPushButton#AudioButton:focus { border: 1px solid #7AE582; }
                 QPushButton#AudioButton:disabled {
                     background-color: #111111;
                     color: #8A8A8A;
@@ -94,9 +100,8 @@ class AudioButton(QPushButton):
                     color: #8A8A8A;
                     border: 1px solid #252525;
                     border-radius: 12px;
-                    font-size: 18px;
-                    font-weight: 900;
                 }
+                QPushButton#AudioButton:focus { border: 1px solid #7AE582; }
                 QPushButton#AudioButton:disabled {
                     background-color: #151515;
                     color: #8A8A8A;
@@ -113,8 +118,6 @@ class AudioButton(QPushButton):
                 color: #FFFFFF;
                 border: 1px solid #2E2E2E;
                 border-radius: 12px;
-                font-size: 18px;
-                font-weight: 900;
             }
             QPushButton#AudioButton:hover {
                 background-color: #232323;
@@ -122,6 +125,9 @@ class AudioButton(QPushButton):
             }
             QPushButton#AudioButton:pressed {
                 background-color: #111111;
+            }
+            QPushButton#AudioButton:focus {
+                border: 1px solid #7AE582;
             }
             QPushButton#AudioButton:disabled {
                 background-color: #151515;

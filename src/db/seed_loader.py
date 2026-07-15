@@ -6,6 +6,11 @@ from db.seed_import import import_seed_csv, CEFR_LEVELS
 
 
 def load_all_seeds(repo, project_root: Path) -> None:
+    with repo.transaction():
+        _load_all_seeds(repo, project_root)
+
+
+def _load_all_seeds(repo, project_root: Path) -> None:
     """
     German-only, fully folder-driven seed layout. The CEFR level is taken from
     the directory, never hardcoded, so which levels (and therefore which books)

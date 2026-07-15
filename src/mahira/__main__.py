@@ -18,19 +18,38 @@ if "qt.multimedia.ffmpeg" not in _rules:
         _rules + ";qt.multimedia.ffmpeg.info=false;qt.multimedia.ffmpeg.debug=false"
     ).strip(";")
 
-from mahira.app import run
-from mahira.config import data_root, resource_root, STATE_DIRNAME
+from mahira.app import health_check, run
+from mahira.config import (
+    STATE_DIRNAME,
+    get_paths,
+    migrate_legacy_windows_state,
+    resource_root,
+)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--page", default=None)
+    parser.add_argument("--health-check", action="store_true")
     args = parser.parse_args()
 
-    # Resources are read from the bundle; all writable state stays inside the
-    # installation folder (data_root) so nothing lands in user/OS locations.
+    # Resources are read from the bundle; writable learner state lives in the
+    # platform's per-user application-data directory. The Windows legacy move
+    # must happen before creating the target directory or it can never run.
     project_root = resource_root()
-    state_dir = data_root() / STATE_DIRNAME
+    paths = get_paths(project_root)
+    bootstrap_error = ""
+    try:
+        migrate_legacy_windows_state(paths)
+        state_dir = paths.state_dir
+    except Exception:
+        # Do not create the intended target after a failed migration: doing so
+        # would make the next launch look migrated. Use temp for the crash log
+        # only; run() retries and reports the migration failure safely.
+        import tempfile
+
+        bootstrap_error = traceback.format_exc()
+        state_dir = Path(tempfile.gettempdir()) / "MAHIRA-bootstrap" / STATE_DIRNAME
     try:
         state_dir.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -47,6 +66,10 @@ def main() -> None:
 
     log_path = state_dir / "crash.log"
     _log = open(log_path, "a", encoding="utf-8")
+    if bootstrap_error:
+        _log.write("\n\n=== STATE MIGRATION ERROR ===\n")
+        _log.write(bootstrap_error)
+        _log.flush()
     faulthandler.enable(file=_log, all_threads=True)
 
     def _excepthook(t, v, tb):
@@ -56,6 +79,9 @@ def main() -> None:
         sys.__excepthook__(t, v, tb)
 
     sys.excepthook = _excepthook
+
+    if args.health_check:
+        raise SystemExit(health_check(project_root))
 
     raise SystemExit(run(project_root=project_root, start_page=args.page))
 

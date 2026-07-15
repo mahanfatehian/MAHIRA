@@ -8,20 +8,19 @@ German content is bundled under `data/seeds/<book>/<level>/…` and is fully
 folder‑driven — adding a book/level/Lektion is just files on disk (see the
 project README), so no packaging change is needed when content grows.
 
-## Self-contained by design
+## Upgrade-safe state by design
 
-MAHIRA never writes to `%APPDATA%`, `~/Library/Application Support`, or any other
-per-user/OS location. **All runtime state lives in a `.mahira` folder next to the
-executable** (the installation folder):
+Bundled resources are read-only and learner state is outside replaceable app
+directories. Upgrades and uninstall therefore preserve FSRS history, profiles,
+settings, backups, and logs:
 
 ```
-<install folder>/
-├─ MAHIRA(.exe)            # or MAHIRA.app on macOS
-├─ data/                   # bundled German seeds (data/seeds/<book>/<level>/) + pages (read-only)
-├─ assets/                 # bundled logo + Piper voice models (read-only)
-└─ .mahira/                # created on first run (writable)
+<state root>/.mahira/
    ├─ mahira.db            # SQLite database
+   ├─ profiles/            # independent learner databases
+   ├─ backups/             # verified migration/manual backups
    ├─ ml_models/           # scikit-learn ranker models
+   ├─ settings.json
    ├─ run.log
    └─ crash.log
 ```
@@ -30,16 +29,13 @@ Path resolution lives in [`src/mahira/config.py`](src/mahira/config.py):
 
 - `resource_root()` — read-only bundled resources (`data/`, `assets/`, `schema.sql`).
   Frozen → PyInstaller's `sys._MEIPASS`; from source → repo root.
-- `data_root()` — writable state. Frozen → the executable's directory; from
-  source → repo root. Override with the `MAHIRA_DATA_DIR` environment variable.
+- `data_root()` — writable state. Windows → `%LOCALAPPDATA%/MAHIRA`; macOS →
+  `~/Library/Application Support/MAHIRA`; frozen Linux → `$XDG_DATA_HOME/MAHIRA`
+  or `~/.local/share/MAHIRA`; from source → repo root. Override with the
+  `MAHIRA_DATA_DIR` environment variable.
 
-Because the Windows installer is **per-user** (installs into
-`%LOCALAPPDATA%\Programs\MAHIRA`), the `.mahira` folder beside the exe is always
-writable without admin rights.
-
-> macOS note: data is written inside `MAHIRA.app/Contents/MacOS/.mahira`. This
-> keeps everything in one bundle. If you place the app in a read-only location,
-> set `MAHIRA_DATA_DIR` to a writable folder.
+Pre-0.4 Windows state beside the executable is copied into the new state root on
+first launch. Every schema change creates a verified backup first.
 
 ## What's in this repo for packaging
 

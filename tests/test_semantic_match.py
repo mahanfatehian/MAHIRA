@@ -16,10 +16,13 @@ import pytest
 from core.semantic_match import get_matcher
 
 _matcher = get_matcher()
-pytestmark = pytest.mark.skipif(
-    not _matcher.available(),
-    reason="meaning-match model / onnxruntime / tokenizers not available",
-)
+pytestmark = [
+    pytest.mark.slow,
+    pytest.mark.skipif(
+        not _matcher.available(),
+        reason="meaning-match model / onnxruntime / tokenizers not available",
+    ),
+]
 
 
 def test_number_confusion_is_rejected():
