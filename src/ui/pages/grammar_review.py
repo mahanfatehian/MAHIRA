@@ -136,8 +136,11 @@ class GrammarReviewPage(QWidget):
             "}"
         )
 
-        self.start_btn = QPushButton("Start")
-        self.start_btn.setFixedWidth(60)
+        self.start_btn = QPushButton("New set")
+        self.start_btn.setObjectName("NewReviewSetButton")
+        self.start_btn.setAccessibleName("Start a new review set")
+        self.start_btn.setToolTip("Start a fresh review set")
+        self.start_btn.setMinimumWidth(78)
         self.start_btn.setStyleSheet(
             "QPushButton { "
             "background-color: #244B36; "
@@ -152,6 +155,8 @@ class GrammarReviewPage(QWidget):
         )
 
         self.stats_btn = QPushButton("Stats")
+        self.stats_btn.setObjectName("ReviewStatsButton")
+        self.stats_btn.setAccessibleName("Open review statistics")
         self.stats_btn.setFixedWidth(60)
         self.stats_btn.setStyleSheet(
             "QPushButton { "
@@ -432,7 +437,7 @@ class GrammarReviewPage(QWidget):
 
             self._show_empty(
                 "No grammar reviews available.",
-                "Start a new session to practice another set.",
+                "Select New set to practice another set.",
             )
             self._update_counter()
             return

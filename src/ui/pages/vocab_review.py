@@ -185,14 +185,19 @@ class VocabReviewPage(QWidget):
             "QLabel { color:#FFFFFF; font-size:12px; font-weight:800; background:#1A1A1A; border:1px solid #2E2E2E; border-radius:8px; padding:6px 10px; }"
         )
 
-        self.start_btn = QPushButton("Start")
-        self.start_btn.setFixedWidth(60)
+        self.start_btn = QPushButton("New set")
+        self.start_btn.setObjectName("NewReviewSetButton")
+        self.start_btn.setAccessibleName("Start a new review set")
+        self.start_btn.setToolTip("Start a fresh review set")
+        self.start_btn.setMinimumWidth(78)
         self.start_btn.setStyleSheet(
             "QPushButton { background-color: #244B36; color: #F4FFF7; border: 1px solid #4CAF50; border-radius: 10px; padding: 8px; font-weight: 900; font-size: 12px; }"
             "QPushButton:hover { background-color: #2B5B41; border: 1px solid #7AE582; }"
         )
 
         self.stats_btn = QPushButton("Stats")
+        self.stats_btn.setObjectName("ReviewStatsButton")
+        self.stats_btn.setAccessibleName("Open review statistics")
         self.stats_btn.setFixedWidth(60)
         self.stats_btn.setStyleSheet(
             "QPushButton { background-color: #163A5C; color: #FFFFFF; border: 1px solid #24537D; border-radius: 10px; padding: 8px; font-weight: 900; font-size: 12px; }"
@@ -605,7 +610,7 @@ class VocabReviewPage(QWidget):
             self.card.lock_after_check()
             self._show_empty(
                 "No vocabulary reviews available.",
-                "Start a new session to practice another set.",
+                "Select New set to practice another set.",
             )
             self._update_counter()
             return

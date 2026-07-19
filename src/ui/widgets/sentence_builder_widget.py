@@ -353,9 +353,13 @@ class SentenceBuilderWidget(QWidget):
         self.btn_clear.setStyleSheet(_btn_secondary())
 
         self.btn_skip = QPushButton("Skip")
+        self.btn_skip.setObjectName("ReviewSkipButton")
+        self.btn_skip.setAccessibleName("Skip this review card")
         self.btn_skip.setStyleSheet(_btn_secondary())
 
         self.btn_check = QPushButton("Check")
+        self.btn_check.setObjectName("ReviewCheckButton")
+        self.btn_check.setAccessibleName("Check your answer")
         self.btn_check.setStyleSheet(_btn_colored("#1F5F3A", "#FFFFFF"))
 
         ctrl.addWidget(self.btn_backspace)

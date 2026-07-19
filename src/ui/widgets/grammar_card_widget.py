@@ -186,13 +186,17 @@ class GrammarCardWidget(QWidget):
         input_row.addWidget(self.in_blank, 1)
 
         self.btn_check = QPushButton("Check")
+        self.btn_check.setObjectName("ReviewCheckButton")
+        self.btn_check.setAccessibleName("Check your answer")
         self.btn_check.setMinimumHeight(42)
         self.btn_check.setStyleSheet(self._primary_btn_style())
         input_row.addWidget(self.btn_check)
 
         self.btn_skip = QPushButton("Skip")
+        self.btn_skip.setObjectName("ReviewSkipButton")
+        self.btn_skip.setAccessibleName("Skip this review card")
         self.btn_skip.setMinimumHeight(42)
-        self.btn_skip.setStyleSheet(self._secondary_btn_style())
+        self.btn_skip.setStyleSheet(self._skip_btn_style())
         input_row.addWidget(self.btn_skip)
 
         input_layout.addLayout(input_row)
@@ -297,20 +301,20 @@ class GrammarCardWidget(QWidget):
             QPushButton:disabled { background-color: #1A1A1A; color: #6B6B6B; border: 1px solid #252525; }
         """
 
-    def _secondary_btn_style(self) -> str:
+    def _skip_btn_style(self) -> str:
         return """
             QPushButton {
-                background-color: #163A5C;
-                color: #FFFFFF;
-                border: 1px solid #24537D;
+                background-color: #1B1B1B;
+                color: #E6E6E6;
+                border: 1px solid #2E2E2E;
                 border-radius: 16px;
                 padding: 10px 16px;
-                font-weight: 900;
+                font-weight: 850;
                 font-size: 13px;
                 min-width: 76px;
             }
-            QPushButton:hover { background-color: #1B4B78; border: 1px solid #FFFFFF; }
-            QPushButton:pressed { background-color: #123050; }
+            QPushButton:hover { background-color: #232323; border: 1px solid #4A4A4A; color: #FFFFFF; }
+            QPushButton:pressed { background-color: #2B2B2B; }
             QPushButton:disabled { background-color: #1A1A1A; color: #6B6B6B; border: 1px solid #252525; }
         """
 

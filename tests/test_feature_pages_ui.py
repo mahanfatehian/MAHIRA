@@ -107,6 +107,54 @@ def test_navigation_typography_uses_the_same_scale_preference():
     assert "font-size: 18.20px" in nav.btn_today.styleSheet()
 
 
+def test_review_actions_have_clear_labels_and_visual_hierarchy():
+    from ui.pages.grammar_review import GrammarReviewPage
+    from ui.pages.listening_review import ListeningReviewPage
+    from ui.pages.sentence_review import SentenceReviewPage
+    from ui.pages.vocab_review import VocabReviewPage
+
+    _qapp()
+    pages = [
+        VocabReviewPage(SimpleNamespace()),
+        GrammarReviewPage(SimpleNamespace()),
+        SentenceReviewPage(SimpleNamespace()),
+        ListeningReviewPage(SimpleNamespace()),
+    ]
+    try:
+        for page in pages:
+            assert page.start_btn.text() == "New set"
+            assert page.start_btn.objectName() == "NewReviewSetButton"
+            assert page.start_btn.accessibleName() == "Start a new review set"
+            assert page.start_btn.minimumWidth() >= 78
+            assert page.stats_btn.objectName() == "ReviewStatsButton"
+            assert page.stats_btn.accessibleName() == "Open review statistics"
+
+        checks = [
+            pages[0].card.check_btn,
+            pages[1].card.btn_check,
+            pages[2].card.btn_check,
+        ]
+        skips = [
+            pages[0].card.skip_btn,
+            pages[1].card.btn_skip,
+            pages[2].card.btn_skip,
+            pages[3].skip_btn,
+        ]
+        for button in checks:
+            assert button.objectName() == "ReviewCheckButton"
+            assert button.accessibleName() == "Check your answer"
+            assert "#1F5F3A" in button.styleSheet() or "#244B36" in button.styleSheet()
+        for button in skips:
+            assert button.objectName() == "ReviewSkipButton"
+            assert button.accessibleName() == "Skip this review card"
+            assert "#1B1B1B" in button.styleSheet()
+            assert "#163A5C" not in button.styleSheet()
+    finally:
+        for page in pages:
+            page.close()
+            page.deleteLater()
+
+
 @pytest.mark.parametrize("font_scale", [85, 100, 115, 130, 140])
 def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
     from PySide6.QtWidgets import QApplication, QLabel, QPushButton

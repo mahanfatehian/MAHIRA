@@ -68,11 +68,11 @@ STYLE_PRIMARY_BUTTON = (
     "QPushButton:pressed { background-color:#214734; }"
     "QPushButton:disabled { background-color:#1A1A1A; color:#6B6B6B; border:1px solid #252525; }"
 )
-STYLE_SECONDARY_BUTTON = (
-    "QPushButton { background-color:#163A5C; color:#FFFFFF; border:1px solid #24537D; border-radius:16px; "
-    "padding:10px 16px; font-weight:900; font-size:13px; min-width:88px; }"
-    "QPushButton:hover { background-color:#1B4B78; border:1px solid #FFFFFF; }"
-    "QPushButton:pressed { background-color:#123050; }"
+STYLE_SKIP_BUTTON = (
+    "QPushButton { background-color:#1B1B1B; color:#E6E6E6; border:1px solid #2E2E2E; border-radius:16px; "
+    "padding:10px 16px; font-weight:850; font-size:13px; min-width:88px; }"
+    "QPushButton:hover { background-color:#232323; border:1px solid #4A4A4A; color:#FFFFFF; }"
+    "QPushButton:pressed { background-color:#2B2B2B; }"
     "QPushButton:disabled { background-color:#1A1A1A; color:#6B6B6B; border:1px solid #252525; }"
 )
 STYLE_UTILITY_BUTTON = (
@@ -81,7 +81,7 @@ STYLE_UTILITY_BUTTON = (
     "QPushButton:hover { background-color:#232323; border:1px solid #4A4A4A; color:#FFFFFF; }"
 )
 
-# Compact top-bar Start/Stats (match the other review pages exactly).
+# Compact top-bar New set/Stats (match the other review pages exactly).
 STYLE_START_BTN = (
     "QPushButton { background-color:#244B36; color:#F4FFF7; border:1px solid #4CAF50; border-radius:10px; "
     "padding:8px; font-weight:900; font-size:12px; }"
@@ -294,12 +294,17 @@ class ListeningReviewPage(QWidget):
         self.counter_lbl.setMinimumWidth(60)
         self.counter_lbl.setStyleSheet(STYLE_COUNTER)
 
-        self.start_btn = QPushButton("Start")
-        self.start_btn.setFixedWidth(60)
+        self.start_btn = QPushButton("New set")
+        self.start_btn.setObjectName("NewReviewSetButton")
+        self.start_btn.setAccessibleName("Start a new review set")
+        self.start_btn.setToolTip("Start a fresh review set")
+        self.start_btn.setMinimumWidth(78)
         self.start_btn.setStyleSheet(STYLE_START_BTN)
         self.start_btn.clicked.connect(self._start_session)
 
         self.stats_btn = QPushButton("Stats")
+        self.stats_btn.setObjectName("ReviewStatsButton")
+        self.stats_btn.setAccessibleName("Open review statistics")
         self.stats_btn.setFixedWidth(60)
         self.stats_btn.setStyleSheet(STYLE_STATS_BTN)
         self.stats_btn.clicked.connect(self.go_progress.emit)
@@ -471,9 +476,11 @@ class ListeningReviewPage(QWidget):
         row.addStretch(1)
 
         self.skip_btn = QPushButton("Skip")
+        self.skip_btn.setObjectName("ReviewSkipButton")
+        self.skip_btn.setAccessibleName("Skip this review card")
         self.skip_btn.setMinimumHeight(42)
         self.skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.skip_btn.setStyleSheet(STYLE_SECONDARY_BUTTON)
+        self.skip_btn.setStyleSheet(STYLE_SKIP_BUTTON)
         self.skip_btn.clicked.connect(self._on_skip)
 
         self.next_btn = QPushButton("Next  →")
@@ -628,7 +635,7 @@ class ListeningReviewPage(QWidget):
         if not self.current_item:
             self._show_empty(
                 "Session finished.",
-                "You've answered all queued listening items. Press Start for another set.",
+                "You've answered all queued listening items. Select New set for another set.",
             )
             self._update_counter()
             return

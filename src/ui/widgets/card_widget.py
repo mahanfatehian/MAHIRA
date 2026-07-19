@@ -278,13 +278,17 @@ class CardWidget(QWidget):
         action_row.setSpacing(8)
 
         self.check_btn = QPushButton("Check")
+        self.check_btn.setObjectName("ReviewCheckButton")
+        self.check_btn.setAccessibleName("Check your answer")
         self.check_btn.setMinimumHeight(40)
         self.check_btn.setStyleSheet(self._primary_btn_style())
         action_row.addWidget(self.check_btn, 1)
 
         self.skip_btn = QPushButton("Skip")
+        self.skip_btn.setObjectName("ReviewSkipButton")
+        self.skip_btn.setAccessibleName("Skip this review card")
         self.skip_btn.setMinimumHeight(40)
-        self.skip_btn.setStyleSheet(self._secondary_btn_style())
+        self.skip_btn.setStyleSheet(self._skip_btn_style())
         action_row.addWidget(self.skip_btn, 1)
 
         input_layout.addLayout(action_row)
@@ -455,20 +459,20 @@ class CardWidget(QWidget):
             QPushButton:disabled { background-color: #1A1A1A; color: #6B6B6B; border: 1px solid #252525; }
         """
 
-    def _secondary_btn_style(self) -> str:
+    def _skip_btn_style(self) -> str:
         return """
             QPushButton {
-                background-color: #163A5C;
-                color: #FFFFFF;
-                border: 1px solid #24537D;
+                background-color: #1B1B1B;
+                color: #E6E6E6;
+                border: 1px solid #2E2E2E;
                 border-radius: 16px;
                 padding: 10px 16px;
-                font-weight: 900;
+                font-weight: 850;
                 font-size: 13px;
                 min-width: 76px;
             }
-            QPushButton:hover { background-color: #1B4B78; border: 1px solid #FFFFFF; }
-            QPushButton:pressed { background-color: #123050; }
+            QPushButton:hover { background-color: #232323; border: 1px solid #4A4A4A; color: #FFFFFF; }
+            QPushButton:pressed { background-color: #2B2B2B; }
             QPushButton:disabled { background-color: #1A1A1A; color: #6B6B6B; border: 1px solid #252525; }
         """
 
