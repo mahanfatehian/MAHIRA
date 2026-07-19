@@ -55,8 +55,8 @@ data/seeds/
 - Add a new book, level, or Lektion by adding files/folders — **no code change
   required**.
 
-Currently shipped: **Starten Wir A1** (Lektionen 1–12, complete) and **A2**
-(in progress); the engine handles any additional books/levels automatically.
+Currently shipped: **Starten Wir A1** and **A2** (Lektionen 1–12, complete);
+the engine handles any additional books/levels automatically.
 
 ---
 
