@@ -107,6 +107,33 @@ def test_navigation_typography_uses_the_same_scale_preference():
     assert "font-size: 18.20px" in nav.btn_today.styleSheet()
 
 
+def test_navigation_exposes_a_clear_current_page_state():
+    from ui.navigation import NavBar
+
+    _qapp()
+    nav = NavBar()
+
+    assert nav.btn_today.property("current") is True
+    assert nav.btn_today.accessibleDescription() == "Current page"
+    assert nav.btn_today.toolTip() == "Current page"
+    assert not nav.btn_today.isEnabled()
+    assert "#4CAF50" in nav.btn_today.styleSheet()
+    assert "#F4FFF7" in nav.btn_today.styleSheet()
+    assert "#9E9E9E" not in nav.btn_today.styleSheet()
+
+    nav.set_objective_states({"vocab"})
+    nav.set_active("vocab")
+
+    assert nav.btn_today.property("current") is False
+    assert nav.btn_today.accessibleDescription() == ""
+    assert nav.btn_today.isEnabled()
+    assert nav.btn_vocab.property("current") is True
+    assert nav.btn_vocab.accessibleDescription() == "Current page"
+    assert not nav.btn_vocab.isEnabled()
+    assert nav.btn_grammar.accessibleDescription() == "Unavailable for the selected lesson"
+    assert not nav.btn_grammar.isEnabled()
+
+
 def test_review_actions_have_clear_labels_and_visual_hierarchy():
     from ui.pages.grammar_review import GrammarReviewPage
     from ui.pages.listening_review import ListeningReviewPage

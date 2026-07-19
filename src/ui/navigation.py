@@ -50,15 +50,22 @@ class NavBar(QWidget):
 
         self._btn_style_active = """
             QPushButton {
-                background-color: #101010;
-                color: #9E9E9E;
-                border: 1px solid #2E2E2E;
+                background-color: #18231C;
+                color: #F4FFF7;
+                border: 1px solid #31553C;
+                border-left: 3px solid #4CAF50;
                 border-radius: 10px;
                 padding: 10px;
-                font-weight: 800;
+                font-weight: 900;
                 font-size: 13px;
                 text-align: left;
-                padding-left: 12px;
+                padding-left: 10px;
+            }
+            QPushButton:disabled {
+                background-color: #18231C;
+                color: #F4FFF7;
+                border: 1px solid #31553C;
+                border-left: 3px solid #4CAF50;
             }
         """
 
@@ -118,6 +125,8 @@ class NavBar(QWidget):
         }
 
         for key, btn in self._buttons.items():
+            btn.setObjectName(f"Nav{key.title()}Button")
+            btn.setAccessibleName(f"{btn.text()} page")
             btn.setStyleSheet(self._btn_style)
             btn.clicked.connect(lambda _=False, k=key: self.go.emit(k))
 
@@ -161,10 +170,17 @@ class NavBar(QWidget):
 
             # The active button is left unclickable to read as "current page".
             btn.setEnabled(enabled and not is_active)
+            btn.setProperty("current", is_active)
 
             if is_active:
+                btn.setAccessibleDescription("Current page")
+                btn.setToolTip("Current page")
                 btn.setStyleSheet(self._btn_style_active)
             elif not enabled:
+                btn.setAccessibleDescription("Unavailable for the selected lesson")
+                btn.setToolTip("Unavailable for the selected lesson")
                 btn.setStyleSheet(self._btn_style_disabled)
             else:
+                btn.setAccessibleDescription("")
+                btn.setToolTip("")
                 btn.setStyleSheet(self._btn_style)
