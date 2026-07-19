@@ -93,6 +93,45 @@ ui_*.py
 # -----------------------------
 # Development scratch
 # -----------------------------
-tmp/
+# Temporary directories (case-insensitive names and hidden variants)
+[Tt][Mm][Pp]/
+[Tt][Ee][Mm][Pp]/
+.[Tt][Mm][Pp]
+.[Tt][Mm][Pp].*
+.[Tt][Mm][Pp]-*
+.[Tt][Mm][Pp]_*
+.[Tt][Ee][Mm][Pp]
+.[Tt][Ee][Mm][Pp].*
+.[Tt][Ee][Mm][Pp]-*
+.[Tt][Ee][Mm][Pp]_*
+
+# Temporary files and common prefixed variants
+*.[Tt][Mm][Pp]
+*.[Tt][Mm][Pp].*
+*.[Tt][Ee][Mm][Pp]
+*.[Tt][Ee][Mm][Pp].*
+[Tt][Mm][Pp]-*
+[Tt][Mm][Pp]_*
+[Tt][Ee][Mm][Pp]-*
+[Tt][Ee][Mm][Pp]_*
+
+# Local-only working areas (never commit or push)
+.local/
+.local-only/
+.no-push/
+
+# Editor and patch leftovers
+*.bak
+*.rej
+*.swp
+*.swo
+*~
+
+# Additional generated test/coverage output
+.cache/
+.coverage.*
+coverage.xml
+test-results/
+
 scratch/
 notes/
