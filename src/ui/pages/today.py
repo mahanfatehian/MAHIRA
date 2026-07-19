@@ -47,6 +47,7 @@ class TodayPage(QWidget):
         self.session = session
         self.insights = InsightsService(session.repo)
         self._lane_widgets: dict[str, tuple[QLabel, QPushButton]] = {}
+        self._recommended_context: tuple[str, str, str, int] | None = None
         self._build()
 
     def _build(self) -> None:
@@ -122,8 +123,6 @@ class TodayPage(QWidget):
             lanes_layout.addWidget(self._lane_row(objective))
             if index < len(_LABELS) - 1:
                 lanes_layout.addWidget(self._divider())
-        root.addWidget(lanes_card)
-
         next_card = QFrame()
         next_card.setObjectName("NextStepsCard")
         next_card.setStyleSheet(card_style())
@@ -145,6 +144,16 @@ class TodayPage(QWidget):
         path_text.addWidget(path_title)
         path_text.addWidget(self.path_caption)
         path_layout.addLayout(path_text, 1)
+        self.path_button = QPushButton("Continue")
+        self.path_button.setAccessibleName("Continue recommended lesson")
+        self.path_button.setStyleSheet(PRIMARY_BUTTON_STYLE)
+        self.path_button.setMinimumWidth(100)
+        self.path_button.clicked.connect(self._start_recommended)
+        path_layout.addWidget(
+            self.path_button,
+            0,
+            Qt.AlignmentFlag.AlignVCenter,
+        )
         next_layout.addWidget(path_row)
         next_layout.addWidget(self._divider())
 
@@ -170,6 +179,7 @@ class TodayPage(QWidget):
         trouble_layout.addWidget(open_button, 0, Qt.AlignmentFlag.AlignVCenter)
         next_layout.addWidget(trouble_row)
         root.addWidget(next_card)
+        root.addWidget(lanes_card)
         root.addStretch(1)
 
     @staticmethod
@@ -217,11 +227,26 @@ class TodayPage(QWidget):
         level, book, lesson = context
         self.practice_requested.emit(objective, level, book, lesson)
 
+    def _start_recommended(self) -> None:
+        if self._recommended_context is None:
+            return
+        self.practice_requested.emit(*self._recommended_context)
+
     def on_show(self) -> None:
         lanes = self.insights.lanes()
         reviewed = self.insights.reviewed_today()
         settings = getattr(self.session, "settings", None)
-        goal = int(getattr(getattr(settings, "value", None), "daily_goal", 30))
+        prefs = getattr(settings, "value", None)
+        goal = int(getattr(prefs, "daily_goal", 30))
+        configured_new = getattr(
+            prefs,
+            "new_card_limit",
+            getattr(getattr(self.session, "plan", None), "new_limit", 8),
+        )
+        try:
+            new_limit = max(0, int(configured_new))
+        except (TypeError, ValueError):
+            new_limit = 8
         self.goal_chip.setText(f"{reviewed} / {goal}")
         self.goal_value.setText(f"{min(reviewed, goal)} of {goal}")
         self.goal_bar.setRange(0, max(1, goal))
@@ -243,9 +268,19 @@ class TodayPage(QWidget):
                 if lane.trouble
                 else "on track"
             )
+            available_new = min(lane.unseen, new_limit)
+            new_copy = (
+                "no new cards"
+                if not lane.unseen
+                else (
+                    f"up to {available_new} new"
+                    if available_new
+                    else "new cards paused"
+                )
+            )
             detail.setText(
                 f"{_LABELS[lane.objective][1]} · {lane.due} due · "
-                f"{lane.unseen} new · {lane_health}"
+                f"{new_copy} · {lane_health}"
             )
             button.setText("Review" if lane.due else "Learn")
 
@@ -256,6 +291,8 @@ class TodayPage(QWidget):
         )
 
         state = self.session.state
+        self._recommended_context = None
+        self.path_button.setEnabled(False)
         path = self.insights.lesson_path(state.level, state.book_slug)
         if not path:
             self.path_caption.setText("Choose a book and lesson in Setup to build your path.")
@@ -269,3 +306,16 @@ class TodayPage(QWidget):
         self.path_caption.setText(
             f"Lektion {recommended.number} · {recommended.title} · {recommended.mastery}% mastered"
         )
+        objective = str(getattr(state, "objective", "") or "").strip().lower()
+        if objective not in _LABELS:
+            objective = "vocab"
+        self._recommended_context = (
+            objective,
+            str(state.level or ""),
+            str(state.book_slug or ""),
+            int(recommended.number),
+        )
+        self.path_button.setAccessibleName(
+            f"Continue {recommended.title}, Lektion {recommended.number}"
+        )
+        self.path_button.setEnabled(True)

@@ -167,6 +167,63 @@ def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
         page.deleteLater()
 
 
+def test_today_bounds_new_counts_and_routes_recommended_lesson():
+    from PySide6.QtWidgets import QApplication, QLabel
+
+    from core.insights import LessonReadiness, StudyLane
+    from ui.pages.today import TodayPage
+
+    _qapp()
+    session = SimpleNamespace(
+        repo=object(),
+        settings=SimpleNamespace(
+            value=SimpleNamespace(daily_goal=30, new_card_limit=8)
+        ),
+        state=SimpleNamespace(
+            level="A1",
+            objective="vocab",
+            book_slug="menschen",
+            lektion_number=1,
+        ),
+    )
+    page = TodayPage(session)
+    page.insights = SimpleNamespace(
+        lanes=lambda: [
+            StudyLane("vocab", 160, 3899, 1),
+            StudyLane("grammar", 0, 0, 0),
+            StudyLane("sentences", 0, 12, 0),
+            StudyLane("listening", 0, 0, 0),
+        ],
+        reviewed_today=lambda: 0,
+        lesson_path=lambda *_args: [
+            LessonReadiness(1, "Hallo!", 35, True),
+        ],
+    )
+    requested: list[tuple] = []
+    page.practice_requested.connect(lambda *args: requested.append(args))
+    page.resize(760, 760)
+    page.on_show()
+    page.show()
+    try:
+        QApplication.processEvents()
+        details = [label.text() for label in page.findChildren(QLabel)]
+        vocab_detail = next(text for text in details if text.startswith("Words,"))
+        grammar_detail = next(text for text in details if text.startswith("Forms and"))
+        sentence_detail = next(text for text in details if text.startswith("Word order"))
+
+        assert "up to 8 new" in vocab_detail
+        assert "3899 new" not in vocab_detail
+        assert "no new cards" in grammar_detail
+        assert "up to 8 new" in sentence_detail
+        assert page.path_button.isEnabled()
+
+        page.path_button.click()
+        assert requested == [("vocab", "A1", "menschen", 1)]
+    finally:
+        page.close()
+        page.deleteLater()
+
+
 def test_stepper_and_audio_controls_are_not_pixel_font_locked(tmp_path):
     from PySide6.QtWidgets import QApplication
 
