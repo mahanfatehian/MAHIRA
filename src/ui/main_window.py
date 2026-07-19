@@ -29,7 +29,7 @@ from ui.pages.today import TodayPage
 from ui.pages.mistakes import MistakesPage
 from ui.pages.settings import SettingsPage
 from ui.pages.practice_lab import PracticeLabPage
-from ui.theme import apply_application_theme
+from ui.theme import apply_application_theme, apply_typography_scale
 
 PAGE_KEYS = [
     "today",
@@ -342,6 +342,7 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         if settings is not None and app is not None:
             apply_application_theme(app, settings.value.font_scale, settings.value.theme)
+            apply_typography_scale(self, settings.value.font_scale)
 
     def _open_context_practice(self, objective: str, level: str, book: str, lesson: int) -> None:
         try:
@@ -542,8 +543,12 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 print(f"[NAV] on_show error in {page_key}: {e}")
 
+        prefs = getattr(getattr(self.session, "settings", None), "value", None)
+        scale = int(getattr(prefs, "font_scale", 100) or 100)
         self._sync_nav()
         self.nav.set_active(self._nav_key_for_page(page_key))
+        apply_typography_scale(self.nav, scale)
+        apply_typography_scale(w, scale)
 
     def _current_page_key(self) -> str | None:
         cur = self.stack.currentWidget()

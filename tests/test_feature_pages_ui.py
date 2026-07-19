@@ -65,6 +65,48 @@ def test_scoped_theme_keeps_valid_point_fonts_and_legacy_hierarchy():
         qInstallMessageHandler(previous)
 
 
+def test_legacy_typography_scale_is_reversible_and_non_compounding():
+    from PySide6.QtGui import QFont
+    from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+
+    from ui.theme import apply_typography_scale
+
+    _qapp()
+    root = QWidget()
+    layout = QVBoxLayout(root)
+    styled = QLabel("Styled")
+    styled.setStyleSheet("QLabel { font-size: 13px; color: #FFFFFF; }")
+    explicit = QLabel("Explicit")
+    explicit_font = QFont(explicit.font())
+    explicit_font.setPointSizeF(10.0)
+    explicit.setFont(explicit_font)
+    layout.addWidget(styled)
+    layout.addWidget(explicit)
+
+    apply_typography_scale(root, 140)
+    assert "font-size: 18.20px" in styled.styleSheet()
+    assert explicit.font().pointSizeF() == pytest.approx(14.0, abs=0.05)
+
+    apply_typography_scale(root, 100)
+    assert "font-size: 13.00px" in styled.styleSheet()
+    assert explicit.font().pointSizeF() == pytest.approx(10.0, abs=0.05)
+
+    apply_typography_scale(root, 140)
+    assert "font-size: 18.20px" in styled.styleSheet()
+    assert explicit.font().pointSizeF() == pytest.approx(14.0, abs=0.05)
+
+
+def test_navigation_typography_uses_the_same_scale_preference():
+    from ui.navigation import NavBar
+    from ui.theme import apply_typography_scale
+
+    _qapp()
+    nav = NavBar()
+    apply_typography_scale(nav, 140)
+
+    assert "font-size: 18.20px" in nav.btn_today.styleSheet()
+
+
 @pytest.mark.parametrize("font_scale", [85, 100, 115, 130, 140])
 def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
     from PySide6.QtWidgets import QApplication, QLabel, QPushButton

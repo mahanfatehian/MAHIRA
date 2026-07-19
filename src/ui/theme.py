@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import re
+
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QWidget
 
 
 # MAHIRA's established visual language is deliberately neutral: near-black
@@ -49,6 +53,10 @@ COLORS: dict[str, str] = {
 
 CONTROL_RADIUS = 10
 PANEL_RADIUS = 14
+_QSS_FONT_SIZE_RE = re.compile(
+    r"(font-size\s*:\s*)([0-9]+(?:\.[0-9]+)?)px",
+    re.IGNORECASE,
+)
 
 
 def _bounded_scale(font_scale: int) -> int:
@@ -74,6 +82,62 @@ def set_feature_font(widget, point_size: int, weight: QFont.Weight) -> None:
     font.setWeight(weight)
     widget.setFont(font)
     widget.setProperty("mahiraFontPointSize", str(base_size))
+
+
+def _scale_qss_font_tokens(stylesheet: str, scale: int) -> str:
+    def replace(match: re.Match) -> str:
+        size = float(match.group(2)) * scale / 100.0
+        return f"{match.group(1)}{size:.2f}px"
+
+    return _QSS_FONT_SIZE_RE.sub(replace, stylesheet)
+
+
+def apply_typography_scale(root: QWidget, font_scale: int = 100) -> None:
+    """Scale legacy page typography without changing its visual language.
+
+    Older MAHIRA pages own detailed local QSS and explicit Segoe UI fonts.
+    Their original values are cached as tokens, so repeated 85–140% preference
+    changes never compound. Semantic feature-page fonts are skipped here.
+    """
+
+    scale = _bounded_scale(font_scale)
+    widgets = [root, *root.findChildren(QWidget)]
+    for widget in widgets:
+        current_qss = widget.styleSheet()
+        rendered_qss = widget.property("mahiraRenderedStyleSheet")
+        base_qss = widget.property("mahiraBaseStyleSheet")
+        if current_qss and current_qss != rendered_qss:
+            base_qss = current_qss
+            widget.setProperty("mahiraBaseStyleSheet", base_qss)
+        if base_qss:
+            scaled_qss = _scale_qss_font_tokens(str(base_qss), scale)
+            widget.setProperty("mahiraRenderedStyleSheet", scaled_qss)
+            if current_qss != scaled_qss:
+                widget.setStyleSheet(scaled_qss)
+
+        if widget.property("mahiraFontPointSize") is not None:
+            continue
+        if base_qss and _QSS_FONT_SIZE_RE.search(str(base_qss)):
+            continue
+        if not widget.testAttribute(Qt.WidgetAttribute.WA_SetFont):
+            continue
+
+        font = QFont(widget.font())
+        point_size = float(font.pointSizeF())
+        if point_size <= 0:
+            continue
+        last_rendered = widget.property("mahiraRenderedPointSize")
+        base_point = widget.property("mahiraBasePointSize")
+        if base_point is None or (
+            last_rendered is not None
+            and abs(point_size - float(last_rendered)) > 0.05
+        ):
+            base_point = point_size
+            widget.setProperty("mahiraBasePointSize", base_point)
+        scaled_point = max(1.0, float(base_point) * scale / 100.0)
+        font.setPointSizeF(scaled_point)
+        widget.setFont(font)
+        widget.setProperty("mahiraRenderedPointSize", scaled_point)
 
 
 def apply_application_theme(app, font_scale: int = 100, theme: str = "graphite") -> None:
