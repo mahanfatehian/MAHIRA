@@ -7,19 +7,31 @@ from typing import Any
 
 from core import fsrs, priority
 
-try:
-    import joblib
-    import numpy as np
-    from sklearn.linear_model import SGDRegressor
-    from sklearn.preprocessing import StandardScaler
+joblib = None
+np = None
+SGDRegressor = None
+StandardScaler = None
+_SKLEARN_OK: bool | None = None
 
+
+def _ensure_sklearn_backend() -> bool:
+    """Load sklearn once, after the first learned-model operation."""
+
+    global joblib, np, SGDRegressor, StandardScaler, _SKLEARN_OK
+    if _SKLEARN_OK is not None:
+        return _SKLEARN_OK
+    try:
+        import joblib as loaded_joblib
+        import numpy as loaded_numpy
+        from sklearn.linear_model import SGDRegressor as loaded_sgd
+        from sklearn.preprocessing import StandardScaler as loaded_scaler
+    except Exception:
+        _SKLEARN_OK = False
+        return False
+    joblib, np = loaded_joblib, loaded_numpy
+    SGDRegressor, StandardScaler = loaded_sgd, loaded_scaler
     _SKLEARN_OK = True
-except Exception:
-    joblib = None
-    np = None
-    SGDRegressor = None
-    StandardScaler = None
-    _SKLEARN_OK = False
+    return True
 
 
 def _safe_key(value: str | None) -> str:
@@ -71,12 +83,15 @@ class _OnlineDifficultyModel:
     """
 
     def __init__(self) -> None:
-        if not _SKLEARN_OK:
-            self.scaler = None
-            self.model = None
-            self.is_fitted = False
-            return
+        self.scaler = None
+        self.model = None
+        self.is_fitted = False
 
+    def _initialize(self) -> bool:
+        if self.scaler is not None and self.model is not None:
+            return True
+        if not _ensure_sklearn_backend():
+            return False
         self.scaler = StandardScaler()
         self.model = SGDRegressor(
             loss="squared_error",
@@ -87,10 +102,10 @@ class _OnlineDifficultyModel:
             tol=None,
             random_state=42,
         )
-        self.is_fitted = False
+        return True
 
     def partial_fit(self, x: list[float], y: float) -> None:
-        if not _SKLEARN_OK or self.scaler is None or self.model is None:
+        if not self._initialize():
             return
 
         X = np.asarray([x], dtype=float)
@@ -105,10 +120,10 @@ class _OnlineDifficultyModel:
         if not vectors:
             return []
 
-        if not _SKLEARN_OK or self.scaler is None or self.model is None:
+        if not self.is_fitted:
             return [0.5] * len(vectors)
 
-        if not self.is_fitted:
+        if self.scaler is None or self.model is None:
             return [0.5] * len(vectors)
 
         X = np.asarray(vectors, dtype=float)
@@ -813,7 +828,7 @@ class SklearnRanker:
 
         path = self._model_path(objective, level)
 
-        if _SKLEARN_OK and joblib is not None and path.exists():
+        if path.exists() and _ensure_sklearn_backend() and joblib is not None:
             try:
                 model = joblib.load(path)
                 self._models[key] = model
@@ -826,7 +841,9 @@ class SklearnRanker:
         return model
 
     def _save_model(self, objective: str, level: str | None, model: _OnlineDifficultyModel) -> None:
-        if not _SKLEARN_OK or joblib is None:
+        if not getattr(model, "is_fitted", False):
+            return
+        if not _ensure_sklearn_backend() or joblib is None:
             return
 
         try:
