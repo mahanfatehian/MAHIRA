@@ -96,8 +96,9 @@ class BackupService:
             sidecar = path.with_suffix(".json")
             try:
                 data = json.loads(sidecar.read_text(encoding="utf-8"))
-                reason = str(data.get("reason") or reason)
-                created_at = int(data.get("created_at") or created_at)
+                if isinstance(data, dict):
+                    reason = str(data.get("reason") or reason)
+                    created_at = int(data.get("created_at") or created_at)
             except (OSError, ValueError, TypeError):
                 pass
             result.append(BackupInfo(path, created_at, path.stat().st_size, reason))

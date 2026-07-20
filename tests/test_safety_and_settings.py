@@ -104,6 +104,27 @@ def test_verified_backup_and_retention(tmp_path):
     check.close()
 
 
+def test_backup_list_ignores_non_object_metadata(tmp_path):
+    from db.backup import BackupService
+
+    source = tmp_path / "mahira.db"
+    conn = sqlite3.connect(source)
+    conn.execute("CREATE TABLE sample(value TEXT)")
+    conn.commit()
+    conn.close()
+
+    service = BackupService(source)
+    info = service.create("manual")
+    assert info is not None
+    info.path.with_suffix(".json").write_text("[]", encoding="utf-8")
+
+    backups = service.list()
+
+    assert len(backups) == 1
+    assert backups[0].path == info.path
+    assert backups[0].reason == "backup"
+
+
 def test_legacy_rebuild_preserves_content_state_and_reviews(tmp_path):
     from db.init_db import SCHEMA_VERSION, init_db
 
