@@ -437,6 +437,31 @@ def test_practice_lab_can_preselect_mode_without_double_loading():
         page.deleteLater()
 
 
+def test_practice_lab_stops_audio_when_hidden(monkeypatch):
+    from PySide6.QtWidgets import QApplication
+
+    from ui.pages.practice_lab import PracticeLabPage
+
+    _qapp()
+    page = PracticeLabPage(_PracticeSession())
+    stops: list[bool] = []
+    monkeypatch.setattr(page._playback, "stop", lambda: stops.append(True))
+    page.play_btn.set_playing(True)
+    page.show()
+    try:
+        QApplication.processEvents()
+        page.hide()
+        QApplication.processEvents()
+
+        assert stops == [True]
+        assert page.play_btn.text() == "🔊"
+        assert page.play_btn.isEnabled()
+    finally:
+        page._stop_audio()
+        page.close()
+        page.deleteLater()
+
+
 def test_settings_use_step_controls_and_save_inline(tmp_path):
     from PySide6.QtWidgets import QSpinBox
 
