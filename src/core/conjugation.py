@@ -302,7 +302,7 @@ class Conjugator:
         try:
             if not self._db_path.exists():
                 return None
-            uri = f"file:{self._db_path.as_posix()}?mode=ro"
+            uri = f"{self._db_path.resolve().as_uri()}?mode=ro"
             conn = sqlite3.connect(uri, uri=True, check_same_thread=False)
             conn.row_factory = sqlite3.Row
             self._conn = conn
