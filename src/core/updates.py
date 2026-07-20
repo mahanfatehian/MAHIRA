@@ -18,9 +18,19 @@ class UpdateResult:
     page_url: str
 
 
-def _version_tuple(value: str) -> tuple[int, ...]:
-    numbers = re.findall(r"\d+", value or "")
-    return tuple(int(part) for part in numbers[:3]) or (0,)
+def _version_tuple(value: str) -> tuple[int, int, int, int]:
+    text = (value or "").strip()
+    match = re.search(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?", text)
+    if match is None:
+        return (0, 0, 0, 0)
+
+    core = tuple(int(part or 0) for part in match.groups())
+    suffix = text[match.end():].strip()
+    qualifier = suffix.lstrip("._").casefold()
+    is_prerelease = suffix.startswith("-") or qualifier.startswith(
+        ("a", "alpha", "b", "beta", "rc", "dev", "pre", "preview")
+    )
+    return (*core, 0 if is_prerelease else 1)
 
 
 class UpdateService:

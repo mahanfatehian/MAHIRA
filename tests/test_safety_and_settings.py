@@ -249,3 +249,5 @@ def test_update_version_comparison():
 
     assert _version_tuple("v1.10.0") > _version_tuple("1.9.9")
     assert _version_tuple("0.4.0-beta.1") >= (0, 4, 0)
+    assert _version_tuple("1.0.0") > _version_tuple("1.0.0-beta.2")
+    assert _version_tuple("1.0.0") > _version_tuple("1.0.0rc1")
