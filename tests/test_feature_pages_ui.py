@@ -336,6 +336,23 @@ def test_stepper_and_audio_controls_are_not_pixel_font_locked(tmp_path):
         audio.deleteLater()
 
 
+def test_sentence_builder_restores_prompt_after_empty_state():
+    from ui.widgets.sentence_builder_widget import SentenceBuilderWidget
+
+    _qapp()
+    widget = SentenceBuilderWidget()
+    try:
+        widget.lock_after_finish("Session complete")
+        assert widget.empty_lbl.text() == "No sentence reviews available."
+
+        widget.set_item(words=["Ich", "lerne"], tip=None, translation=None)
+
+        assert widget.empty_lbl.text() == "Tap words below to build the sentence"
+    finally:
+        widget.close()
+        widget.deleteLater()
+
+
 class _PracticeRepo:
     def __init__(self):
         from db.repo import VocabItem

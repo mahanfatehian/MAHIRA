@@ -537,6 +537,7 @@ class SentenceBuilderWidget(QWidget):
         self._bank_buttons.clear()
         self._built_buttons.clear()
 
+        self.empty_lbl.setText("Tap words below to build the sentence")
         self.empty_lbl.show()
         self._update_count()
         self._refresh_answer_area_style()
