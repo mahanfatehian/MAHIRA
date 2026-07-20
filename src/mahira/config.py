@@ -141,7 +141,7 @@ def migrate_legacy_windows_state(paths: Paths) -> bool:
 
         copied_db = temporary / DB_FILENAME
         if copied_db.is_file() and copied_db.stat().st_size:
-            uri = f"file:{copied_db.as_posix()}?mode=ro"
+            uri = f"{copied_db.resolve().as_uri()}?mode=ro"
             check = sqlite3.connect(uri, uri=True, timeout=15.0)
             try:
                 row = check.execute("PRAGMA integrity_check").fetchone()

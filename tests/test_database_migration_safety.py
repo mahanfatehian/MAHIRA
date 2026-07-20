@@ -70,7 +70,9 @@ def test_windows_legacy_state_move_is_verified_and_retryable(tmp_path, monkeypat
         encoding="utf-8",
     )
 
-    target = tmp_path / "local-app-data" / config.STATE_DIRNAME
+    # Windows user-data paths may legally contain percent signs. The migration
+    # integrity check must not decode percent-like filename text as a URI.
+    target = tmp_path / "local %23 app data" / config.STATE_DIRNAME
     monkeypatch.setattr(config, "is_frozen", lambda: True)
     monkeypatch.setattr(config.sys, "platform", "win32")
     monkeypatch.setattr(config.sys, "executable", str(executable))
