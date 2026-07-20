@@ -107,3 +107,20 @@ def test_missing_file_emits_failed(tmp_path):
     svc.failed.connect(lambda m: errors.append(m))
     svc.play_file(tmp_path / "does_not_exist.wav")
     assert errors and "does not exist" in errors[0].lower()
+
+
+def test_directory_path_emits_failed_without_loading(tmp_path):
+    _qapp()
+    from core.audio.playback_service import PlaybackService
+
+    FakeEffect, _ = _fake_effect_cls()
+    svc = PlaybackService()
+    fake = FakeEffect()
+    svc.effect = fake
+
+    errors = []
+    svc.failed.connect(lambda message: errors.append(message))
+    svc.play_file(tmp_path)
+
+    assert errors and "not a file" in errors[0].lower()
+    assert fake.source().isEmpty()
