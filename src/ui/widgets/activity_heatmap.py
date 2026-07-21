@@ -52,7 +52,7 @@ _GAP = 4
 _LEFT_PAD = 30
 _TOP_PAD = 18
 _LEGEND_H = 26
-_MIN_CELL = 9
+_MIN_CELL = 2
 _MAX_CELL = 15
 
 

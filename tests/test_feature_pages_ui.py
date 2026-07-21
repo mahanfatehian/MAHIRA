@@ -134,6 +134,27 @@ def test_navigation_exposes_a_clear_current_page_state():
     assert not nav.btn_grammar.isEnabled()
 
 
+def test_activity_heatmap_fits_a_narrow_progress_column():
+    import datetime as dt
+
+    from PySide6.QtWidgets import QApplication
+
+    from ui.widgets.activity_heatmap import ActivityHeatmap
+
+    _qapp()
+    heatmap = ActivityHeatmap(weeks=53)
+    heatmap.resize(610, heatmap.heightForWidth(610))
+    heatmap.set_data({}, goal=20, today=dt.date(2026, 7, 20))
+    heatmap.show()
+    try:
+        QApplication.processEvents()
+        assert heatmap._hot
+        assert max(rect.right() for rect, _day, _count in heatmap._hot) <= heatmap.width()
+    finally:
+        heatmap.close()
+        heatmap.deleteLater()
+
+
 def test_review_actions_have_clear_labels_and_visual_hierarchy():
     from ui.pages.grammar_review import GrammarReviewPage
     from ui.pages.listening_review import ListeningReviewPage
