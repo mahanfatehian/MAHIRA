@@ -157,23 +157,3 @@ class FlowLayout(QLayout):
         if pw is not None:
             pw.updateGeometry()
             pw.update()
-
-    def clear(self, *, delete_widgets: bool = True) -> None:
-        while self.count():
-            it = self.takeAt(0)
-            if not it:
-                continue
-            w = None
-            try:
-                w = it.widget()
-            except Exception:
-                w = None
-            if delete_widgets and isinstance(w, QWidget):
-                w.setParent(None)
-                w.deleteLater()
-
-        self.invalidate()
-        pw = self.parentWidget()
-        if pw is not None:
-            pw.updateGeometry()
-            pw.update()
