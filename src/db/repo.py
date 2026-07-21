@@ -1802,7 +1802,7 @@ class Repo:
     def _tokenize_sentence(text: str) -> list[str]:
         import re
         _TOKEN_RE = re.compile(
-            r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöß]+)*|\d+|[.,!?;:()\[\]{}\"""„‚''…–—-]"
+            r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"""„‚''…–—-]"
         )
         return [t for t in _TOKEN_RE.findall(text or "") if t and not t.isspace()]
 
