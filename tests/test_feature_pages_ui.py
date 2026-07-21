@@ -155,6 +155,22 @@ def test_activity_heatmap_fits_a_narrow_progress_column():
         heatmap.deleteLater()
 
 
+@pytest.mark.parametrize(
+    ("checks", "expected"),
+    [
+        ((True, True, True), 3),
+        ((True, True, False), 2),
+        ((True, False, False), 1),
+        ((False, False, False), 0),
+        ((None, None, None), 2),
+    ],
+)
+def test_vocab_card_rating_matches_correct_field_count(checks, expected):
+    from ui.widgets.card_widget import CardWidget
+
+    assert CardWidget._recommend_from_checks(*checks) == expected
+
+
 def test_review_actions_have_clear_labels_and_visual_hierarchy():
     from ui.pages.grammar_review import GrammarReviewPage
     from ui.pages.listening_review import ListeningReviewPage

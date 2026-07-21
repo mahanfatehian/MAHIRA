@@ -651,13 +651,13 @@ class CardWidget(QWidget):
             return 2
 
         correct = sum(1 for v in applicable if v is True)
-        ratio = correct / max(1, len(applicable))
+        total = len(applicable)
 
-        if ratio >= 1.0:
+        if correct == total:
             return 3
-        if ratio >= 0.67:
+        if correct * 3 >= total * 2:
             return 2
-        if ratio >= 0.34:
+        if correct * 3 >= total:
             return 1
         return 0
 
