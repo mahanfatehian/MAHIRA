@@ -98,6 +98,54 @@ def _pick(repo, objective: str, deck_id: int, mode: str) -> list[int]:
     return picker(deck_id, 10, mode=mode, cooldown_hours=0)
 
 
+def _due_count(repo, objective: str, deck_id: int) -> int:
+    counter = {
+        "vocab": repo.due_count,
+        "grammar": repo.grammar_due_count,
+        "sentences": repo.sentence_due_count,
+        "listening": repo.listening_due_count,
+    }[objective]
+    return counter(deck_id)
+
+
+@pytest.mark.parametrize("objective", _OBJECTIVES)
+def test_due_counters_exclude_buried_and_suspended_cards(repo, objective):
+    deck_id, item_id, state_table, foreign_key = _make_trouble_card(
+        repo,
+        objective,
+    )
+    now = int(time.time())
+
+    assert _due_count(repo, objective, deck_id) == 1
+    assert repo.upcoming_due_counts(3600) == {"due_now": 1, "due_soon": 0}
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET buried_until=? WHERE {foreign_key}=?",
+            (now + 3600, item_id),
+        )
+    assert _due_count(repo, objective, deck_id) == 0
+    assert repo.upcoming_due_counts(3600) == {"due_now": 0, "due_soon": 0}
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} "
+            "SET due_at=?, buried_until=NULL, suspended=0 "
+            f"WHERE {foreign_key}=?",
+            (now + 600, item_id),
+        )
+    assert _due_count(repo, objective, deck_id) == 0
+    assert repo.upcoming_due_counts(3600) == {"due_now": 0, "due_soon": 1}
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET suspended=1 WHERE {foreign_key}=?",
+            (item_id,),
+        )
+    assert _due_count(repo, objective, deck_id) == 0
+    assert repo.upcoming_due_counts(3600) == {"due_now": 0, "due_soon": 0}
+
+
 @pytest.mark.parametrize("objective", _OBJECTIVES)
 def test_tomorrow_bury_excludes_every_lane_until_next_local_day(repo, objective):
     from core.insights import InsightsService

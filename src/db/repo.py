@@ -1425,8 +1425,10 @@ class Repo:
                   FROM listening l
                   JOIN listening_states st ON st.listening_id=l.id
                  WHERE l.deck_id=? AND st.due_at<=?
+                   AND st.suspended=0
+                   AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now),
+                (deck_id, now, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1519,8 +1521,10 @@ class Repo:
                   FROM vocab v
                   JOIN vocab_states s ON s.vocab_id=v.id
                  WHERE v.deck_id=? AND s.due_at<=?
+                   AND s.suspended=0
+                   AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now),
+                (deck_id, now, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1588,8 +1592,10 @@ class Repo:
                             SUM(CASE WHEN due_at <= ? THEN 1 ELSE 0 END) AS now_due,
                             SUM(CASE WHEN due_at > ? AND due_at <= ? THEN 1 ELSE 0 END) AS soon_due
                           FROM {table}
+                         WHERE suspended=0
+                           AND (buried_until IS NULL OR buried_until<=?)
                         """,
-                        (now, now, horizon),
+                        (now, now, horizon, now),
                     ).fetchone()
                 except Exception:
                     continue
@@ -1641,8 +1647,10 @@ class Repo:
                   FROM grammar g
                   JOIN grammar_states s ON s.grammar_id=g.id
                  WHERE g.deck_id=? AND s.due_at<=?
+                   AND s.suspended=0
+                   AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now),
+                (deck_id, now, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1682,8 +1690,10 @@ class Repo:
                   FROM sentences s
                   JOIN sentence_states st ON st.sentence_id=s.id
                  WHERE s.deck_id=? AND st.due_at<=?
+                   AND st.suspended=0
+                   AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now),
+                (deck_id, now, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
