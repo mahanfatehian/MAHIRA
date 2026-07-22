@@ -104,6 +104,45 @@ def test_verified_backup_and_retention(tmp_path):
     check.close()
 
 
+def test_restore_keeps_selected_backup_until_copy_finishes(tmp_path):
+    from db.backup import BackupService
+
+    source = tmp_path / "mahira.db"
+    conn = sqlite3.connect(source)
+    conn.execute("CREATE TABLE sample(value TEXT)")
+    conn.execute("INSERT INTO sample VALUES ('oldest')")
+    conn.commit()
+    conn.close()
+
+    service = BackupService(source)
+    backups = [service.create("oldest")]
+    backups.extend(service.create(f"slot-{index}") for index in range(2, 13))
+    assert all(info is not None for info in backups)
+
+    # Give every sidecar an explicit ordering so the selected snapshot is the
+    # one retention would prune when the before-restore backup is created.
+    for created_at, info in enumerate(backups, start=1):
+        assert info is not None
+        sidecar = info.path.with_suffix(".json")
+        metadata = json.loads(sidecar.read_text(encoding="utf-8"))
+        metadata["created_at"] = created_at
+        sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+
+    conn = sqlite3.connect(source)
+    conn.execute("UPDATE sample SET value='current'")
+    conn.commit()
+    conn.close()
+
+    selected = backups[0]
+    assert selected is not None
+    service.restore(selected.path)
+
+    restored = sqlite3.connect(source)
+    assert restored.execute("SELECT value FROM sample").fetchone()[0] == "oldest"
+    restored.close()
+    assert len(service.list()) == 12
+
+
 def test_backup_list_ignores_non_object_metadata(tmp_path):
     from db.backup import BackupService
 

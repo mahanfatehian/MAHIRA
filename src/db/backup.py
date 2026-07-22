@@ -27,7 +27,12 @@ class BackupService:
             else self.db_path.parent / "backups"
         )
 
-    def create(self, reason: str = "manual") -> BackupInfo | None:
+    def create(
+        self,
+        reason: str = "manual",
+        *,
+        prune: bool = True,
+    ) -> BackupInfo | None:
         if not self.db_path.exists() or self.db_path.stat().st_size == 0:
             return None
         self.backup_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +88,8 @@ class BackupService:
         except Exception:
             sidecar_temp.unlink(missing_ok=True)
             raise
-        self.prune()
+        if prune:
+            self.prune()
         return BackupInfo(target, now, target.stat().st_size, reason)
 
     def list(self) -> list[BackupInfo]:
@@ -117,7 +123,10 @@ class BackupService:
                 raise RuntimeError("The selected backup has broken relationships")
         finally:
             check.close()
-        self.create("before-restore")
+        # Keep the selected source available while taking the safety snapshot.
+        # If retention is already full and this is the oldest backup, pruning
+        # here would delete it before sqlite3.connect() opens it.
+        self.create("before-restore", prune=False)
         source = sqlite3.connect(str(source_path), timeout=15.0)
         destination = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
@@ -133,6 +142,7 @@ class BackupService:
         finally:
             destination.close()
             source.close()
+        self.prune()
 
     def prune(self, keep: int = 12) -> None:
         for item in self.list()[max(1, int(keep)) :]:
