@@ -39,8 +39,8 @@ class PlaybackService(QObject):
     def play_file(self, file_path: str | Path) -> None:
         path = Path(file_path).resolve()
 
-        if not path.exists():
-            self.failed.emit(f"Audio file does not exist:\n{path}")
+        if not path.is_file():
+            self.failed.emit(f"Audio file does not exist or is not a file:\n{path}")
             return
 
         self.stop()

@@ -134,6 +134,43 @@ def test_navigation_exposes_a_clear_current_page_state():
     assert not nav.btn_grammar.isEnabled()
 
 
+def test_activity_heatmap_fits_a_narrow_progress_column():
+    import datetime as dt
+
+    from PySide6.QtWidgets import QApplication
+
+    from ui.widgets.activity_heatmap import ActivityHeatmap
+
+    _qapp()
+    heatmap = ActivityHeatmap(weeks=53)
+    heatmap.resize(610, heatmap.heightForWidth(610))
+    heatmap.set_data({}, goal=20, today=dt.date(2026, 7, 20))
+    heatmap.show()
+    try:
+        QApplication.processEvents()
+        assert heatmap._hot
+        assert max(rect.right() for rect, _day, _count in heatmap._hot) <= heatmap.width()
+    finally:
+        heatmap.close()
+        heatmap.deleteLater()
+
+
+@pytest.mark.parametrize(
+    ("checks", "expected"),
+    [
+        ((True, True, True), 3),
+        ((True, True, False), 2),
+        ((True, False, False), 1),
+        ((False, False, False), 0),
+        ((None, None, None), 2),
+    ],
+)
+def test_vocab_card_rating_matches_correct_field_count(checks, expected):
+    from ui.widgets.card_widget import CardWidget
+
+    assert CardWidget._recommend_from_checks(*checks) == expected
+
+
 def test_review_actions_have_clear_labels_and_visual_hierarchy():
     from ui.pages.grammar_review import GrammarReviewPage
     from ui.pages.listening_review import ListeningReviewPage
@@ -180,6 +217,59 @@ def test_review_actions_have_clear_labels_and_visual_hierarchy():
         for page in pages:
             page.close()
             page.deleteLater()
+
+
+@pytest.mark.parametrize("objective", ("vocab", "grammar", "sentences"))
+@pytest.mark.parametrize(("current_deck", "should_resume"), ((7, True), (8, False)))
+def test_review_page_reentry_only_keeps_same_deck_card(
+    objective,
+    current_deck,
+    should_resume,
+):
+    from ui.pages.grammar_review import GrammarReviewPage
+    from ui.pages.sentence_review import SentenceReviewPage
+    from ui.pages.vocab_review import VocabReviewPage
+
+    calls: list[str] = []
+    session = SimpleNamespace(
+        active_deck_id=lambda: 7,
+        context_label=lambda: "A1 lesson",
+        remaining=lambda: calls.append("remaining") or 2,
+        start_new_session=lambda: calls.append("start"),
+    )
+    page = SimpleNamespace(
+        session=session,
+        current_item=SimpleNamespace(deck_id=current_deck),
+        special_kbd=SimpleNamespace(
+            set_language=lambda _language: calls.append("language")
+        ),
+        page_subtitle=SimpleNamespace(
+            setText=lambda _text: calls.append("subtitle")
+        ),
+        main_shell=SimpleNamespace(show=lambda: calls.append("show")),
+        empty_card=SimpleNamespace(hide=lambda: calls.append("hide")),
+        _active_deck_id=lambda: 7,
+        _show_main=lambda: calls.append("show"),
+        _update_counter=lambda: calls.append("counter"),
+        _load_next=lambda: calls.append("load"),
+    )
+    page_class = {
+        "vocab": VocabReviewPage,
+        "grammar": GrammarReviewPage,
+        "sentences": SentenceReviewPage,
+    }[objective]
+
+    page_class.on_show(page)
+
+    assert "start" not in calls
+    if should_resume:
+        assert "show" in calls
+        assert "counter" in calls
+        assert "remaining" not in calls
+        assert "load" not in calls
+    else:
+        assert "remaining" in calls
+        assert "load" in calls
 
 
 @pytest.mark.parametrize("font_scale", [85, 100, 115, 130, 140])
@@ -336,6 +426,23 @@ def test_stepper_and_audio_controls_are_not_pixel_font_locked(tmp_path):
         audio.deleteLater()
 
 
+def test_sentence_builder_restores_prompt_after_empty_state():
+    from ui.widgets.sentence_builder_widget import SentenceBuilderWidget
+
+    _qapp()
+    widget = SentenceBuilderWidget()
+    try:
+        widget.lock_after_finish("Session complete")
+        assert widget.empty_lbl.text() == "No sentence reviews available."
+
+        widget.set_item(words=["Ich", "lerne"], tip=None, translation=None)
+
+        assert widget.empty_lbl.text() == "Tap words below to build the sentence"
+    finally:
+        widget.close()
+        widget.deleteLater()
+
+
 class _PracticeRepo:
     def __init__(self):
         from db.repo import VocabItem
@@ -431,6 +538,31 @@ def test_practice_lab_can_preselect_mode_without_double_loading():
         assert not page.select_mode("unknown", reload=False)
         assert page.mode_buttons["dictation"].isChecked()
         assert session.picker_calls == ["dictation"]
+    finally:
+        page._stop_audio()
+        page.close()
+        page.deleteLater()
+
+
+def test_practice_lab_stops_audio_when_hidden(monkeypatch):
+    from PySide6.QtWidgets import QApplication
+
+    from ui.pages.practice_lab import PracticeLabPage
+
+    _qapp()
+    page = PracticeLabPage(_PracticeSession())
+    stops: list[bool] = []
+    monkeypatch.setattr(page._playback, "stop", lambda: stops.append(True))
+    page.play_btn.set_playing(True)
+    page.show()
+    try:
+        QApplication.processEvents()
+        page.hide()
+        QApplication.processEvents()
+
+        assert stops == [True]
+        assert page.play_btn.text() == "🔊"
+        assert page.play_btn.isEnabled()
     finally:
         page._stop_audio()
         page.close()

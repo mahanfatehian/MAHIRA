@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
 )
 
+from ui.book_covers import level_cover_paths
 from ui.widgets.images import rounded_cover_pixmap
 
 CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
@@ -246,11 +247,18 @@ def _mask_text_keep_layout(text: str) -> str:
 
 def _split_answers_markers_only(md: str) -> tuple[str, Optional[str]]:
     md = md or ""
-    if ANSWERS_START not in md or ANSWERS_END not in md:
+    start = md.find(ANSWERS_START)
+    if start < 0:
         return md.strip(), None
 
-    before, rest = md.split(ANSWERS_START, 1)
-    ans, after = rest.split(ANSWERS_END, 1)
+    answer_start = start + len(ANSWERS_START)
+    end = md.find(ANSWERS_END, answer_start)
+    if end < 0:
+        return md.strip(), None
+
+    before = md[:start]
+    ans = md[answer_start:end]
+    after = md[end + len(ANSWERS_END):]
     body = (before + after).strip()
     answers = ans.strip()
     return body, (answers if answers else None)
@@ -304,24 +312,12 @@ def _level_blurb(level: str) -> str:
 def _level_icon_path(level: str) -> Optional[str]:
     """Pick a book cover icon for this CEFR level from assets/books/.
 
-    Reuses the book-cover naming convention <camelBook>_<level>.ico
-    (e.g. startenWir_a1.ico, menschen_a1.ico). A level can have several books,
-    so one is chosen at random. Returns None when no icon exists for the level,
-    in which case the card falls back to the gradient level tile.
+    Reuses the book-cover naming convention <camelBook>_<level>.<image>. A level
+    can have several books, so one is chosen at random. Returns None when no
+    cover exists for the level, in which case the card uses its gradient tile.
     """
-    try:
-        from mahira.config import resource_root
-        books_dir = resource_root() / "assets" / "books"
-        if not books_dir.exists():
-            return None
-        lvl = _norm_level(level).lower()
-        matches = [
-            str(p) for p in books_dir.glob("*.ico")
-            if p.stem.lower().endswith(f"_{lvl}")
-        ]
-        return random.choice(matches) if matches else None
-    except Exception:
-        return None
+    matches = level_cover_paths(level)
+    return random.choice(matches) if matches else None
 
 
 def _objective_group_number(lessons: List[LessonRef]) -> int:
@@ -544,7 +540,7 @@ class LevelCard(_ClickableCard):
         root.setContentsMargins(16, 14, 18, 14)
         root.setSpacing(16)
 
-        # Cover tile: a random book cover for this level (assets/books/<book>_<level>.ico)
+        # Cover tile: a random book cover for this level.
         # rendered crisp + HiDPI-aware filling the tile; otherwise a gradient
         # level-code tile.
         cover = rounded_cover_pixmap(icon_path, 68, 80, 16) if icon_path else None

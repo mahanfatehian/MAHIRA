@@ -13,41 +13,42 @@ Skipped automatically if the model / onnxruntime / tokenizers aren't available.
 """
 import pytest
 
-from core.semantic_match import get_matcher
-
-_matcher = get_matcher()
-pytestmark = [
-    pytest.mark.slow,
-    pytest.mark.skipif(
-        not _matcher.available(),
-        reason="meaning-match model / onnxruntime / tokenizers not available",
-    ),
-]
+pytestmark = pytest.mark.slow
 
 
-def test_number_confusion_is_rejected():
+@pytest.fixture(scope="module")
+def matcher():
+    from core.semantic_match import get_matcher
+
+    instance = get_matcher()
+    if not instance.available():
+        pytest.skip("meaning-match model / onnxruntime / tokenizers not available")
+    return instance
+
+
+def test_number_confusion_is_rejected(matcher):
     # The exact bug: eighty != eight (and other number near-misses) — MiniLM-L12
     # rates these ~0.59-0.65, below threshold.
-    assert _matcher.matches("eight", ["eighty"]) is False
-    assert _matcher.matches("eighteen", ["eighty"]) is False
-    assert _matcher.matches("ninety", ["nine"]) is False
+    assert matcher.matches("eight", ["eighty"]) is False
+    assert matcher.matches("eighteen", ["eighty"]) is False
+    assert matcher.matches("ninety", ["nine"]) is False
 
 
-def test_exact_match_is_accepted():
+def test_exact_match_is_accepted(matcher):
     # Exact (normalized) glosses short-circuit before the model runs.
-    assert _matcher.matches("eighty", ["eighty"]) is True
-    assert _matcher.matches("job", ["profession", "job"]) is True
+    assert matcher.matches("eighty", ["eighty"]) is True
+    assert matcher.matches("job", ["profession", "job"]) is True
 
 
-def test_real_synonyms_accepted():
+def test_real_synonyms_accepted(matcher):
     # Strong synonyms clear 0.72 comfortably (~0.82-0.93).
-    assert _matcher.matches("to purchase", ["to buy"]) is True
-    assert _matcher.matches("to begin", ["to start"]) is True
-    assert _matcher.matches("automobile", ["car"]) is True
-    assert _matcher.matches("big", ["large"]) is True
+    assert matcher.matches("to purchase", ["to buy"]) is True
+    assert matcher.matches("to begin", ["to start"]) is True
+    assert matcher.matches("automobile", ["car"]) is True
+    assert matcher.matches("big", ["large"]) is True
 
 
-def test_unrelated_meanings_rejected():
-    assert _matcher.matches("cat", ["dog"]) is False
-    assert _matcher.matches("hot", ["cold"]) is False
-    assert _matcher.matches("", ["dog"]) is False
+def test_unrelated_meanings_rejected(matcher):
+    assert matcher.matches("cat", ["dog"]) is False
+    assert matcher.matches("hot", ["cold"]) is False
+    assert matcher.matches("", ["dog"]) is False

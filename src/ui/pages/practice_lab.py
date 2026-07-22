@@ -493,3 +493,7 @@ class PracticeLabPage(QWidget):
         if thread is not None and thread.isRunning():
             thread.requestInterruption()
             thread.quit()
+
+    def hideEvent(self, event) -> None:
+        self._stop_audio()
+        super().hideEvent(event)

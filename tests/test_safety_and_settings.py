@@ -104,6 +104,66 @@ def test_verified_backup_and_retention(tmp_path):
     check.close()
 
 
+def test_restore_keeps_selected_backup_until_copy_finishes(tmp_path):
+    from db.backup import BackupService
+
+    source = tmp_path / "mahira.db"
+    conn = sqlite3.connect(source)
+    conn.execute("CREATE TABLE sample(value TEXT)")
+    conn.execute("INSERT INTO sample VALUES ('oldest')")
+    conn.commit()
+    conn.close()
+
+    service = BackupService(source)
+    backups = [service.create("oldest")]
+    backups.extend(service.create(f"slot-{index}") for index in range(2, 13))
+    assert all(info is not None for info in backups)
+
+    # Give every sidecar an explicit ordering so the selected snapshot is the
+    # one retention would prune when the before-restore backup is created.
+    for created_at, info in enumerate(backups, start=1):
+        assert info is not None
+        sidecar = info.path.with_suffix(".json")
+        metadata = json.loads(sidecar.read_text(encoding="utf-8"))
+        metadata["created_at"] = created_at
+        sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+
+    conn = sqlite3.connect(source)
+    conn.execute("UPDATE sample SET value='current'")
+    conn.commit()
+    conn.close()
+
+    selected = backups[0]
+    assert selected is not None
+    service.restore(selected.path)
+
+    restored = sqlite3.connect(source)
+    assert restored.execute("SELECT value FROM sample").fetchone()[0] == "oldest"
+    restored.close()
+    assert len(service.list()) == 12
+
+
+def test_backup_list_ignores_non_object_metadata(tmp_path):
+    from db.backup import BackupService
+
+    source = tmp_path / "mahira.db"
+    conn = sqlite3.connect(source)
+    conn.execute("CREATE TABLE sample(value TEXT)")
+    conn.commit()
+    conn.close()
+
+    service = BackupService(source)
+    info = service.create("manual")
+    assert info is not None
+    info.path.with_suffix(".json").write_text("[]", encoding="utf-8")
+
+    backups = service.list()
+
+    assert len(backups) == 1
+    assert backups[0].path == info.path
+    assert backups[0].reason == "backup"
+
+
 def test_legacy_rebuild_preserves_content_state_and_reviews(tmp_path):
     from db.init_db import SCHEMA_VERSION, init_db
 
@@ -249,3 +309,5 @@ def test_update_version_comparison():
 
     assert _version_tuple("v1.10.0") > _version_tuple("1.9.9")
     assert _version_tuple("0.4.0-beta.1") >= (0, 4, 0)
+    assert _version_tuple("1.0.0") > _version_tuple("1.0.0-beta.2")
+    assert _version_tuple("1.0.0") > _version_tuple("1.0.0rc1")

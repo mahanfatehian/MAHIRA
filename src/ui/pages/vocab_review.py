@@ -383,6 +383,15 @@ class VocabReviewPage(QWidget):
 
         self._show_main()
 
+        # Keep the unfinished card and its typed/revealed UI state when the
+        # learner briefly visits another page in the same deck.
+        if (
+            self.current_item is not None
+            and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+        ):
+            self._update_counter()
+            return
+
         if hasattr(self.session, "remaining") and callable(self.session.remaining):
             try:
                 if self.session.remaining() == 0 and hasattr(

@@ -137,6 +137,54 @@ def test_unknown_verb_returns_none():
     assert c.conjugate("") is None
 
 
+def test_dataset_path_preserves_percent_like_text(tmp_path):
+    import sqlite3
+
+    from core.conjugation import Conjugator
+
+    db_path = tmp_path / "verbs%23.sqlite"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE verb_forms (
+            infinitive TEXT,
+            praesens_ich TEXT,
+            praesens_du TEXT,
+            praesens_er TEXT,
+            praeteritum_ich TEXT,
+            partizip2 TEXT,
+            konjunktiv2_ich TEXT,
+            imperativ_sg TEXT,
+            imperativ_pl TEXT,
+            hilfsverb TEXT
+        )
+        """
+    )
+    conn.execute(
+        "INSERT INTO verb_forms VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "lernen",
+            "lerne",
+            "lernst",
+            "lernt",
+            "lernte",
+            "gelernt",
+            "lernte",
+            "lerne",
+            "lernt",
+            "haben",
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    with Conjugator(db_path) as conjugator:
+        result = conjugator.conjugate("lernen")
+
+    assert result is not None
+    assert result.praesens[0] == "lerne"
+
+
 def test_tenses_helper_shape():
     c = _conj()
     cj = c.conjugate("machen")

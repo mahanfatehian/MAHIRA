@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
+from ui.book_covers import cover_stem_for_slug, find_book_cover
 from ui.widgets.images import rounded_cover_pixmap
 
 CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
@@ -102,31 +103,12 @@ def _book_initials(title: str) -> str:
 
 def _book_camel(slug: str) -> str:
     """'starten_wir' -> 'startenWir';  'menschen' -> 'menschen'."""
-    parts = [p for p in (slug or "").split("_") if p]
-    if not parts:
-        return ""
-    return parts[0].lower() + "".join(p[:1].upper() + p[1:].lower() for p in parts[1:])
+    return cover_stem_for_slug(slug)
 
 
 def _book_icon_path(slug: str, level: str) -> Optional[str]:
-    """
-    Resolve the per-book, per-level cover icon. Exactly ONE name is accepted:
-
-        assets/books/<camelBook>_<level>.ico
-        e.g.  startenWir_a1.ico,  startenWir_a2.ico,  menschen_a1.ico
-
-    Returns None when the file is absent (the card then uses its initials cover).
-    """
-    camel = _book_camel(slug)
-    lvl = (level or "").strip().lower()
-    if not camel or not lvl:
-        return None
-    try:
-        from mahira.config import resource_root
-        p = resource_root() / "assets" / "books" / f"{camel}_{lvl}.ico"
-        return str(p) if p.exists() else None
-    except Exception:
-        return None
+    """Resolve a per-book cover, falling back to initials when absent."""
+    return find_book_cover(slug, level)
 
 
 def _level_blurb(level: str) -> str:
@@ -361,7 +343,8 @@ class BookCard(_ClickCard):
         root.setSpacing(16)
 
         # ---- Cover tile: crisp HiDPI book cover filling the tile if an icon
-        # exists (assets/books/<book>_<level>.ico), else an initials placeholder.
+        # exists (assets/books/<book>_<level>.<image>), else an initials
+        # placeholder.
         cover_pm = rounded_cover_pixmap(icon_path, 80, 104, 16) if icon_path else None
         if cover_pm is not None:
             cover = QLabel()
