@@ -219,6 +219,59 @@ def test_review_actions_have_clear_labels_and_visual_hierarchy():
             page.deleteLater()
 
 
+@pytest.mark.parametrize("objective", ("vocab", "grammar", "sentences"))
+@pytest.mark.parametrize(("current_deck", "should_resume"), ((7, True), (8, False)))
+def test_review_page_reentry_only_keeps_same_deck_card(
+    objective,
+    current_deck,
+    should_resume,
+):
+    from ui.pages.grammar_review import GrammarReviewPage
+    from ui.pages.sentence_review import SentenceReviewPage
+    from ui.pages.vocab_review import VocabReviewPage
+
+    calls: list[str] = []
+    session = SimpleNamespace(
+        active_deck_id=lambda: 7,
+        context_label=lambda: "A1 lesson",
+        remaining=lambda: calls.append("remaining") or 2,
+        start_new_session=lambda: calls.append("start"),
+    )
+    page = SimpleNamespace(
+        session=session,
+        current_item=SimpleNamespace(deck_id=current_deck),
+        special_kbd=SimpleNamespace(
+            set_language=lambda _language: calls.append("language")
+        ),
+        page_subtitle=SimpleNamespace(
+            setText=lambda _text: calls.append("subtitle")
+        ),
+        main_shell=SimpleNamespace(show=lambda: calls.append("show")),
+        empty_card=SimpleNamespace(hide=lambda: calls.append("hide")),
+        _active_deck_id=lambda: 7,
+        _show_main=lambda: calls.append("show"),
+        _update_counter=lambda: calls.append("counter"),
+        _load_next=lambda: calls.append("load"),
+    )
+    page_class = {
+        "vocab": VocabReviewPage,
+        "grammar": GrammarReviewPage,
+        "sentences": SentenceReviewPage,
+    }[objective]
+
+    page_class.on_show(page)
+
+    assert "start" not in calls
+    if should_resume:
+        assert "show" in calls
+        assert "counter" in calls
+        assert "remaining" not in calls
+        assert "load" not in calls
+    else:
+        assert "remaining" in calls
+        assert "load" in calls
+
+
 @pytest.mark.parametrize("font_scale", [85, 100, 115, 130, 140])
 def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
     from PySide6.QtWidgets import QApplication, QLabel, QPushButton

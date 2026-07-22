@@ -262,6 +262,23 @@ class SentenceReviewPage(QWidget):
 
     def on_show(self) -> None:
         self.page_subtitle.setText(self.session.context_label() or "Interactive language construction")
+        try:
+            deck_id = self.session.active_deck_id()
+        except Exception:
+            deck_id = None
+
+        # The widget stays alive in the page stack, so keep its unfinished
+        # sentence instead of consuming another queue item on navigation back.
+        if (
+            deck_id
+            and self.current_item is not None
+            and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+        ):
+            self.main_shell.show()
+            self.empty_card.hide()
+            self._update_counter()
+            return
+
         if self.session.remaining() == 0:
             self._start_session()
             return

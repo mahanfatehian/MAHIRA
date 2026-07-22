@@ -352,6 +352,15 @@ class GrammarReviewPage(QWidget):
 
         self._show_main()
 
+        # Re-entering the page must not pop another queued item or reset the
+        # learner's unfinished answer for this deck.
+        if (
+            self.current_item is not None
+            and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+        ):
+            self._update_counter()
+            return
+
         if self.session.remaining() == 0:
             self.session.start_new_session()
 
