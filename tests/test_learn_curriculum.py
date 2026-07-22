@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 
 def test_parse_folder_based_filename():
     from ui.pages.learn import _parse_md_filename
@@ -37,6 +39,35 @@ def test_levelless_filename_without_folder_is_rejected():
     from ui.pages.learn import _parse_md_filename
 
     assert _parse_md_filename(Path("1.1_nouns_articles.md")) is None
+
+
+def test_answer_markers_extract_only_the_hidden_section():
+    from ui.pages.learn import (
+        ANSWERS_END,
+        ANSWERS_START,
+        _split_answers_markers_only,
+    )
+
+    markdown = f"Lesson body\n{ANSWERS_START}\nAnswer key\n{ANSWERS_END}\nFooter"
+
+    assert _split_answers_markers_only(markdown) == (
+        "Lesson body\n\nFooter",
+        "Answer key",
+    )
+
+
+@pytest.mark.parametrize(
+    "markdown",
+    (
+        "Lesson body\n<!-- ANSWERS_START -->\nunfinished answer",
+        "Lesson body\n<!-- ANSWERS_END -->",
+        "<!-- ANSWERS_END -->\nLesson body\n<!-- ANSWERS_START -->\nAnswer key",
+    ),
+)
+def test_malformed_answer_markers_remain_regular_lesson_content(markdown):
+    from ui.pages.learn import _split_answers_markers_only
+
+    assert _split_answers_markers_only(markdown) == (markdown, None)
 
 
 def test_curriculum_index_loads_a1_from_folders():

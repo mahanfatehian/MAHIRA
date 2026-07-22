@@ -247,11 +247,18 @@ def _mask_text_keep_layout(text: str) -> str:
 
 def _split_answers_markers_only(md: str) -> tuple[str, Optional[str]]:
     md = md or ""
-    if ANSWERS_START not in md or ANSWERS_END not in md:
+    start = md.find(ANSWERS_START)
+    if start < 0:
         return md.strip(), None
 
-    before, rest = md.split(ANSWERS_START, 1)
-    ans, after = rest.split(ANSWERS_END, 1)
+    answer_start = start + len(ANSWERS_START)
+    end = md.find(ANSWERS_END, answer_start)
+    if end < 0:
+        return md.strip(), None
+
+    before = md[:start]
+    ans = md[answer_start:end]
+    after = md[end + len(ANSWERS_END):]
     body = (before + after).strip()
     answers = ans.strip()
     return body, (answers if answers else None)
