@@ -367,21 +367,23 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _due_count(self, deck_id: int) -> int:
-        now = int(time.time())
-        cooldown_hours = 12
-        cooldown_since = now - cooldown_hours * 3600
+        repo = self.session.repo
+        if hasattr(repo, "due_count"):
+            return int(repo.due_count(deck_id))
 
+        now = int(time.time())
         with self._conn() as conn:
             row = conn.execute("""
-                SELECT COUNT(*)
+                SELECT COUNT(*) AS c
                 FROM vocab v
                 JOIN vocab_states s ON s.vocab_id = v.id
                 WHERE v.deck_id = ?
                 AND s.due_at <= ?
-                AND (s.last_review_at IS NULL OR s.last_review_at <= ?)
-            """, (deck_id, now, cooldown_since)).fetchone()
+                AND s.suspended = 0
+                AND (s.buried_until IS NULL OR s.buried_until <= ?)
+            """, (deck_id, now, now)).fetchone()
 
-            return int(row["COUNT(*)"]) if row else 0
+            return int(row["c"]) if row else 0
 
 
     def _reviewed_last_24h(self, deck_id: int) -> int:

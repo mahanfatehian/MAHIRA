@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, time as datetime_time, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -144,6 +145,30 @@ def test_due_counters_exclude_buried_and_suspended_cards(repo, objective):
         )
     assert _due_count(repo, objective, deck_id) == 0
     assert repo.upcoming_due_counts(3600) == {"due_now": 0, "due_soon": 0}
+
+
+def test_progress_due_count_excludes_inactive_vocab(repo):
+    from ui.pages.progress import ProgressPage
+
+    deck_id, item_id, state_table, foreign_key = _make_trouble_card(repo, "vocab")
+    page = SimpleNamespace(session=SimpleNamespace(repo=repo))
+
+    assert ProgressPage._due_count(page, deck_id) == 1
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET suspended=1 WHERE {foreign_key}=?",
+            (item_id,),
+        )
+    assert ProgressPage._due_count(page, deck_id) == 0
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET suspended=0, buried_until=? "
+            f"WHERE {foreign_key}=?",
+            (int(time.time()) + 3600, item_id),
+        )
+    assert ProgressPage._due_count(page, deck_id) == 0
 
 
 @pytest.mark.parametrize("objective", _OBJECTIVES)
