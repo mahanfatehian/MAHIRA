@@ -101,12 +101,18 @@ def test_missing_file_emits_failed(tmp_path):
 
     FakeEffect, _ = _fake_effect_cls()
     svc = PlaybackService()
-    svc.effect = FakeEffect()
+    fake = FakeEffect()
+    fake._playing = True
+    svc.effect = fake
+    svc._pending_play = True
 
     errors = []
     svc.failed.connect(lambda m: errors.append(m))
     svc.play_file(tmp_path / "does_not_exist.wav")
     assert errors and "does not exist" in errors[0].lower()
+    assert fake.isPlaying() is False
+    assert svc._pending_play is False
+    assert fake.source().isEmpty()
 
 
 def test_directory_path_emits_failed_without_loading(tmp_path):

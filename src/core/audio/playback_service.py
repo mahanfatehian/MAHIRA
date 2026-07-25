@@ -37,13 +37,16 @@ class PlaybackService(QObject):
         return self._ready_status is not None and self.effect.status() == self._ready_status
 
     def play_file(self, file_path: str | Path) -> None:
+        # A replacement request owns playback even when its file disappeared
+        # between cache lookup and this call. Stop any prior clip or pending
+        # load before reporting the new path as invalid.
+        self.stop()
         path = Path(file_path).resolve()
 
         if not path.is_file():
             self.failed.emit(f"Audio file does not exist or is not a file:\n{path}")
             return
 
-        self.stop()
         url = QUrl.fromLocalFile(str(path))
         self._current_path = str(path)
         self._pending_play = True
