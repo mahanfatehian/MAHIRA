@@ -152,3 +152,33 @@ def test_pronunciation_cache_is_bounded_by_recent_use(monkeypatch, tmp_path):
 
     assert service._prune_cache(protect=paths[-1]) == 2
     assert [path.exists() for path in paths] == [False, False, True, True]
+
+
+def test_delete_cached_file_is_confined_to_wav_cache(monkeypatch, tmp_path):
+    from core.audio.pronunciation_service import PronunciationService
+
+    class Manager:
+        project_root = tmp_path
+
+    cache_dir = tmp_path / "cache"
+    monkeypatch.setattr(
+        PronunciationService,
+        "_writable_cache_dir",
+        staticmethod(lambda: cache_dir),
+    )
+    service = PronunciationService(Manager())
+
+    cached = cache_dir / "clip.wav"
+    cached.write_bytes(b"RIFFfake")
+    outside = tmp_path / "outside.wav"
+    outside.write_bytes(b"keep me")
+    unrelated = cache_dir / "notes.txt"
+    unrelated.write_text("keep me", encoding="utf-8")
+
+    assert service.delete_cached_file(outside) is False
+    assert outside.exists()
+    assert service.delete_cached_file(unrelated) is False
+    assert unrelated.exists()
+    assert service.delete_cached_file(cache_dir) is False
+    assert service.delete_cached_file(cached) is True
+    assert not cached.exists()

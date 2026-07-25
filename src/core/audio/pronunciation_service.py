@@ -211,14 +211,27 @@ class PronunciationService:
         Delete a specific cached WAV file path.
         Returns True if deleted, False otherwise.
         """
-        path = Path(file_path)
-        if path.exists():
-            try:
-                path.unlink()
-                return True
-            except Exception:
-                return False
-        return False
+        try:
+            path = Path(file_path).resolve()
+            cache_dir = self.cache_dir.resolve()
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return False
+
+        # This API is used with paths returned by get_cached_path(). Refuse
+        # unrelated or nested paths so a stale UI value can never remove an
+        # arbitrary user file.
+        if (
+            path.parent != cache_dir
+            or path.suffix.lower() != ".wav"
+            or not path.is_file()
+        ):
+            return False
+
+        try:
+            path.unlink()
+            return True
+        except OSError:
+            return False
 
     def clear_all_cached_audio(self) -> int:
         """
