@@ -96,3 +96,31 @@ def test_level_comes_from_folder_not_filename(tmp_path):
     assert a2[0].number == 1
     assert a2[0].title == "Damals und heute"
     assert a2[0].description == "Past tense"
+
+
+def test_utf8_bom_seed_headers_are_supported(tmp_path):
+    seeds = tmp_path / "data" / "seeds" / "starten_wir" / "a1"
+    seeds.mkdir(parents=True)
+    payloads = {
+        "1_vocab__Super!__Greetings.csv": "pos,word,meaning\nnoun,Haus,house\n",
+        "1_grammar.csv": "test_text,answer\nIch ___ Deutsch.,lerne\n",
+        "1_sentences.csv": "sentence,words\nIch lerne Deutsch.,Ich|lerne|Deutsch|.\n",
+        "1_listening.csv": "text,question,answer\nHallo.,Was hörst du?,Hallo\n",
+    }
+    for filename, content in payloads.items():
+        (seeds / filename).write_text("\ufeff" + content, encoding="utf-8")
+
+    repo = _repo(tmp_path)
+    book_id = repo.get_book_id("starten_wir")
+    lektion_id = repo.get_lektions_for_book_level(book_id, "A1")[0].id
+    counters = {
+        "vocab": repo.deck_vocab_count,
+        "grammar": repo.deck_grammar_count,
+        "sentences": repo.deck_sentences_count,
+        "listening": repo.deck_listening_count,
+    }
+
+    for objective, counter in counters.items():
+        deck_id = repo.get_deck_id("A1", objective, lektion_id)
+        assert deck_id is not None
+        assert counter(deck_id) == 1

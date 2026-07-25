@@ -210,7 +210,7 @@ def import_seed_csv(
 
         seen: set[tuple[str, str, str]] = set()
 
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             if not reader.fieldnames:
                 return
@@ -261,7 +261,7 @@ def import_seed_csv(
 
         seen: set[tuple[str, str]] = set()
 
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             if not reader.fieldnames:
                 return
@@ -306,7 +306,7 @@ def import_seed_csv(
 
         seen: set[tuple[str]] = set()
 
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             if not reader.fieldnames:
                 return
@@ -403,7 +403,7 @@ def import_seed_csv(
 
         seen: set[tuple[str, ...]] = set()
 
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             if not reader.fieldnames:
                 return
