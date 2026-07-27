@@ -611,3 +611,45 @@ def test_settings_use_step_controls_and_save_inline(tmp_path):
         page._stop_background()
         page.close()
         page.deleteLater()
+
+
+def test_setup_due_reminder_waits_until_page_is_visible():
+    from ui.pages.setup import SetupPage
+
+    class Strip:
+        def __init__(self):
+            self.show_calls = 0
+            self.hide_calls = 0
+
+        def show(self):
+            self.show_calls += 1
+
+        def hide(self):
+            self.hide_calls += 1
+
+    calls: list[int] = []
+    repo = SimpleNamespace(
+        upcoming_due_counts=lambda horizon: (
+            calls.append(horizon) or {"due_now": 2, "due_soon": 1}
+        )
+    )
+    strip = Strip()
+    page = SimpleNamespace(
+        due_strip=strip,
+        due_icon=SimpleNamespace(setText=lambda _text: None),
+        due_lbl=SimpleNamespace(setText=lambda _text: None),
+        session=SimpleNamespace(repo=repo),
+        _due_strip_seen=False,
+        isVisible=lambda: False,
+    )
+
+    SetupPage._refresh_due_strip(page)
+    assert calls == []
+    assert page._due_strip_seen is False
+    assert strip.show_calls == 0
+
+    page.isVisible = lambda: True
+    SetupPage._refresh_due_strip(page)
+    assert calls == [86400]
+    assert page._due_strip_seen is True
+    assert strip.show_calls == 1
