@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -57,6 +58,33 @@ def test_production_review_does_not_mutate_recognition_state(practice_repo):
             (item.id,),
         ).fetchone()
     assert logged["practice_mode"] == "production"
+
+
+@pytest.mark.parametrize("lane", ["production", "dictation"])
+def test_lab_reviews_do_not_inflate_recognition_mastery(practice_repo, lane):
+    from ui.pages.progress import ProgressPage
+
+    repo, deck_id, vocab_ids = practice_repo
+    item = repo.get_vocab_by_id(vocab_ids[0])
+    assert item is not None
+
+    result = _session_shell(repo).submit_vocab_production(
+        item,
+        "das Haus",
+        practice_mode=lane,
+    )
+    assert result["ok"] is True
+
+    page = SimpleNamespace(_conn=repo._conn)
+    assert ProgressPage._calculate_mastery(page, deck_id, len(vocab_ids)) == 0
+
+    with repo._conn() as conn:
+        conn.execute(
+            "INSERT INTO reviews(vocab_id, meaning_correct, practice_mode) "
+            "VALUES (?, 1, 'recognition')",
+            (item.id,),
+        )
+    assert ProgressPage._calculate_mastery(page, deck_id, len(vocab_ids)) == 70
 
 
 def test_production_and_dictation_fsrs_states_are_independent(practice_repo):
