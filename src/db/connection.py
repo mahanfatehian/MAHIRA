@@ -20,4 +20,12 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
     conn.execute("PRAGMA foreign_keys=ON")
+
+    # synchronous is connection-local, unlike WAL journal mode. Reapply the
+    # intended WAL trade-off on every runtime connection; otherwise SQLite
+    # silently returns to FULL and pays an avoidable fsync cost on writes.
+    mode_row = conn.execute("PRAGMA journal_mode").fetchone()
+    mode = str(mode_row[0] if mode_row else "").strip().lower()
+    if mode == "wal":
+        conn.execute("PRAGMA synchronous=NORMAL")
     return conn
