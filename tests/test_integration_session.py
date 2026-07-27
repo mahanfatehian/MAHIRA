@@ -47,6 +47,30 @@ def test_session_builds_a_queue_without_duplicates(repo):
     assert len(seen) <= s.plan.limit
 
 
+def test_deck_switch_clears_stale_undo_and_queue(repo):
+    s = _session(repo)
+    first_deck = s.active_deck_id()
+    s._undo = {"objective": "vocab", "item_id": 999}
+    s._queue = [999]
+
+    s.set_context("A1", "vocab", book_slug="starten_wir", lektion_number=2)
+    assert s.active_deck_id() != first_deck
+    assert s.can_undo() is False
+    assert s.remaining() == 0
+    assert s.undo_last() is None
+
+    # Settings/profile restoration can change state directly, so the lazy
+    # active-deck refresh must invalidate the old session state too.
+    second_deck = s.active_deck_id()
+    s._undo = {"objective": "vocab", "item_id": 998}
+    s._queue = [998]
+    s.state.lektion_number = 3
+
+    assert s.active_deck_id() != second_deck
+    assert s.can_undo() is False
+    assert s.remaining() == 0
+
+
 def test_review_persists_fsrs_state_and_schedules_forward(repo):
     s = _session(repo)
     s.start_new_session()
