@@ -1569,6 +1569,8 @@ class SessionService:
         stability or due dates.
         """
         article = (item.article or "").strip()
+        if not article and (item.pos or "").strip().lower() == "noun":
+            article = Repo._article_from_gender(item.gender)
         expected = f"{article} {item.word}".strip() if article else item.word
         feedback = classify_german_answer(typed_german, expected)
         # Non-nouns do not need an article. For nouns, accepting the bare word as
