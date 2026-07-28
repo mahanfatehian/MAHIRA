@@ -130,3 +130,44 @@ def test_directory_path_emits_failed_without_loading(tmp_path):
 
     assert errors and "not a file" in errors[0].lower()
     assert fake.source().isEmpty()
+
+
+def test_stale_poll_callbacks_do_not_shorten_latest_timeout(tmp_path, monkeypatch):
+    _qapp()
+    from core.audio import playback_service as playback_module
+
+    FakeEffect, _ = _fake_effect_cls()
+    callbacks = []
+
+    class FakeTimer:
+        @staticmethod
+        def singleShot(_delay, callback):
+            callbacks.append(callback)
+
+    monkeypatch.setattr(playback_module, "QTimer", FakeTimer)
+    svc = playback_module.PlaybackService()
+    svc.effect = FakeEffect()
+    errors = []
+    svc.failed.connect(lambda message: errors.append(message))
+
+    first = tmp_path / "first.wav"
+    second = tmp_path / "second.wav"
+    first.write_bytes(b"RIFFfirst")
+    second.write_bytes(b"RIFFsecond")
+
+    svc.play_file(first)
+    stale_callback = callbacks.pop(0)
+    svc.play_file(second)
+    assert svc._poll_left == 60
+
+    stale_callback()
+    assert svc._poll_left == 60
+    assert svc._pending_play is True
+    assert errors == []
+
+    for _ in range(60):
+        callbacks.pop(0)()
+
+    assert svc._pending_play is False
+    assert errors == ["Audio took too long to load."]
+    assert callbacks == []

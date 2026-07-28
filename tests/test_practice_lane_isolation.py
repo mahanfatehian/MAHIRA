@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -57,6 +58,75 @@ def test_production_review_does_not_mutate_recognition_state(practice_repo):
             (item.id,),
         ).fetchone()
     assert logged["practice_mode"] == "production"
+
+
+def test_production_infers_missing_noun_article_from_gender(practice_repo):
+    repo, deck_id, vocab_ids = practice_repo
+    noun_id = repo.insert_vocab(
+        deck_id,
+        "noun",
+        "Buch",
+        "",
+        "n",
+        "Bücher",
+        "book",
+    )
+    noun = repo.get_vocab_by_id(noun_id)
+    assert noun is not None
+    session = _session_shell(repo)
+
+    missing = session.submit_vocab_production(
+        noun,
+        "Buch",
+        practice_mode="production",
+    )
+    assert missing["ok"] is False
+    assert missing["expected"] == "das Buch"
+    assert "article_missing" in missing["error_tags"]
+
+    correct = session.submit_vocab_production(
+        noun,
+        "das Buch",
+        practice_mode="production",
+    )
+    assert correct["ok"] is True
+
+    verb = repo.get_vocab_by_id(vocab_ids[2])
+    assert verb is not None
+    verb_result = session.submit_vocab_production(
+        verb,
+        "lernen",
+        practice_mode="production",
+    )
+    assert verb_result["ok"] is True
+    assert verb_result["expected"] == "lernen"
+
+
+@pytest.mark.parametrize("lane", ["production", "dictation"])
+def test_lab_reviews_do_not_inflate_recognition_mastery(practice_repo, lane):
+    from ui.pages.progress import ProgressPage
+
+    repo, deck_id, vocab_ids = practice_repo
+    item = repo.get_vocab_by_id(vocab_ids[0])
+    assert item is not None
+
+    result = _session_shell(repo).submit_vocab_production(
+        item,
+        "das Haus",
+        practice_mode=lane,
+    )
+    assert result["ok"] is True
+
+    page = SimpleNamespace(_conn=repo._conn)
+    assert ProgressPage._calculate_mastery(page, deck_id, len(vocab_ids)) == 0
+
+    with repo._conn() as conn:
+        conn.execute(
+            "INSERT INTO reviews(vocab_id, meaning_correct, practice_mode) "
+            "VALUES (?, 1, 'recognition')",
+            (item.id,),
+        )
+    assert ProgressPage._calculate_mastery(page, deck_id, len(vocab_ids)) == 70
 
 
 def test_production_and_dictation_fsrs_states_are_independent(practice_repo):

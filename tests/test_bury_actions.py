@@ -172,6 +172,44 @@ def test_progress_due_count_excludes_inactive_vocab(repo):
 
 
 @pytest.mark.parametrize("objective", _OBJECTIVES)
+def test_due_only_never_falls_back_to_future_cards(repo, objective):
+    deck_id, item_id, state_table, foreign_key = _make_trouble_card(
+        repo,
+        objective,
+    )
+    now = int(time.time())
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET due_at=?, last_review_at=NULL "
+            f"WHERE {foreign_key}=?",
+            (now + 3600, item_id),
+        )
+    assert _pick(repo, objective, deck_id, "due_only") == []
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET due_at=? WHERE {foreign_key}=?",
+            (now - 60, item_id),
+        )
+    assert _pick(repo, objective, deck_id, "due_only") == [item_id]
+
+
+def test_grammar_unseen_only_never_falls_back_to_seen_cards(repo):
+    deck_id, _item_id, _state_table, _foreign_key = _make_trouble_card(
+        repo,
+        "grammar",
+    )
+
+    assert repo.pick_session_grammar_ids(
+        deck_id,
+        10,
+        mode="unseen_only",
+        cooldown_hours=0,
+    ) == []
+
+
+@pytest.mark.parametrize("objective", _OBJECTIVES)
 def test_tomorrow_bury_excludes_every_lane_until_next_local_day(repo, objective):
     from core.insights import InsightsService
 

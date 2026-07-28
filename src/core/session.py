@@ -305,6 +305,7 @@ class SessionService:
         self._active_deck_id: int | None = None
         self.plan = SessionPlan()
         self._queue: list[int] = []
+        self._undo = None
 
         self.rng = random.SystemRandom()
 
@@ -379,6 +380,7 @@ class SessionService:
         if deck_id is None:
             self._active_deck_id = None
             self._queue = []
+            self._undo = None
             raise RuntimeError(
                 f"No deck found for {lvl}/{obj} "
                 f"(book={book_slug or 'none'}, lektion={lektion_number or 'none'}). "
@@ -387,6 +389,7 @@ class SessionService:
 
         if self._active_deck_id != deck_id:
             self._queue = []
+            self._undo = None
 
         self.state.level = lvl
         self.state.objective = obj
@@ -401,6 +404,7 @@ class SessionService:
 
         if deck_id != self._active_deck_id:
             self._queue = []
+            self._undo = None
             self._active_deck_id = deck_id
 
         self.state.level = lvl
@@ -1565,6 +1569,8 @@ class SessionService:
         stability or due dates.
         """
         article = (item.article or "").strip()
+        if not article and (item.pos or "").strip().lower() == "noun":
+            article = Repo._article_from_gender(item.gender)
         expected = f"{article} {item.word}".strip() if article else item.word
         feedback = classify_german_answer(typed_german, expected)
         # Non-nouns do not need an article. For nouns, accepting the bare word as

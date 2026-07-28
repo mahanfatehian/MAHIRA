@@ -28,6 +28,7 @@ class PlaybackService(QObject):
         self._was_playing = False
         self._pending_play = False
         self._poll_left = 0
+        self._poll_generation = 0
 
     def set_volume(self, volume: float) -> None:
         volume = max(0.0, min(1.0, float(volume)))
@@ -67,12 +68,13 @@ class PlaybackService(QObject):
         # clip as Ready, and the old code would play() that stale buffer.
         self.effect.setSource(url)
         self._poll_left = 60  # up to ~3s of 50ms polls, then give up gracefully
-        QTimer.singleShot(50, self._poll_ready)
+        generation = self._poll_generation
+        QTimer.singleShot(50, lambda: self._poll_ready(generation))
 
-    def _poll_ready(self) -> None:
+    def _poll_ready(self, generation: int) -> None:
         # Safety net for builds where statusChanged is unreliable. It only ever
         # plays once the NEW source is genuinely Ready, never a stale one.
-        if not self._pending_play:
+        if generation != self._poll_generation or not self._pending_play:
             return  # already played via statusChanged
         if self._is_ready():
             self._pending_play = False
@@ -80,12 +82,13 @@ class PlaybackService(QObject):
             return
         self._poll_left -= 1
         if self._poll_left > 0:
-            QTimer.singleShot(50, self._poll_ready)
+            QTimer.singleShot(50, lambda: self._poll_ready(generation))
         else:
             self._pending_play = False
             self.failed.emit("Audio took too long to load.")
 
     def stop(self) -> None:
+        self._poll_generation += 1
         self._pending_play = False
         if self.effect.isPlaying():
             self.effect.stop()

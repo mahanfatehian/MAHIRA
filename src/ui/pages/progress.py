@@ -433,6 +433,7 @@ class ProgressPage(QWidget):
                 FROM vocab v
                 JOIN reviews r ON v.id = r.vocab_id
                 WHERE v.deck_id = ?
+                  AND r.practice_mode = 'recognition'
             """, (deck_id,)).fetchone()
             reviewed_count = int(reviewed_row["reviewed_count"]) if reviewed_row else 0
             seen_pct = (reviewed_count / total_cards) * 100
@@ -448,6 +449,7 @@ class ProgressPage(QWidget):
                 FROM reviews r
                 JOIN vocab v ON r.vocab_id = v.id
                 WHERE v.deck_id = ?
+                  AND r.practice_mode = 'recognition'
             """, (deck_id,)).fetchone()
 
             if not stats:

@@ -522,6 +522,7 @@ class Repo:
 
         if limit is None:
             limit = 30
+        mode = (mode or "mixed").strip().lower()
 
         now = int(time.time())
         cooldown_since = now - int(cooldown_hours * 3600)
@@ -578,7 +579,7 @@ class Repo:
                 random.shuffle(pool)
                 ids.extend(pool[: (limit - len(ids))])
 
-            if not ids:
+            if not ids and mode != "due_only":
                 rows2 = conn.execute(
                     "SELECT v.id FROM vocab v LEFT JOIN vocab_states s ON s.vocab_id=v.id "
                     "WHERE v.deck_id=? AND COALESCE(s.suspended,0)=0 "
@@ -935,7 +936,7 @@ class Repo:
                 random.shuffle(pool)
                 ids.extend(pool[: (limit - len(ids))])
 
-            if not ids:
+            if not ids and mode not in ("due_only", "unseen_only"):
                 rows2 = conn.execute(
                     "SELECT g.id FROM grammar g LEFT JOIN grammar_states s ON s.grammar_id=g.id "
                     "WHERE g.deck_id=? AND COALESCE(s.suspended,0)=0 "
@@ -1131,7 +1132,7 @@ class Repo:
                 random.shuffle(pool)
                 ids.extend(pool[: (limit - len(ids))])
 
-            if not ids:
+            if not ids and mode != "due_only":
                 rows2 = conn.execute(
                     "SELECT s.id FROM sentences s LEFT JOIN sentence_states st ON st.sentence_id=s.id "
                     "WHERE s.deck_id=? AND COALESCE(st.suspended,0)=0 "
@@ -1330,7 +1331,7 @@ class Repo:
                 random.shuffle(pool)
                 ids.extend(pool[: (limit - len(ids))])
 
-            if not ids:
+            if not ids and mode != "due_only":
                 rows2 = conn.execute(
                     "SELECT l.id FROM listening l LEFT JOIN listening_states st ON st.listening_id=l.id "
                     "WHERE l.deck_id=? AND COALESCE(st.suspended,0)=0 "

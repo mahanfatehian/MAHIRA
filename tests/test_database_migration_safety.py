@@ -6,6 +6,21 @@ from types import SimpleNamespace
 import pytest
 
 
+def test_reopened_wal_connections_keep_normal_sync(tmp_path):
+    from db.connection import connect
+    from db.init_db import init_db
+
+    db = tmp_path / "runtime-sync.db"
+    init_db(db)
+
+    conn = connect(db)
+    try:
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+        assert conn.execute("PRAGMA synchronous").fetchone()[0] == 1
+    finally:
+        conn.close()
+
+
 def test_schema_upgrade_is_wal_atomic_and_refuses_future_databases(
     tmp_path,
     monkeypatch,

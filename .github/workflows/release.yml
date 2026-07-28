@@ -51,14 +51,9 @@ jobs:
           python-version: "3.12"
 
       - name: Resolve version
-        shell: pwsh
-        run: |
-          $ref = "${{ github.ref_name }}"
-          if ($ref -match '^v') { $ver = $ref.Substring(1) }
-          else { $ver = "${{ github.event.inputs.version }}" }
-          if (-not $ver) { $ver = "0.1.0-dev" }
-          "VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "MAHIRA_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: python packaging/resolve_release_version.py
 
       - name: Verify LFS assets are real (not pointers)
         shell: pwsh
@@ -130,12 +125,9 @@ jobs:
           python-version: "3.12"
 
       - name: Resolve version
-        run: |
-          ref="${{ github.ref_name }}"
-          if [[ "$ref" == v* ]]; then ver="${ref#v}"; else ver="${{ github.event.inputs.version }}"; fi
-          [ -z "$ver" ] && ver="0.1.0-dev"
-          echo "VERSION=$ver" >> "$GITHUB_ENV"
-          echo "MAHIRA_VERSION=$ver" >> "$GITHUB_ENV"
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: python packaging/resolve_release_version.py
 
       - name: Verify LFS assets are real (not pointers)
         run: |

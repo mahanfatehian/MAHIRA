@@ -710,6 +710,11 @@ class SetupPage(QWidget):
         if getattr(self, "_due_strip_seen", False):
             self.due_strip.hide()
             return
+        # The zero-delay startup refresh also runs while another page is
+        # current. Do not consume the once-per-run reminder off screen.
+        if not self.isVisible():
+            self.due_strip.hide()
+            return
         try:
             c = self.session.repo.upcoming_due_counts(86400)
         except Exception:
