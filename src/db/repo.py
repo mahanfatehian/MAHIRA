@@ -329,7 +329,7 @@ class Repo:
         with self._conn() as conn:
             row = conn.execute(
                 """
-                SELECT id, seed_sha1 FROM decks
+                SELECT id, name, seed_file, seed_sha1 FROM decks
                 WHERE level=? AND COALESCE(lektion_id,0)=COALESCE(?,0) AND objective=?
                 """,
                 (level, lektion_id, objective),
@@ -339,18 +339,23 @@ class Repo:
                 deck_id = int(row["id"])
                 old_sha = (row["seed_sha1"] or "")
                 changed = (old_sha != (seed_sha1 or ""))
-
-                conn.execute(
-                    """
-                    UPDATE decks
-                       SET name=?,
-                           seed_file=?,
-                           seed_sha1=?,
-                           updated_at=?
-                     WHERE id=?
-                    """,
-                    (deck_name, seed_file, seed_sha1, now, deck_id),
+                metadata_changed = (
+                    str(row["name"] or "") != deck_name
+                    or str(row["seed_file"] or "") != str(seed_file or "")
+                    or changed
                 )
+                if metadata_changed:
+                    conn.execute(
+                        """
+                        UPDATE decks
+                           SET name=?,
+                               seed_file=?,
+                               seed_sha1=?,
+                               updated_at=?
+                         WHERE id=?
+                        """,
+                        (deck_name, seed_file, seed_sha1, now, deck_id),
+                    )
                 return deck_id, changed
 
             cur = conn.execute(
