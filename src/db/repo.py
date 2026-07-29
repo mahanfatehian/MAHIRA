@@ -1667,6 +1667,25 @@ class Repo:
     def delete_last_listening_review(self, listening_id: int) -> None:
         self._delete_last("listening_reviews", "listening_id", listening_id)
 
+    def _delete_state(self, table: str, fk: str, item_id: int) -> None:
+        with self._conn() as conn:  # table/fk are fixed constants, not user input
+            conn.execute(
+                f"DELETE FROM {table} WHERE {fk}=?",
+                (int(item_id),),
+            )
+
+    def delete_state(self, vocab_id: int) -> None:
+        self._delete_state("vocab_states", "vocab_id", vocab_id)
+
+    def delete_grammar_state(self, grammar_id: int) -> None:
+        self._delete_state("grammar_states", "grammar_id", grammar_id)
+
+    def delete_sentence_state(self, sentence_id: int) -> None:
+        self._delete_state("sentence_states", "sentence_id", sentence_id)
+
+    def delete_listening_state(self, listening_id: int) -> None:
+        self._delete_state("listening_states", "listening_id", listening_id)
+
     def unseen_count(self, deck_id: int) -> int:
         with self._conn() as conn:
             row = conn.execute(

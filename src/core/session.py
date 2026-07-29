@@ -1130,28 +1130,45 @@ class SessionService:
         prev = snap.get("prev_state")
         iid = snap.get("item_id")
         logged = bool(snap.get("logged"))
+        state_was_missing = bool(snap.get("state_was_missing"))
         try:
             with _repo_transaction(self.repo):
                 if obj == "vocab":
-                    self.repo.update_state(prev)
                     if logged:
                         self.repo.delete_last_review(iid)
+                    if state_was_missing:
+                        self.repo.delete_state(iid)
+                    else:
+                        self.repo.update_state(prev)
                 elif obj == "grammar":
-                    self.repo.update_grammar_state(prev)
                     if logged:
                         self.repo.delete_last_grammar_review(iid)
+                    if state_was_missing:
+                        self.repo.delete_grammar_state(iid)
+                    else:
+                        self.repo.update_grammar_state(prev)
                 elif obj == "sentence":
-                    self.repo.update_sentence_state(prev)
                     if logged:
                         self.repo.delete_last_sentence_review(iid)
+                    if state_was_missing:
+                        self.repo.delete_sentence_state(iid)
+                    else:
+                        self.repo.update_sentence_state(prev)
                 elif obj == "listening":
-                    self.repo.update_listening_state(prev)
                     if logged:
                         self.repo.delete_last_listening_review(iid)
+                    if state_was_missing:
+                        self.repo.delete_listening_state(iid)
+                    else:
+                        self.repo.update_listening_state(prev)
                 else:
                     return None
         except Exception:
             return None  # keep the snapshot so the undo can be retried
+        study_progress = snap.get("study_progress")
+        if isinstance(study_progress, tuple) and len(study_progress) == 2:
+            self.study_answered = max(0, int(study_progress[0]))
+            self.study_next_milestone = max(30, int(study_progress[1]))
         self._undo = None  # one-deep: consume only after the DB reversal succeeded
         try:
             # Queue pops from the END, so append the current card first and the
@@ -1178,9 +1195,6 @@ class SessionService:
         response_ms: int | None,
         accept_override: bool = False,
     ) -> dict:
-        st = self.repo.ensure_state(item.id)
-        undo_snapshot = {"objective": "vocab", "item": item, "item_id": item.id,
-                         "prev_state": st, "logged": not was_skipped}
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
 
         # Learner override ("Accept my answer"): they assert their meaning was a
@@ -1206,8 +1220,12 @@ class SessionService:
         # skips out of every "reviewed" count, the activity heatmap, mastery and
         # accuracy — they all read the reviews table. The card is still
         # rescheduled below (Again) so it comes back.
-        st2 = schedule_next(st, effective_rating)
         with _repo_transaction(self.repo):
+            st = self.repo.get_state(item.id)
+            state_was_missing = st is None
+            if st is None:
+                st = self.repo.ensure_state(item.id)
+            st2 = schedule_next(st, effective_rating)
             if not was_skipped:
                 self.repo.insert_review(
                     vocab_id=item.id,
@@ -1225,7 +1243,15 @@ class SessionService:
                     response_ms=response_ms,
                 )
             self.repo.update_state(st2)
-        self._undo = undo_snapshot
+        self._undo = {
+            "objective": "vocab",
+            "item": item,
+            "item_id": item.id,
+            "prev_state": st,
+            "logged": not was_skipped,
+            "state_was_missing": state_was_missing,
+            "study_progress": self.study_progress(),
+        }
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_vocab"):
@@ -1282,9 +1308,6 @@ class SessionService:
         response_ms: int | None,
         accept_override: bool = False,
     ) -> dict:
-        st = self.repo.ensure_grammar_state(item.id)
-        undo_snapshot = {"objective": "grammar", "item": item, "item_id": item.id,
-                         "prev_state": st, "logged": not was_skipped}
         res = self.check_grammar(item, typed_blank)
 
         # Learner override ("Accept my answer"): count the answer as correct.
@@ -1304,8 +1327,12 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        st2 = schedule_next(st, effective_rating)
         with _repo_transaction(self.repo):
+            st = self.repo.get_grammar_state(item.id)
+            state_was_missing = st is None
+            if st is None:
+                st = self.repo.ensure_grammar_state(item.id)
+            st2 = schedule_next(st, effective_rating)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 self.repo.insert_grammar_review(
@@ -1321,7 +1348,15 @@ class SessionService:
                     response_ms=response_ms,
                 )
             self.repo.update_grammar_state(st2)
-        self._undo = undo_snapshot
+        self._undo = {
+            "objective": "grammar",
+            "item": item,
+            "item_id": item.id,
+            "prev_state": st,
+            "logged": not was_skipped,
+            "state_was_missing": state_was_missing,
+            "study_progress": self.study_progress(),
+        }
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_grammar"):
@@ -1426,9 +1461,6 @@ class SessionService:
         was_skipped: bool,
         response_ms: int | None,
     ) -> Dict[str, Any]:
-        st = self.repo.ensure_sentence_state(item.id)
-        undo_snapshot = {"objective": "sentence", "item": item, "item_id": item.id,
-                         "prev_state": st, "logged": not was_skipped}
         res = self.check_sentence(item, typed_text)
         language_feedback = classify_german_answer(typed_text, getattr(item, "target_text", "") or "")
         res["error_tags"] = list(language_feedback.tags)
@@ -1448,8 +1480,12 @@ class SessionService:
         typed = (typed_text or "").strip() or None
         got_toks = _tokenize(typed_text)
 
-        st2 = schedule_next(st, effective_rating)
         with _repo_transaction(self.repo):
+            st = self.repo.get_sentence_state(item.id)
+            state_was_missing = st is None
+            if st is None:
+                st = self.repo.ensure_sentence_state(item.id)
+            st2 = schedule_next(st, effective_rating)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 self.repo.insert_sentence_review(
@@ -1471,7 +1507,15 @@ class SessionService:
                     error_tags=",".join(res.get("error_tags") or []) or None,
                 )
             self.repo.update_sentence_state(st2)
-        self._undo = undo_snapshot
+        self._undo = {
+            "objective": "sentence",
+            "item": item,
+            "item_id": item.id,
+            "prev_state": st,
+            "logged": not was_skipped,
+            "state_was_missing": state_was_missing,
+            "study_progress": self.study_progress(),
+        }
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_sentence"):
@@ -1551,9 +1595,6 @@ class SessionService:
         replay_count: int = 0,
         rating: int | None = None,
     ) -> dict:
-        st = self.repo.ensure_listening_state(item.id)
-        undo_snapshot = {"objective": "listening", "item": item, "item_id": item.id,
-                         "prev_state": st, "logged": not was_skipped}
         res = self.check_listening(item, chosen)
 
         # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),
@@ -1571,8 +1612,12 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        st2 = schedule_next(st, effective_rating)
         with _repo_transaction(self.repo):
+            st = self.repo.get_listening_state(item.id)
+            state_was_missing = st is None
+            if st is None:
+                st = self.repo.ensure_listening_state(item.id)
+            st2 = schedule_next(st, effective_rating)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 self.repo.insert_listening_review(
@@ -1586,7 +1631,15 @@ class SessionService:
                     response_ms=response_ms,
                 )
             self.repo.update_listening_state(st2)
-        self._undo = undo_snapshot
+        self._undo = {
+            "objective": "listening",
+            "item": item,
+            "item_id": item.id,
+            "prev_state": st,
+            "logged": not was_skipped,
+            "state_was_missing": state_was_missing,
+            "study_progress": self.study_progress(),
+        }
 
         ml = getattr(self, "ml", None)
         if ml is not None and hasattr(ml, "update_listening"):
