@@ -126,6 +126,91 @@ def test_waiting_service_reuses_same_text_cache(monkeypatch, tmp_path):
     assert paths[0].exists()
 
 
+def test_independent_services_use_unique_temp_files(monkeypatch, tmp_path):
+    import wave
+    from core.audio.pronunciation_service import PronunciationService
+
+    barrier = threading.Barrier(2)
+    rendered_paths = []
+    rendered_paths_lock = threading.Lock()
+
+    class Voice:
+        def synthesize_wav(self, _text, wav_file, **_kwargs):
+            with rendered_paths_lock:
+                rendered_paths.append(wav_file._file.name)
+            barrier.wait(timeout=3)
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(16_000)
+            wav_file.writeframes(b"\x00\x00")
+
+    class Manager:
+        project_root = tmp_path
+
+        def __init__(self):
+            self.synthesis_lock = threading.Lock()
+
+        def get_german_voice(self):
+            return Voice()
+
+    cache_dir = tmp_path / "cache"
+    monkeypatch.setattr(
+        PronunciationService,
+        "_writable_cache_dir",
+        staticmethod(lambda: cache_dir),
+    )
+    services = [PronunciationService(Manager()), PronunciationService(Manager())]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        paths = list(pool.map(lambda service: service.generate_wav("Hallo"), services))
+
+    assert paths[0] == paths[1]
+    assert len(set(rendered_paths)) == 2
+    assert all(str(path).endswith(".part") for path in rendered_paths)
+    with wave.open(str(paths[0]), "rb") as wav_file:
+        assert wav_file.getnchannels() == 1
+        assert wav_file.readframes(1) == b"\x00\x00"
+    assert list(cache_dir.glob("*.part")) == []
+
+
+def test_generate_wav_reuses_concurrent_process_winner(monkeypatch, tmp_path):
+    from pathlib import Path
+    import wave
+    from core.audio.pronunciation_service import PronunciationService
+
+    class Voice:
+        def synthesize_wav(self, _text, wav_file, **_kwargs):
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(16_000)
+            wav_file.writeframes(b"\x00\x00")
+
+    class Manager:
+        project_root = tmp_path
+        synthesis_lock = threading.Lock()
+
+        def get_german_voice(self):
+            return Voice()
+
+    cache_dir = tmp_path / "cache"
+    monkeypatch.setattr(
+        PronunciationService,
+        "_writable_cache_dir",
+        staticmethod(lambda: cache_dir),
+    )
+
+    def concurrent_winner(source, target):
+        target.write_bytes(source.read_bytes())
+        raise PermissionError("simulated Windows publish race")
+
+    monkeypatch.setattr(Path, "replace", concurrent_winner)
+    path = PronunciationService(Manager()).generate_wav("Hallo")
+
+    with wave.open(str(path), "rb") as wav_file:
+        assert wav_file.readframes(1) == b"\x00\x00"
+    assert list(cache_dir.glob("*.part")) == []
+
+
 def test_pronunciation_cache_is_bounded_by_recent_use(monkeypatch, tmp_path):
     import os
     from core.audio.pronunciation_service import PronunciationService

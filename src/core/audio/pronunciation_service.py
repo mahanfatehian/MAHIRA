@@ -4,6 +4,7 @@ from contextlib import nullcontext
 import hashlib
 import os
 import re
+import uuid
 import wave
 from pathlib import Path
 
@@ -122,14 +123,30 @@ class PronunciationService:
                 return out_path
 
             voice = self.model_manager.get_german_voice()
-            tmp_path = out_path.with_name(out_path.name + ".part")
+            # The synthesis lock is process-local. A unique temp path prevents
+            # two MAHIRA instances rendering the same key from clobbering or
+            # deleting one another's in-progress WAV before atomic replace.
+            tmp_path = out_path.with_name(
+                f"{out_path.name}.{uuid.uuid4().hex}.part"
+            )
             try:
                 with wave.open(str(tmp_path), "wb") as wav_file:
                     if syn_config is not None:
                         voice.synthesize_wav(normalized, wav_file, syn_config=syn_config)
                     else:
                         voice.synthesize_wav(normalized, wav_file)
-                tmp_path.replace(out_path)
+                try:
+                    tmp_path.replace(out_path)
+                except PermissionError:
+                    # On Windows, two processes publishing the same key can
+                    # race after both finish rendering. Keep the first complete
+                    # result instead of failing the second caller.
+                    if force or not out_path.is_file():
+                        raise
+                    try:
+                        tmp_path.unlink()
+                    except OSError:
+                        pass
                 self._mark_cache_used(out_path)
                 self._prune_cache(protect=out_path)
             except Exception:
