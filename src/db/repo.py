@@ -784,6 +784,15 @@ class Repo:
             row2 = conn.execute("SELECT * FROM vocab_states WHERE vocab_id=?", (vocab_id,)).fetchone()
             return self._row_to_state(row2)
 
+    def get_state(self, vocab_id: int) -> VocabState | None:
+        """Return persisted recognition state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM vocab_states WHERE vocab_id=?",
+                (vocab_id,),
+            ).fetchone()
+            return self._row_to_state(row) if row else None
+
     def update_state(self, state: VocabState) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -963,6 +972,15 @@ class Repo:
             conn.execute("INSERT INTO grammar_states(grammar_id, due_at) VALUES(?,?)", (grammar_id, now))
             row2 = conn.execute("SELECT * FROM grammar_states WHERE grammar_id=?", (grammar_id,)).fetchone()
             return self._row_to_grammar_state(row2)
+
+    def get_grammar_state(self, grammar_id: int) -> GrammarState | None:
+        """Return persisted grammar state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM grammar_states WHERE grammar_id=?",
+                (grammar_id,),
+            ).fetchone()
+            return self._row_to_grammar_state(row) if row else None
 
     def update_grammar_state(self, state: GrammarState) -> None:
         with self._conn() as conn:
@@ -1169,6 +1187,15 @@ class Repo:
             ).fetchone()
             return self._row_to_sentence_state(row2)
 
+    def get_sentence_state(self, sentence_id: int) -> SentenceState | None:
+        """Return persisted sentence state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM sentence_states WHERE sentence_id=?",
+                (sentence_id,),
+            ).fetchone()
+            return self._row_to_sentence_state(row) if row else None
+
     def update_sentence_state(self, state: SentenceState) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -1367,6 +1394,15 @@ class Repo:
                 (listening_id,),
             ).fetchone()
             return self._row_to_listening_state(row2)
+
+    def get_listening_state(self, listening_id: int) -> ListeningState | None:
+        """Return persisted listening state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM listening_states WHERE listening_id=?",
+                (listening_id,),
+            ).fetchone()
+            return self._row_to_listening_state(row) if row else None
 
     def update_listening_state(self, state: ListeningState) -> None:
         with self._conn() as conn:

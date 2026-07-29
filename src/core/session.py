@@ -8,7 +8,17 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
-from db.repo import Repo, VocabItem, GrammarItem, SentenceItem, ListeningItem
+from db.repo import (
+    GrammarItem,
+    GrammarState,
+    ListeningItem,
+    ListeningState,
+    Repo,
+    SentenceItem,
+    SentenceState,
+    VocabItem,
+    VocabState,
+)
 from core.srs import schedule_next
 from core.ml.sklearn_ranker import SklearnRanker
 from core.semantic_match import get_matcher
@@ -1050,16 +1060,60 @@ class SessionService:
         return out
 
     def vocab_interval_labels(self, item) -> dict:
-        return self.rating_interval_labels(self.repo.ensure_state(item.id))
+        state = self.repo.get_state(item.id)
+        if state is None:
+            state = VocabState(
+                vocab_id=item.id,
+                ease=2.5,
+                interval_days=0.0,
+                reps=0,
+                lapses=0,
+                due_at=int(time.time()),
+                last_review_at=None,
+            )
+        return self.rating_interval_labels(state)
 
     def grammar_interval_labels(self, item) -> dict:
-        return self.rating_interval_labels(self.repo.ensure_grammar_state(item.id))
+        state = self.repo.get_grammar_state(item.id)
+        if state is None:
+            state = GrammarState(
+                grammar_id=item.id,
+                ease=2.5,
+                interval_days=0.0,
+                reps=0,
+                lapses=0,
+                due_at=int(time.time()),
+                last_review_at=None,
+            )
+        return self.rating_interval_labels(state)
 
     def sentence_interval_labels(self, item) -> dict:
-        return self.rating_interval_labels(self.repo.ensure_sentence_state(item.id))
+        state = self.repo.get_sentence_state(item.id)
+        if state is None:
+            state = SentenceState(
+                sentence_id=item.id,
+                ease=2.5,
+                interval_days=0.0,
+                reps=0,
+                lapses=0,
+                due_at=int(time.time()),
+                last_review_at=None,
+            )
+        return self.rating_interval_labels(state)
 
     def listening_interval_labels(self, item) -> dict:
-        return self.rating_interval_labels(self.repo.ensure_listening_state(item.id))
+        state = self.repo.get_listening_state(item.id)
+        if state is None:
+            state = ListeningState(
+                listening_id=item.id,
+                ease=2.5,
+                interval_days=0.0,
+                reps=0,
+                lapses=0,
+                due_at=int(time.time()),
+                last_review_at=None,
+            )
+        return self.rating_interval_labels(state)
 
     def can_undo(self) -> bool:
         return getattr(self, "_undo", None) is not None
