@@ -121,10 +121,7 @@ class MainWindow(QMainWindow):
         self.page_scroll.setWidget(self.stack)
 
         def make(PageCls):
-            try:
-                return PageCls(session, self.nav)
-            except TypeError:
-                return PageCls(session)
+            return PageCls(session, self.nav)
 
         self.pages = {
             "today": make(TodayPage),

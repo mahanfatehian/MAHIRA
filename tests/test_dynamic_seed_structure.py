@@ -124,3 +124,40 @@ def test_utf8_bom_seed_headers_are_supported(tmp_path):
         deck_id = repo.get_deck_id("A1", objective, lektion_id)
         assert deck_id is not None
         assert counter(deck_id) == 1
+
+
+def test_identical_deck_upsert_preserves_update_timestamp(tmp_path, monkeypatch):
+    import db.repo as repo_module
+    from db.init_db import init_db
+    from db.repo import Repo
+
+    db = tmp_path / "deck-upsert.db"
+    init_db(db, SCHEMA)
+    repo = Repo(db)
+    clock = iter((100, 200, 300))
+    monkeypatch.setattr(repo_module.time, "time", lambda: next(clock))
+
+    deck_id, changed = repo.upsert_deck("A1", "vocab", "one.csv", "same-sha")
+    assert changed is True
+
+    same_id, changed = repo.upsert_deck("A1", "vocab", "one.csv", "same-sha")
+    assert same_id == deck_id
+    assert changed is False
+    with repo._conn() as conn:
+        unchanged = conn.execute(
+            "SELECT seed_file, updated_at FROM decks WHERE id=?",
+            (deck_id,),
+        ).fetchone()
+    assert unchanged["seed_file"] == "one.csv"
+    assert unchanged["updated_at"] == 100
+
+    same_id, changed = repo.upsert_deck("A1", "vocab", "renamed.csv", "same-sha")
+    assert same_id == deck_id
+    assert changed is False
+    with repo._conn() as conn:
+        renamed = conn.execute(
+            "SELECT seed_file, updated_at FROM decks WHERE id=?",
+            (deck_id,),
+        ).fetchone()
+    assert renamed["seed_file"] == "renamed.csv"
+    assert renamed["updated_at"] == 300

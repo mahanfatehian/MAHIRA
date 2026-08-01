@@ -89,24 +89,57 @@ def _make_trouble_card(repo, objective: str) -> tuple[int, int, str, str]:
     return deck_id, item_id, state_table, foreign_key
 
 
-def _pick(repo, objective: str, deck_id: int, mode: str) -> list[int]:
+def _pick(
+    repo,
+    objective: str,
+    deck_id: int,
+    mode: str,
+    *,
+    cooldown_hours: float = 0,
+) -> list[int]:
     picker = {
         "vocab": repo.pick_session_vocab_ids,
         "grammar": repo.pick_session_grammar_ids,
         "sentences": repo.pick_session_sentence_ids,
         "listening": repo.pick_session_listening_ids,
     }[objective]
-    return picker(deck_id, 10, mode=mode, cooldown_hours=0)
+    return picker(
+        deck_id,
+        10,
+        mode=mode,
+        cooldown_hours=cooldown_hours,
+    )
 
 
-def _due_count(repo, objective: str, deck_id: int) -> int:
+def _due_count(
+    repo,
+    objective: str,
+    deck_id: int,
+    *,
+    cooldown_hours: float = 0,
+) -> int:
     counter = {
         "vocab": repo.due_count,
         "grammar": repo.grammar_due_count,
         "sentences": repo.sentence_due_count,
         "listening": repo.listening_due_count,
     }[objective]
-    return counter(deck_id)
+    return counter(deck_id, cooldown_hours=cooldown_hours)
+
+
+def _progress_due_count(repo, objective: str, deck_id: int) -> int:
+    from types import SimpleNamespace
+
+    from ui.pages.progress import ProgressPage
+
+    page = SimpleNamespace(session=SimpleNamespace(repo=repo))
+    counter = {
+        "vocab": ProgressPage._due_count,
+        "grammar": ProgressPage._grammar_due_count,
+        "sentences": ProgressPage._sentence_due,
+        "listening": ProgressPage._listening_due,
+    }[objective]
+    return counter(page, deck_id)
 
 
 @pytest.mark.parametrize("objective", _OBJECTIVES)
@@ -169,6 +202,49 @@ def test_progress_due_count_excludes_inactive_vocab(repo):
             (int(time.time()) + 3600, item_id),
         )
     assert ProgressPage._due_count(page, deck_id) == 0
+
+
+@pytest.mark.parametrize("objective", _OBJECTIVES)
+def test_progress_due_counts_match_session_cooldown(repo, objective):
+    deck_id, item_id, state_table, foreign_key = _make_trouble_card(
+        repo,
+        objective,
+    )
+    now = int(time.time())
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET due_at=?, last_review_at=? "
+            f"WHERE {foreign_key}=?",
+            (now - 60, now - 3600, item_id),
+        )
+
+    # The raw scheduling count remains available to callers that do not apply
+    # a study cooldown, while Progress mirrors what a new session can serve.
+    assert _due_count(repo, objective, deck_id) == 1
+    assert _progress_due_count(repo, objective, deck_id) == 0
+    assert _pick(
+        repo,
+        objective,
+        deck_id,
+        "due_only",
+        cooldown_hours=12,
+    ) == []
+
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {state_table} SET last_review_at=? WHERE {foreign_key}=?",
+            (now - 13 * 3600, item_id),
+        )
+
+    assert _progress_due_count(repo, objective, deck_id) == 1
+    assert _pick(
+        repo,
+        objective,
+        deck_id,
+        "due_only",
+        cooldown_hours=12,
+    ) == [item_id]
 
 
 @pytest.mark.parametrize("objective", _OBJECTIVES)

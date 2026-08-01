@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,12 +40,11 @@ class BackupService:
         now = int(time.time())
         stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(now))
         safe_reason = "".join(c if c.isalnum() or c in "-_" else "-" for c in reason).strip("-")
-        stem = f"mahira-{stamp}-{safe_reason or 'backup'}"
-        target = self.backup_dir / f"{stem}.db"
-        sequence = 2
-        while target.exists():
-            target = self.backup_dir / f"{stem}-{sequence}.db"
-            sequence += 1
+        # Backup services can run in separate MAHIRA processes, so an
+        # existence check cannot safely reserve a shared filename.
+        target = self.backup_dir / (
+            f"mahira-{stamp}-{uuid.uuid4().hex}-{safe_reason or 'backup'}.db"
+        )
         partial = target.with_name(target.name + ".partial")
 
         source = destination = None

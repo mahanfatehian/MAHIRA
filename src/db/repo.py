@@ -329,7 +329,7 @@ class Repo:
         with self._conn() as conn:
             row = conn.execute(
                 """
-                SELECT id, seed_sha1 FROM decks
+                SELECT id, name, seed_file, seed_sha1 FROM decks
                 WHERE level=? AND COALESCE(lektion_id,0)=COALESCE(?,0) AND objective=?
                 """,
                 (level, lektion_id, objective),
@@ -339,18 +339,23 @@ class Repo:
                 deck_id = int(row["id"])
                 old_sha = (row["seed_sha1"] or "")
                 changed = (old_sha != (seed_sha1 or ""))
-
-                conn.execute(
-                    """
-                    UPDATE decks
-                       SET name=?,
-                           seed_file=?,
-                           seed_sha1=?,
-                           updated_at=?
-                     WHERE id=?
-                    """,
-                    (deck_name, seed_file, seed_sha1, now, deck_id),
+                metadata_changed = (
+                    str(row["name"] or "") != deck_name
+                    or str(row["seed_file"] or "") != str(seed_file or "")
+                    or changed
                 )
+                if metadata_changed:
+                    conn.execute(
+                        """
+                        UPDATE decks
+                           SET name=?,
+                               seed_file=?,
+                               seed_sha1=?,
+                               updated_at=?
+                         WHERE id=?
+                        """,
+                        (deck_name, seed_file, seed_sha1, now, deck_id),
+                    )
                 return deck_id, changed
 
             cur = conn.execute(
@@ -779,6 +784,15 @@ class Repo:
             row2 = conn.execute("SELECT * FROM vocab_states WHERE vocab_id=?", (vocab_id,)).fetchone()
             return self._row_to_state(row2)
 
+    def get_state(self, vocab_id: int) -> VocabState | None:
+        """Return persisted recognition state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM vocab_states WHERE vocab_id=?",
+                (vocab_id,),
+            ).fetchone()
+            return self._row_to_state(row) if row else None
+
     def update_state(self, state: VocabState) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -958,6 +972,15 @@ class Repo:
             conn.execute("INSERT INTO grammar_states(grammar_id, due_at) VALUES(?,?)", (grammar_id, now))
             row2 = conn.execute("SELECT * FROM grammar_states WHERE grammar_id=?", (grammar_id,)).fetchone()
             return self._row_to_grammar_state(row2)
+
+    def get_grammar_state(self, grammar_id: int) -> GrammarState | None:
+        """Return persisted grammar state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM grammar_states WHERE grammar_id=?",
+                (grammar_id,),
+            ).fetchone()
+            return self._row_to_grammar_state(row) if row else None
 
     def update_grammar_state(self, state: GrammarState) -> None:
         with self._conn() as conn:
@@ -1164,6 +1187,15 @@ class Repo:
             ).fetchone()
             return self._row_to_sentence_state(row2)
 
+    def get_sentence_state(self, sentence_id: int) -> SentenceState | None:
+        """Return persisted sentence state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM sentence_states WHERE sentence_id=?",
+                (sentence_id,),
+            ).fetchone()
+            return self._row_to_sentence_state(row) if row else None
+
     def update_sentence_state(self, state: SentenceState) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -1363,6 +1395,15 @@ class Repo:
             ).fetchone()
             return self._row_to_listening_state(row2)
 
+    def get_listening_state(self, listening_id: int) -> ListeningState | None:
+        """Return persisted listening state without creating an unseen row."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM listening_states WHERE listening_id=?",
+                (listening_id,),
+            ).fetchone()
+            return self._row_to_listening_state(row) if row else None
+
     def update_listening_state(self, state: ListeningState) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -1417,8 +1458,13 @@ class Repo:
                 ),
             )
 
-    def listening_due_count(self, deck_id: int) -> int:
+    def listening_due_count(
+        self,
+        deck_id: int,
+        cooldown_hours: float = 0,
+    ) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1426,10 +1472,11 @@ class Repo:
                   FROM listening l
                   JOIN listening_states st ON st.listening_id=l.id
                  WHERE l.deck_id=? AND st.due_at<=?
+                   AND (st.last_review_at IS NULL OR st.last_review_at<=?)
                    AND st.suspended=0
                    AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1513,8 +1560,9 @@ class Repo:
             return {}
 
     # ---------- Progress helpers ----------
-    def due_count(self, deck_id: int) -> int:
+    def due_count(self, deck_id: int, cooldown_hours: float = 0) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1522,10 +1570,11 @@ class Repo:
                   FROM vocab v
                   JOIN vocab_states s ON s.vocab_id=v.id
                  WHERE v.deck_id=? AND s.due_at<=?
+                   AND (s.last_review_at IS NULL OR s.last_review_at<=?)
                    AND s.suspended=0
                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1626,6 +1675,25 @@ class Repo:
     def delete_last_listening_review(self, listening_id: int) -> None:
         self._delete_last("listening_reviews", "listening_id", listening_id)
 
+    def _delete_state(self, table: str, fk: str, item_id: int) -> None:
+        with self._conn() as conn:  # table/fk are fixed constants, not user input
+            conn.execute(
+                f"DELETE FROM {table} WHERE {fk}=?",
+                (int(item_id),),
+            )
+
+    def delete_state(self, vocab_id: int) -> None:
+        self._delete_state("vocab_states", "vocab_id", vocab_id)
+
+    def delete_grammar_state(self, grammar_id: int) -> None:
+        self._delete_state("grammar_states", "grammar_id", grammar_id)
+
+    def delete_sentence_state(self, sentence_id: int) -> None:
+        self._delete_state("sentence_states", "sentence_id", sentence_id)
+
+    def delete_listening_state(self, listening_id: int) -> None:
+        self._delete_state("listening_states", "listening_id", listening_id)
+
     def unseen_count(self, deck_id: int) -> int:
         with self._conn() as conn:
             row = conn.execute(
@@ -1639,8 +1707,13 @@ class Repo:
             ).fetchone()
             return int(row["c"]) if row else 0
 
-    def grammar_due_count(self, deck_id: int) -> int:
+    def grammar_due_count(
+        self,
+        deck_id: int,
+        cooldown_hours: float = 0,
+    ) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1648,10 +1721,11 @@ class Repo:
                   FROM grammar g
                   JOIN grammar_states s ON s.grammar_id=g.id
                  WHERE g.deck_id=? AND s.due_at<=?
+                   AND (s.last_review_at IS NULL OR s.last_review_at<=?)
                    AND s.suspended=0
                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1682,8 +1756,13 @@ class Repo:
             ).fetchone()
             return int(row["c"]) if row else 0
 
-    def sentence_due_count(self, deck_id: int) -> int:
+    def sentence_due_count(
+        self,
+        deck_id: int,
+        cooldown_hours: float = 0,
+    ) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1691,10 +1770,11 @@ class Repo:
                   FROM sentences s
                   JOIN sentence_states st ON st.sentence_id=s.id
                  WHERE s.deck_id=? AND st.due_at<=?
+                   AND (st.last_review_at IS NULL OR st.last_review_at<=?)
                    AND st.suspended=0
                    AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 

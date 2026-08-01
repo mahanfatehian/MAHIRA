@@ -13,6 +13,7 @@ from ui.widgets.activity_heatmap import ActivityHeatmap
 
 # Fallback for tests/legacy callers; normal UI reads the learner preference.
 DAILY_GOAL = 30
+_PRACTICE_COOLDOWN_HOURS = 12
 _ACCENT_FIRE = "#FF7A2E"   # warm — a live streak / goal reached (fire)
 _ACCENT_COLD = "#6E7E8C"   # cold slate — broken streak / frozen
 
@@ -73,7 +74,7 @@ class ProgressCard(QGroupBox):
 class ProgressPage(QWidget):
     go_learn = Signal()
 
-    def __init__(self, session: SessionService):
+    def __init__(self, session: SessionService, _nav=None):
         super().__init__()
         self.session = session
 
@@ -286,17 +287,26 @@ class ProgressPage(QWidget):
             getattr(getattr(getattr(self.session, "settings", None), "value", None), "daily_goal", DAILY_GOAL)
         )
         today = _dt.date.today()
-        since = int(time.time()) - 372 * 86400  # ~53 weeks back
         try:
-            counts = self.session.repo.daily_review_counts(since)
+            # Streak records are all-time statistics.  The heatmap itself only
+            # paints its visible 53 weeks, so retaining older active days here
+            # does not widen or slow its rendering loop.
+            counts = self.session.repo.daily_review_counts(0)
         except Exception:
             counts = {}
 
         self.heatmap.set_data(counts, daily_goal, today)
 
-        cur, longest, active_days = self._compute_streaks(counts, today)
+        cur, longest, _ = self._compute_streaks(counts, today)
         today_count = int(counts.get(today.isoformat(), 0))
-        year_total = sum(int(v) for v in counts.values())
+        year_prefix = f"{today.year:04d}-"
+        year_counts = {
+            day: int(count)
+            for day, count in counts.items()
+            if day.startswith(year_prefix) and int(count) > 0
+        }
+        year_total = sum(year_counts.values())
+        active_days = len(year_counts)
 
         # Current streak: glows warm when the fire is alive, cold slate when broken.
         self.streak_value.setText(str(cur))
@@ -367,24 +377,12 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _due_count(self, deck_id: int) -> int:
-        repo = self.session.repo
-        if hasattr(repo, "due_count"):
-            return int(repo.due_count(deck_id))
-
-        now = int(time.time())
-        with self._conn() as conn:
-            row = conn.execute("""
-                SELECT COUNT(*) AS c
-                FROM vocab v
-                JOIN vocab_states s ON s.vocab_id = v.id
-                WHERE v.deck_id = ?
-                AND s.due_at <= ?
-                AND s.suspended = 0
-                AND (s.buried_until IS NULL OR s.buried_until <= ?)
-            """, (deck_id, now, now)).fetchone()
-
-            return int(row["c"]) if row else 0
-
+        return int(
+            self.session.repo.due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
 
     def _reviewed_last_24h(self, deck_id: int) -> int:
         repo = self.session.repo
@@ -475,18 +473,12 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _grammar_due_count(self, deck_id: int) -> int:
-        repo = self.session.repo
-        if hasattr(repo, "grammar_due_count"):
-            return int(repo.grammar_due_count(deck_id))
-        now = int(time.time())
-        with self._conn() as conn:
-            row = conn.execute("""
-                SELECT COUNT(*) AS c
-                FROM grammar g
-                JOIN grammar_states s ON s.grammar_id=g.id
-                WHERE g.deck_id=? AND s.due_at<=?
-            """, (deck_id, now)).fetchone()
-            return int(row["c"]) if row else 0
+        return int(
+            self.session.repo.grammar_due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
 
     def _grammar_reviewed_last_24h(self, deck_id: int) -> int:
         repo = self.session.repo
@@ -574,19 +566,20 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _sentence_due(self, deck_id: int) -> int:
-        repo = self.session.repo
-        if hasattr(repo, "sentence_due_count"):
-            return int(repo.sentence_due_count(deck_id))
-        now = int(time.time())
-        with self._conn() as conn:
-            row = conn.execute("""
-                SELECT COUNT(*) AS c
-                FROM sentences s
-                JOIN sentence_states st ON st.sentence_id = s.id
-                WHERE s.deck_id = ?
-                  AND st.due_at <= ?
-            """, (deck_id, now)).fetchone()
-            return int(row["c"]) if row else 0
+        return int(
+            self.session.repo.sentence_due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
+
+    def _listening_due(self, deck_id: int) -> int:
+        return int(
+            self.session.repo.listening_due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
 
     def _sentence_unseen(self, deck_id: int) -> int:
         repo = self.session.repo
@@ -758,7 +751,7 @@ class ProgressPage(QWidget):
                 self._set_empty("This deck is empty.")
                 return
 
-            total_due = self.session.repo.listening_due_count(deck_id)
+            total_due = self._listening_due(deck_id)
             reviewed_today = self.session.repo.listening_reviewed_last_24h(deck_id)
             unseen = self.session.repo.listening_unseen_count(deck_id)
             total_reviews = self._listening_reviews_total(deck_id)

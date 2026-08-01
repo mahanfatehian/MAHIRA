@@ -155,6 +155,53 @@ def test_activity_heatmap_fits_a_narrow_progress_column():
         heatmap.deleteLater()
 
 
+def test_progress_activity_uses_all_time_streaks_and_calendar_year_counts(monkeypatch):
+    import datetime as dt
+
+    import ui.pages.progress as progress_module
+
+    class FixedDate(dt.date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 1)
+
+    old_streak = {
+        (dt.date(2024, 1, 1) + dt.timedelta(days=offset)).isoformat(): 1
+        for offset in range(10)
+    }
+    counts = old_streak | {
+        "2025-08-01": 7,
+        "2026-07-31": 1,
+        "2026-08-01": 1,
+    }
+    requested_since: list[int] = []
+
+    class Repo:
+        def daily_review_counts(self, since):
+            requested_since.append(since)
+            return counts
+
+    session = SimpleNamespace(
+        repo=Repo(),
+        settings=SimpleNamespace(value=SimpleNamespace(daily_goal=30)),
+    )
+    monkeypatch.setattr(progress_module._dt, "date", FixedDate)
+    _qapp()
+    page = progress_module.ProgressPage(session)
+    try:
+        page._refresh_activity()
+
+        assert requested_since == [0]
+        assert page.longest_value.text() == "10"
+        assert page.streak_value.text() == "2"
+        assert "2 reviews this year" in page.activity_caption.text()
+        assert "2 active days" in page.activity_caption.text()
+        assert "9 reviews this year" not in page.activity_caption.text()
+    finally:
+        page.close()
+        page.deleteLater()
+
+
 @pytest.mark.parametrize(
     ("checks", "expected"),
     [
