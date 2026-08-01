@@ -13,6 +13,7 @@ from ui.widgets.activity_heatmap import ActivityHeatmap
 
 # Fallback for tests/legacy callers; normal UI reads the learner preference.
 DAILY_GOAL = 30
+_PRACTICE_COOLDOWN_HOURS = 12
 _ACCENT_FIRE = "#FF7A2E"   # warm — a live streak / goal reached (fire)
 _ACCENT_COLD = "#6E7E8C"   # cold slate — broken streak / frozen
 
@@ -376,22 +377,12 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _due_count(self, deck_id: int) -> int:
-        now = int(time.time())
-        cooldown_hours = 12
-        cooldown_since = now - cooldown_hours * 3600
-
-        with self._conn() as conn:
-            row = conn.execute("""
-                SELECT COUNT(*)
-                FROM vocab v
-                JOIN vocab_states s ON s.vocab_id = v.id
-                WHERE v.deck_id = ?
-                AND s.due_at <= ?
-                AND (s.last_review_at IS NULL OR s.last_review_at <= ?)
-            """, (deck_id, now, cooldown_since)).fetchone()
-
-            return int(row["COUNT(*)"]) if row else 0
-
+        return int(
+            self.session.repo.due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
 
     def _reviewed_last_24h(self, deck_id: int) -> int:
         repo = self.session.repo
@@ -482,18 +473,12 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _grammar_due_count(self, deck_id: int) -> int:
-        repo = self.session.repo
-        if hasattr(repo, "grammar_due_count"):
-            return int(repo.grammar_due_count(deck_id))
-        now = int(time.time())
-        with self._conn() as conn:
-            row = conn.execute("""
-                SELECT COUNT(*) AS c
-                FROM grammar g
-                JOIN grammar_states s ON s.grammar_id=g.id
-                WHERE g.deck_id=? AND s.due_at<=?
-            """, (deck_id, now)).fetchone()
-            return int(row["c"]) if row else 0
+        return int(
+            self.session.repo.grammar_due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
 
     def _grammar_reviewed_last_24h(self, deck_id: int) -> int:
         repo = self.session.repo
@@ -581,19 +566,20 @@ class ProgressPage(QWidget):
             return int(row["c"]) if row else 0
 
     def _sentence_due(self, deck_id: int) -> int:
-        repo = self.session.repo
-        if hasattr(repo, "sentence_due_count"):
-            return int(repo.sentence_due_count(deck_id))
-        now = int(time.time())
-        with self._conn() as conn:
-            row = conn.execute("""
-                SELECT COUNT(*) AS c
-                FROM sentences s
-                JOIN sentence_states st ON st.sentence_id = s.id
-                WHERE s.deck_id = ?
-                  AND st.due_at <= ?
-            """, (deck_id, now)).fetchone()
-            return int(row["c"]) if row else 0
+        return int(
+            self.session.repo.sentence_due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
+
+    def _listening_due(self, deck_id: int) -> int:
+        return int(
+            self.session.repo.listening_due_count(
+                deck_id,
+                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+            )
+        )
 
     def _sentence_unseen(self, deck_id: int) -> int:
         repo = self.session.repo
@@ -765,7 +751,7 @@ class ProgressPage(QWidget):
                 self._set_empty("This deck is empty.")
                 return
 
-            total_due = self.session.repo.listening_due_count(deck_id)
+            total_due = self._listening_due(deck_id)
             reviewed_today = self.session.repo.listening_reviewed_last_24h(deck_id)
             unseen = self.session.repo.listening_unseen_count(deck_id)
             total_reviews = self._listening_reviews_total(deck_id)

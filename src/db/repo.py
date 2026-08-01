@@ -1458,8 +1458,13 @@ class Repo:
                 ),
             )
 
-    def listening_due_count(self, deck_id: int) -> int:
+    def listening_due_count(
+        self,
+        deck_id: int,
+        cooldown_hours: float = 0,
+    ) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1467,10 +1472,11 @@ class Repo:
                   FROM listening l
                   JOIN listening_states st ON st.listening_id=l.id
                  WHERE l.deck_id=? AND st.due_at<=?
+                   AND (st.last_review_at IS NULL OR st.last_review_at<=?)
                    AND st.suspended=0
                    AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1554,8 +1560,9 @@ class Repo:
             return {}
 
     # ---------- Progress helpers ----------
-    def due_count(self, deck_id: int) -> int:
+    def due_count(self, deck_id: int, cooldown_hours: float = 0) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1563,10 +1570,11 @@ class Repo:
                   FROM vocab v
                   JOIN vocab_states s ON s.vocab_id=v.id
                  WHERE v.deck_id=? AND s.due_at<=?
+                   AND (s.last_review_at IS NULL OR s.last_review_at<=?)
                    AND s.suspended=0
                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1699,8 +1707,13 @@ class Repo:
             ).fetchone()
             return int(row["c"]) if row else 0
 
-    def grammar_due_count(self, deck_id: int) -> int:
+    def grammar_due_count(
+        self,
+        deck_id: int,
+        cooldown_hours: float = 0,
+    ) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1708,10 +1721,11 @@ class Repo:
                   FROM grammar g
                   JOIN grammar_states s ON s.grammar_id=g.id
                  WHERE g.deck_id=? AND s.due_at<=?
+                   AND (s.last_review_at IS NULL OR s.last_review_at<=?)
                    AND s.suspended=0
                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1742,8 +1756,13 @@ class Repo:
             ).fetchone()
             return int(row["c"]) if row else 0
 
-    def sentence_due_count(self, deck_id: int) -> int:
+    def sentence_due_count(
+        self,
+        deck_id: int,
+        cooldown_hours: float = 0,
+    ) -> int:
         now = int(time.time())
+        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1751,10 +1770,11 @@ class Repo:
                   FROM sentences s
                   JOIN sentence_states st ON st.sentence_id=s.id
                  WHERE s.deck_id=? AND st.due_at<=?
+                   AND (st.last_review_at IS NULL OR st.last_review_at<=?)
                    AND st.suspended=0
                    AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now, now),
+                (deck_id, now, cooldown_since, now),
             ).fetchone()
             return int(row["c"]) if row else 0
 
