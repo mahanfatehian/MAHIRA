@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import sqlite3
+import threading
 
 import pytest
 
@@ -102,6 +104,53 @@ def test_verified_backup_and_retention(tmp_path):
     check = sqlite3.connect(info.path)
     assert check.execute("SELECT value FROM sample").fetchone()[0] == "safe"
     check.close()
+
+
+def test_concurrent_backups_use_distinct_paths(tmp_path, monkeypatch):
+    import db.backup as backup_module
+
+    source = tmp_path / "mahira.db"
+    conn = sqlite3.connect(source)
+    conn.execute("CREATE TABLE sample(value TEXT)")
+    conn.execute("INSERT INTO sample VALUES ('safe')")
+    conn.commit()
+    conn.close()
+
+    publish_barrier = threading.Barrier(2)
+    real_replace = backup_module.os.replace
+
+    def synchronized_replace(source_path, target_path):
+        if str(source_path).endswith(".partial"):
+            publish_barrier.wait(timeout=5)
+        return real_replace(source_path, target_path)
+
+    monkeypatch.setattr(backup_module.time, "time", lambda: 1_754_040_000)
+    monkeypatch.setattr(backup_module.os, "replace", synchronized_replace)
+    services = [
+        backup_module.BackupService(source),
+        backup_module.BackupService(source),
+    ]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        backups = list(
+            pool.map(lambda service: service.create("race", prune=False), services)
+        )
+
+    assert all(info is not None for info in backups)
+    paths = [info.path for info in backups if info is not None]
+    assert len(set(paths)) == 2
+    for path in paths:
+        check = sqlite3.connect(path)
+        assert check.execute("SELECT value FROM sample").fetchone()[0] == "safe"
+        assert check.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        check.close()
+        assert json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))[
+            "reason"
+        ] == "race"
+
+    backup_dir = tmp_path / "backups"
+    assert not list(backup_dir.glob("*.partial"))
+    assert not list(backup_dir.glob("*.tmp"))
 
 
 def test_restore_keeps_selected_backup_until_copy_finishes(tmp_path):
