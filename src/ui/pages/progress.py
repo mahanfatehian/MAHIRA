@@ -286,17 +286,26 @@ class ProgressPage(QWidget):
             getattr(getattr(getattr(self.session, "settings", None), "value", None), "daily_goal", DAILY_GOAL)
         )
         today = _dt.date.today()
-        since = int(time.time()) - 372 * 86400  # ~53 weeks back
         try:
-            counts = self.session.repo.daily_review_counts(since)
+            # Streak records are all-time statistics.  The heatmap itself only
+            # paints its visible 53 weeks, so retaining older active days here
+            # does not widen or slow its rendering loop.
+            counts = self.session.repo.daily_review_counts(0)
         except Exception:
             counts = {}
 
         self.heatmap.set_data(counts, daily_goal, today)
 
-        cur, longest, active_days = self._compute_streaks(counts, today)
+        cur, longest, _ = self._compute_streaks(counts, today)
         today_count = int(counts.get(today.isoformat(), 0))
-        year_total = sum(int(v) for v in counts.values())
+        year_prefix = f"{today.year:04d}-"
+        year_counts = {
+            day: int(count)
+            for day, count in counts.items()
+            if day.startswith(year_prefix) and int(count) > 0
+        }
+        year_total = sum(year_counts.values())
+        active_days = len(year_counts)
 
         # Current streak: glows warm when the fire is alive, cold slate when broken.
         self.streak_value.setText(str(cur))
