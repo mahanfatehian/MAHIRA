@@ -73,7 +73,7 @@ class ProgressCard(QGroupBox):
 class ProgressPage(QWidget):
     go_learn = Signal()
 
-    def __init__(self, session: SessionService):
+    def __init__(self, session: SessionService, _nav=None):
         super().__init__()
         self.session = session
 
