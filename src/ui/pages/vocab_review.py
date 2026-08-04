@@ -761,7 +761,7 @@ class VocabReviewPage(QWidget):
 
         response_ms = None
         if self.card_started_at is not None:
-            response_ms = int((time.time() - self.card_started_at) * 1000)
+            response_ms = max(0, int((time.time() - self.card_started_at) * 1000))
 
         if hasattr(self.session, "submit_vocab"):
             try:
@@ -779,7 +779,9 @@ class VocabReviewPage(QWidget):
                     accept_override=self._accept_override,
                 )
             except Exception:
-                pass
+                # Stay on the card so the learner can retry; do not fake progress.
+                self._set_rating_keys_enabled(True)
+                return
 
         self._clear_current_audio_cache()
 

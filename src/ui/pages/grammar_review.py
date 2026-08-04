@@ -493,7 +493,7 @@ class GrammarReviewPage(QWidget):
         response_ms = (
             None
             if self.card_started_at is None
-            else int((time.time() - self.card_started_at) * 1000)
+            else max(0, int((time.time() - self.card_started_at) * 1000))
         )
 
         self.session.submit_grammar(
