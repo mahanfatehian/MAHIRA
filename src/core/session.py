@@ -985,11 +985,12 @@ class SessionService:
     # Vocab
     # -----------------------------------------------------------------
     def next_vocab_item(self) -> Optional[VocabItem]:
-        if not self._queue:
-            return None
-
-        vid = self._queue.pop()
-        return self.repo.get_vocab_by_id(vid)
+        while self._queue:
+            vid = self._queue.pop()
+            item = self.repo.get_vocab_by_id(vid)
+            if item is not None:
+                return item
+        return None
 
     def prompt_text(self, item: VocabItem) -> str:
         return getattr(item, "word", "") or ""
@@ -1278,11 +1279,12 @@ class SessionService:
     # Grammar
     # -----------------------------------------------------------------
     def next_grammar_item(self) -> Optional[GrammarItem]:
-        if not self._queue:
-            return None
-
-        gid = self._queue.pop()
-        return self.repo.get_grammar_by_id(gid)
+        while self._queue:
+            gid = self._queue.pop()
+            item = self.repo.get_grammar_by_id(gid)
+            if item is not None:
+                return item
+        return None
 
     def grammar_prompt_text(self, item: GrammarItem) -> str:
         return _render_blank(getattr(item, "test_text", "") or "")
@@ -1384,11 +1386,12 @@ class SessionService:
     # Sentences
     # -----------------------------------------------------------------
     def next_sentence_item(self) -> Optional[SentenceItem]:
-        if not self._queue:
-            return None
-
-        sid = self._queue.pop()
-        return self.repo.get_sentence_by_id(sid)
+        while self._queue:
+            sid = self._queue.pop()
+            item = self.repo.get_sentence_by_id(sid)
+            if item is not None:
+                return item
+        return None
 
     def check_sentence(self, item: Any, typed_text: str) -> Dict[str, Any]:
         """
@@ -1542,11 +1545,12 @@ class SessionService:
     # Listening (multiple choice over a hidden, read-aloud passage)
     # -----------------------------------------------------------------
     def next_listening_item(self) -> Optional[ListeningItem]:
-        if not self._queue:
-            return None
-
-        lid = self._queue.pop()
-        return self.repo.get_listening_by_id(lid)
+        while self._queue:
+            lid = self._queue.pop()
+            item = self.repo.get_listening_by_id(lid)
+            if item is not None:
+                return item
+        return None
 
     def listening_options(self, item: ListeningItem, *, count: int = 4) -> list[str]:
         """Return the shuffled multiple-choice options for a listening item.
