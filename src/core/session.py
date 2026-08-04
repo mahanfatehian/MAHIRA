@@ -1704,6 +1704,9 @@ class SessionService:
                 error_tags=",".join(feedback.tags) or None,
             )
             self.repo.update_vocab_practice_state(schedule_next(state, rating))
+        # Lab lanes do not own the recognition undo stack; drop any stale snap
+        # so Ctrl+Z cannot restore recognition state while deleting a Lab row.
+        self._undo = None
         return {
             "ok": feedback.correct,
             "expected": expected,

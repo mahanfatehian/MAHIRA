@@ -241,3 +241,57 @@ def test_failed_first_submission_does_not_create_seen_state(
     assert case["get_state"]() is None
     assert _review_count(repo, case["review_table"]) == 0
     assert session.can_undo() is False
+
+
+def test_undo_does_not_delete_lab_review_row(repo):
+    """Recognition undo must only drop recognition rows, never Lab lanes."""
+    case = _case(repo, "vocab")
+    session = _session_shell(repo)
+    item = case["item"]
+
+    case["submit"](session, False)
+    session.record_item_answered()
+    assert session.can_undo() is True
+
+    session.submit_vocab_production(
+        item, "das Haus", practice_mode="production", response_ms=400
+    )
+    assert session.can_undo() is False
+
+    # Manually re-arm a recognition undo after Lab (simulates stale snap edge)
+    # and ensure delete still targets recognition only.
+    session._undo = {
+        "objective": "vocab",
+        "item_id": item.id,
+        "prev_state": None,
+        "logged": True,
+        "state_was_missing": False,
+        "study_progress": (0, 30),
+    }
+    # Seed a real prev state so undo can restore without deleting state.
+    prev = repo.get_state(item.id)
+    session._undo["prev_state"] = prev
+    session._undo["state_was_missing"] = prev is None
+
+    with repo._conn() as conn:
+        modes_before = [
+            r[0]
+            for r in conn.execute(
+                "SELECT practice_mode FROM reviews WHERE vocab_id=? ORDER BY rowid",
+                (item.id,),
+            ).fetchall()
+        ]
+    assert modes_before == ["recognition", "production"]
+
+    # Force a recognition-scoped delete via repo API
+    repo.delete_last_review(item.id, practice_mode="recognition")
+
+    with repo._conn() as conn:
+        modes_after = [
+            r[0]
+            for r in conn.execute(
+                "SELECT practice_mode FROM reviews WHERE vocab_id=? ORDER BY rowid",
+                (item.id,),
+            ).fetchall()
+        ]
+    assert modes_after == ["production"]
