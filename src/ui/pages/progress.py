@@ -395,6 +395,7 @@ class ProgressPage(QWidget):
                 FROM reviews r
                 JOIN vocab v ON v.id = r.vocab_id
                 WHERE v.deck_id=? AND r.created_at>=?
+                  AND r.practice_mode = 'recognition'
             """, (deck_id, since)).fetchone()
             return int(row["c"]) if row else 0
 
@@ -418,6 +419,7 @@ class ProgressPage(QWidget):
                 FROM reviews r
                 JOIN vocab v ON r.vocab_id = v.id
                 WHERE v.deck_id = ?
+                  AND r.practice_mode = 'recognition'
             """, (deck_id,)).fetchone()
             return int(row["c"]) if row else 0
 

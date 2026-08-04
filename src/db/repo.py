@@ -1587,6 +1587,7 @@ class Repo:
                   FROM reviews r
                   JOIN vocab v ON v.id=r.vocab_id
                  WHERE v.deck_id=? AND r.created_at>=?
+                   AND r.practice_mode = 'recognition'
                 """,
                 (deck_id, since),
             ).fetchone()
