@@ -158,6 +158,20 @@ def _rating_0_3(value: int | str | None) -> int:
     return max(0, min(3, value))
 
 
+_MAX_RESPONSE_MS = 60 * 60 * 1000
+
+
+def _bounded_response_ms(value: int | None) -> int | None:
+    # Keep persisted timing useful and within the SQLite integer range.
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        milliseconds = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return max(0, min(_MAX_RESPONSE_MS, milliseconds))
+
+
 def _fmt_interval(seconds: int) -> str:
     """Compact human label for an SRS interval (rating-button preview)."""
     s = max(0, int(seconds))
@@ -1196,6 +1210,7 @@ class SessionService:
         response_ms: int | None,
         accept_override: bool = False,
     ) -> dict:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
 
         # Learner override ("Accept my answer"): they assert their meaning was a
@@ -1310,6 +1325,7 @@ class SessionService:
         response_ms: int | None,
         accept_override: bool = False,
     ) -> dict:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_grammar(item, typed_blank)
 
         # Learner override ("Accept my answer"): count the answer as correct.
@@ -1464,6 +1480,7 @@ class SessionService:
         was_skipped: bool,
         response_ms: int | None,
     ) -> Dict[str, Any]:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_sentence(item, typed_text)
         language_feedback = classify_german_answer(typed_text, getattr(item, "target_text", "") or "")
         res["error_tags"] = list(language_feedback.tags)
@@ -1599,6 +1616,7 @@ class SessionService:
         replay_count: int = 0,
         rating: int | None = None,
     ) -> dict:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_listening(item, chosen)
 
         # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),
@@ -1683,6 +1701,7 @@ class SessionService:
         if not article and (item.pos or "").strip().lower() == "noun":
             article = Repo._article_from_gender(item.gender)
         expected = f"{article} {item.word}".strip() if article else item.word
+        response_ms = _bounded_response_ms(response_ms)
         feedback = classify_german_answer(typed_german, expected)
         # Non-nouns do not need an article. For nouns, accepting the bare word as
         # fully correct would train exactly the gender omission MAHIRA aims to fix.
