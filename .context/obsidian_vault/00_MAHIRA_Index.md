@@ -9,6 +9,7 @@ MAHIRA is an **offline-first PySide6 desktop app** for German learning with a sp
 - [[04_UI_and_Frontend]]
 - [[05_Folder_Driven_Seed_System]]
 - [[06_CI_CD_and_Packaging]]
+- [[07_Development_Safety_Invariants]]
 
 ## Where to look first
 - Application behavior and runtime: [[01_Architecture_and_Stack]]
@@ -17,6 +18,7 @@ MAHIRA is an **offline-first PySide6 desktop app** for German learning with a sp
 - UX/navigation and widgets: [[04_UI_and_Frontend]]
 - Content import pipeline: [[05_Folder_Driven_Seed_System]]
 - Build/CI/release automation: [[06_CI_CD_and_Packaging]]
+- Safe change boundaries and regression gates: [[07_Development_Safety_Invariants]]
 
 ## High-level execution model
 1. App bootstrap reads configuration and opens a persistent workspace under `.mahira/`.
