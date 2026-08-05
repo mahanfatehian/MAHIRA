@@ -1587,6 +1587,7 @@ class Repo:
                   FROM reviews r
                   JOIN vocab v ON v.id=r.vocab_id
                  WHERE v.deck_id=? AND r.created_at>=?
+                   AND r.practice_mode = 'recognition'
                 """,
                 (deck_id, since),
             ).fetchone()
@@ -1663,8 +1664,23 @@ class Repo:
                 (int(item_id),),
             )
 
-    def delete_last_review(self, vocab_id: int) -> None:
-        self._delete_last("reviews", "vocab_id", vocab_id)
+    def delete_last_review(
+        self, vocab_id: int, *, practice_mode: str = "recognition"
+    ) -> None:
+        # Scope by lane so Lab production/dictation rows cannot be undone
+        # when restoring a recognition review snapshot.
+        with self._conn() as conn:
+            conn.execute(
+                """
+                DELETE FROM reviews
+                 WHERE rowid = (
+                   SELECT rowid FROM reviews
+                    WHERE vocab_id=? AND practice_mode=?
+                    ORDER BY rowid DESC LIMIT 1
+                 )
+                """,
+                (int(vocab_id), str(practice_mode or "recognition")),
+            )
 
     def delete_last_grammar_review(self, grammar_id: int) -> None:
         self._delete_last("grammar_reviews", "grammar_id", grammar_id)

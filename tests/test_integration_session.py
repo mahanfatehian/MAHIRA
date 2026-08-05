@@ -292,3 +292,18 @@ def test_migration_adds_fsrs_columns_to_legacy_db(tmp_path):
 
     assert "stability" in cols and "difficulty" in cols
     assert row == (2, 4.0)
+
+
+def test_next_vocab_skips_missing_queue_ids(repo):
+    s = _session(repo)
+    with repo._conn() as conn:
+        row = conn.execute("SELECT id FROM vocab ORDER BY id LIMIT 1").fetchone()
+    assert row is not None
+    live_id = int(row[0])
+    # LIFO queue: missing id is popped first, then the live one.
+    s._queue = [live_id, 999_999_999]
+
+    item = s.next_vocab_item()
+    assert item is not None
+    assert item.id == live_id
+    assert s.next_vocab_item() is None

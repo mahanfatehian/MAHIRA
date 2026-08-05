@@ -264,3 +264,25 @@ def test_unknown_practice_lane_is_rejected_before_writing(practice_repo):
     with repo._conn() as conn:
         assert conn.execute("SELECT COUNT(*) FROM reviews").fetchone()[0] == 0
         assert conn.execute("SELECT COUNT(*) FROM vocab_practice_states").fetchone()[0] == 0
+
+
+def test_reviewed_last_24h_ignores_lab_lanes(practice_repo):
+    repo, deck_id, vocab_ids = practice_repo
+    item = repo.get_vocab_by_id(vocab_ids[0])
+    assert item is not None
+    session = _session_shell(repo)
+
+    before = repo.reviewed_last_24h(deck_id)
+    session.submit_vocab_production(
+        item, "das Haus", practice_mode="production", response_ms=300
+    )
+    assert repo.reviewed_last_24h(deck_id) == before
+
+    now = int(time.time())
+    with repo._conn() as conn:
+        conn.execute(
+            "INSERT INTO reviews(vocab_id, meaning_correct, practice_mode, created_at) "
+            "VALUES (?, 1, 'recognition', ?)",
+            (item.id, now),
+        )
+    assert repo.reviewed_last_24h(deck_id) == before + 1

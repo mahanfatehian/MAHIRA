@@ -787,7 +787,8 @@ class ListeningReviewPage(QWidget):
                 rating=rating,
             )
         except Exception:
-            pass
+            # Stay on the card so the learner can retry; do not fake progress.
+            return
 
         milestone_hit = False
         if hasattr(self.session, "record_item_answered"):
