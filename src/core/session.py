@@ -481,6 +481,7 @@ class SessionService:
             picker = getattr(self.repo, "pick_vocab_practice_ids", None)
         if not callable(picker):
             return []
+        self.clear_undo()
         requested = self.plan.limit if limit is None else int(limit)
         return _unique_preserve_order(
             picker(
@@ -1133,6 +1134,9 @@ class SessionService:
     def can_undo(self) -> bool:
         return getattr(self, "_undo", None) is not None
 
+    def clear_undo(self) -> None:
+        self._undo = None
+
     def undo_last(self, requeue_current=None):
         """Reverse the most recent submission (one-deep): restore the pre-review
         FSRS state and delete the logged review row, then re-queue the undone item
@@ -1701,6 +1705,7 @@ class SessionService:
         if not article and (item.pos or "").strip().lower() == "noun":
             article = Repo._article_from_gender(item.gender)
         expected = f"{article} {item.word}".strip() if article else item.word
+        self.clear_undo()
         response_ms = _bounded_response_ms(response_ms)
         feedback = classify_german_answer(typed_german, expected)
         # Non-nouns do not need an article. For nouns, accepting the bare word as
@@ -1729,7 +1734,6 @@ class SessionService:
             self.repo.update_vocab_practice_state(schedule_next(state, rating))
         # Lab lanes do not own the recognition undo stack; drop any stale snap
         # so Ctrl+Z cannot restore recognition state while deleting a Lab row.
-        self._undo = None
         return {
             "ok": feedback.correct,
             "expected": expected,
