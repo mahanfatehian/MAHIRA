@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
+from ui.widgets.review_save_error import ReviewSaveError
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +251,8 @@ class ListeningReviewPage(QWidget):
         self.top_bar = self._build_top_bar()
         outer.addWidget(self.top_bar)
         outer.addWidget(self._build_milestone_bar())
+        self.save_error = ReviewSaveError()
+        outer.addWidget(self.save_error)
 
         # ---- Content stack (cards hug the top; no giant full-height shell) ----
         self.content = QWidget()
@@ -617,6 +620,7 @@ class ListeningReviewPage(QWidget):
             self._load_next()
 
     def _load_next(self) -> None:
+        self.save_error.clear_failure()
         self._cleanup_audio(delete=True)
         self._update_counter()
 
@@ -788,6 +792,7 @@ class ListeningReviewPage(QWidget):
             )
         except Exception:
             # Stay on the card so the learner can retry; do not fake progress.
+            self.save_error.show_failure()
             return
 
         milestone_hit = False

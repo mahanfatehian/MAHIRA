@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
 from ui.widgets.sentence_builder_widget import SentenceBuilderWidget
+from ui.widgets.review_save_error import ReviewSaveError
 
 
 class PronunciationWorker(QObject):
@@ -199,6 +200,8 @@ class SentenceReviewPage(QWidget):
         ms_layout.addWidget(ms_dismiss)
         self.milestone_bar.hide()
         outer.addWidget(self.milestone_bar)
+        self.save_error = ReviewSaveError()
+        outer.addWidget(self.save_error)
 
         # Main content - compact
         self.main_shell = QFrame()
@@ -394,6 +397,7 @@ class SentenceReviewPage(QWidget):
             self._load_next()
 
     def _load_next(self) -> None:
+        self.save_error.clear_failure()
         self._cleanup_audio(delete=True)
         self._set_rating_keys_enabled(False)
         self._update_counter()
@@ -502,16 +506,21 @@ class SentenceReviewPage(QWidget):
             max(0.0, time.time() - float(self.card_started_at or time.time())) * 1000
         )
 
-        self.session.submit_sentence(
-            item=self.current_item,
-            typed_text=typed,
-            rating=int(rating),
-            tip_used=bool(self.tip_used),
-            translation_used=bool(self.translation_used),
-            was_checked=bool(self.was_checked),
-            was_skipped=bool(self.was_skipped),
-            response_ms=response_ms,
-        )
+        try:
+            self.session.submit_sentence(
+                item=self.current_item,
+                typed_text=typed,
+                rating=int(rating),
+                tip_used=bool(self.tip_used),
+                translation_used=bool(self.translation_used),
+                was_checked=bool(self.was_checked),
+                was_skipped=bool(self.was_skipped),
+                response_ms=response_ms,
+            )
+        except Exception:
+            self._set_rating_keys_enabled(True)
+            self.save_error.show_failure()
+            return
 
         milestone_hit = False
         if hasattr(self.session, "record_item_answered"):
