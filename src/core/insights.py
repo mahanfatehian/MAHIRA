@@ -49,6 +49,13 @@ class InsightsService:
         "listening": ("listening", "listening_states", "listening_id"),
     }
 
+    _PRIMARY_MODES = {
+        'vocab': 'recognition',
+        'grammar': 'production',
+        'sentences': 'builder',
+        'listening': 'comprehension',
+    }
+
     def __init__(self, repo):
         self.repo = repo
 
@@ -166,6 +173,7 @@ class InsightsService:
                         objective, int(r["id"]), str(r["prompt"] or ""), str(r["answer"] or ""),
                         int(r["lapses"]), int(r["reps"]), bool(r["suspended"]), int(r["deck_id"]),
                         str(r["level"] or ""), str(r["book_slug"] or ""), int(r["lektion_number"] or 0),
+                        self._PRIMARY_MODES[objective],
                     )
                     for r in rows
                 )
