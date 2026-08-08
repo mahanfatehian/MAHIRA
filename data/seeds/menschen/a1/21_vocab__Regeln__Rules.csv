@@ -1,5 +1,5 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Regel,die,f,die Regel — ends in -el (usually masc, but this is an exception!).,Regeln,rule,"Wir müssen die Regeln beachten.","We must observe the rules.","Es gibt viele Regeln.","There are many rules."
+noun,Regel,die,f,"die Regel — ends in -el (usually masc, but this is an exception!).",Regeln,rule,Wir müssen die Regeln beachten.,We must observe the rules.,Es gibt viele Regeln.,There are many rules.
 noun,Schild,das,n,das Schild.,Schilder,sign,"Was steht auf dem Schild?","What does it say on the sign?","Das Schild ist blau.","The sign is blue."
 noun,Verkehr,der,m,der Verkehr.,-,traffic,"Der Verkehr ist heute schlimm.","The traffic is bad today.","Viel Verkehr auf der Straße.","A lot of traffic on the street."
 noun,Ampel,die,f,die Ampel.,Ampeln,traffic light,"Die Ampel ist rot.","The traffic light is red.","Halten Sie an der Ampel!","Stop at the traffic light!"

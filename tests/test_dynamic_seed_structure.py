@@ -1,6 +1,7 @@
 """Folder-driven CEFR structure: books appear only at the levels they have
 folders for -- no hardcoded book<->level mapping anywhere."""
 
+import csv
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -133,3 +134,46 @@ def test_identical_deck_upsert_preserves_update_timestamp(tmp_path, monkeypatch)
         ).fetchone()
     assert renamed["seed_file"] == "renamed.csv"
     assert renamed["updated_at"] == 300
+
+
+def test_bundled_seed_rows_match_their_csv_schema():
+    from db.seed_import import parse_seed_filename
+
+    required = {
+        "vocab": ("pos", "word", "meaning"),
+        "grammar": ("test_text", "answer", "meaning"),
+        "sentences": ("sentence", "translation_en"),
+        "listening": ("text", "question", "answer", "translation"),
+    }
+    errors: list[str] = []
+
+    for csv_path in sorted((REPO_ROOT / "data" / "seeds").rglob("*.csv")):
+        parsed = parse_seed_filename(csv_path.name)
+        if parsed is None:
+            errors.append(f"{csv_path}: filename does not identify an objective")
+            continue
+        objective = parsed[2]
+
+        with csv_path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            if not reader.fieldnames:
+                errors.append(f"{csv_path}: missing header")
+                continue
+
+            missing_headers = [name for name in required[objective] if name not in reader.fieldnames]
+            if missing_headers:
+                errors.append(f"{csv_path}: missing headers {missing_headers}")
+                continue
+
+            for line_number, row in enumerate(reader, 2):
+                if None in row:
+                    errors.append(f"{csv_path}:{line_number}: values exceed the CSV header")
+                missing_values = [
+                    name for name in required[objective] if not (row.get(name) or "").strip()
+                ]
+                if missing_values:
+                    errors.append(
+                        f"{csv_path}:{line_number}: missing values {missing_values}"
+                    )
+
+    assert not errors, "\n".join(errors)

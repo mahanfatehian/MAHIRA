@@ -1,9 +1,9 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Name,der,m,der Name — masculine (weak noun, -n in all cases except nominative).,Namen,name,"Mein Name ist Anna.","My name is Anna.","Wie ist Ihr Name?","What is your name?"
+noun,Name,der,m,"der Name — masculine (weak noun, -n in all cases except nominative).",Namen,name,Mein Name ist Anna.,My name is Anna.,Wie ist Ihr Name?,What is your name?
 noun,Tag,der,m,der Tag — ends in -g.,Tage,day,"Guten Tag!","Good day! / Hello!","Wir haben zwei Tage Zeit.","We have two days."
 noun,Morgen,der,m,der Morgen — refers to time of day.,Morgen,morning,"Guten Morgen!","Good morning!","Jeden Morgen trinke ich Kaffee.","Every morning I drink coffee."
 noun,Abend,der,m,der Abend — refers to time of day.,Abende,evening,"Guten Abend!","Good evening!","Am Abend lese ich.","In the evening I read."
-noun,Nacht,die,f,die Nacht — many times of day are masculine, but Nacht is feminine.,Nächte,night,"Gute Nacht!","Good night!","Die Nacht ist ruhig.","The night is quiet."
+noun,Nacht,die,f,"die Nacht — many times of day are masculine, but Nacht is feminine.",Nächte,night,Gute Nacht!,Good night!,Die Nacht ist ruhig.,The night is quiet.
 noun,Frau,die,f,die Frau — biological gender.,Frauen,woman / Mrs.,"Guten Tag, Frau Schmidt.","Hello, Mrs. Schmidt.","Das ist eine Frau.","That is a woman."
 noun,Herr,der,m,der Herr — biological gender (weak noun).,Herren,man / Mr.,"Guten Abend, Herr Müller.","Good evening, Mr. Müller.","Er ist ein netter Herr.","He is a nice gentleman."
 noun,Land,das,n,das Land.,Länder,country,"Deutschland ist ein Land.","Germany is a country.","Aus welchem Land kommst du?","Which country do you come from?"

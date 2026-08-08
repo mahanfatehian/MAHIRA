@@ -56,7 +56,7 @@ preposition,hinter,-,-,-,-,behind,"Der Park ist hinter der Kirche.","The park is
 preposition,über,-,-,-,-,over / across / above,"Gehen Sie über die Brücke.","Go over the bridge.","Die Lampe hängt über dem Tisch.","The lamp hangs above the table."
 preposition,unter,-,-,-,-,under / below,"Die U-Bahn fährt unter der Stadt.","The subway runs under the city.","Der Hund ist unter dem Tisch.","The dog is under the table."
 preposition,zwischen,-,-,-,-,between,"Die Apotheke ist zwischen der Bank und der Post.","The pharmacy is between the bank and the post office.","Er sitzt zwischen uns.","He sits between us."
-preposition,zu,-,-,-,-,to (directions, takes Dativ),"Wie komme ich zum Bahnhof?","How do I get to the train station?","Wir gehen zur Polizei.","We are going to the police."
+preposition,zu,-,-,-,-,"to (directions, takes Dativ)",Wie komme ich zum Bahnhof?,How do I get to the train station?,Wir gehen zur Polizei.,We are going to the police.
 adjective,fremd,-,-,-,-,foreign / stranger,"Ich bin hier fremd.","I am a stranger here.","Eine fremde Stadt.","A foreign city."
 adjective,weit,-,-,-,-,far,"Ist der Bahnhof weit?","Is the train station far?","Nein, es ist nicht weit.","No, it is not far."
 adjective,nah,-,-,-,-,near / close,"Die Post ist sehr nah.","The post office is very close.","Ist es nah?","Is it near?"

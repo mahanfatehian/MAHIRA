@@ -46,10 +46,10 @@ adverb,nur,-,-,-,-,only,"Ich spreche nur Deutsch.","I only speak German.","Wir h
 particle,doch,-,-,-,-,yes (answering a negative question),"Hast du keine Kinder? – Doch!","Don't you have children? – Yes, I do!","Bist du nicht verheiratet? – Doch!","Are you not married? – Yes, I am!"
 pronoun,mein,-,-,-,-,my (masculine/neuter),"Das ist mein Vater.","That is my father.","Das ist mein Buch.","That is my book."
 pronoun,meine,-,-,-,-,my (feminine/plural),"Das ist meine Mutter.","That is my mother.","Das sind meine Eltern.","These are my parents."
-pronoun,dein,-,-,-,-,your (informal, masculine/neuter),"Ist das dein Bruder?","Is that your brother?","Ist das dein Kind?","Is that your child?"
-pronoun,deine,-,-,-,-,your (informal, feminine/plural),"Ist das deine Schwester?","Is that your sister?","Sind das deine Kinder?","Are those your children?"
-pronoun,Ihr,-,-,-,-,your (formal, masculine/neuter),"Ist das Ihr Ehemann?","Is that your husband?","Ist das Ihr Foto?","Is that your photo?"
-pronoun,Ihre,-,-,-,-,your (formal, feminine/plural),"Ist das Ihre Frau?","Is that your wife?","Sind das Ihre Kinder?","Are those your children?"
+pronoun,dein,-,-,-,-,"your (informal, masculine/neuter)",Ist das dein Bruder?,Is that your brother?,Ist das dein Kind?,Is that your child?
+pronoun,deine,-,-,-,-,"your (informal, feminine/plural)",Ist das deine Schwester?,Is that your sister?,Sind das deine Kinder?,Are those your children?
+pronoun,Ihr,-,-,-,-,"your (formal, masculine/neuter)",Ist das Ihr Ehemann?,Is that your husband?,Ist das Ihr Foto?,Is that your photo?
+pronoun,Ihre,-,-,-,-,"your (formal, feminine/plural)",Ist das Ihre Frau?,Is that your wife?,Sind das Ihre Kinder?,Are those your children?
 noun,Freund,der,m,der Freund.,Freunde,friend (male),"Das ist mein Freund.","That is my friend.","Er ist ein guter Freund.","He is a good friend."
 noun,Freundin,die,f,die Freundin.,Freundinnen,friend (female),"Sie ist meine Freundin.","She is my friend.","Meine Freundin heißt Anna.","My friend's name is Anna."
 noun,Kollege,der,m,der Kollege (weak noun).,Kollegen,colleague (male),"Das ist mein Kollege.","That is my colleague.","Der Kollege ist nett.","The colleague is nice."
