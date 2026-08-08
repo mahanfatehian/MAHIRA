@@ -102,11 +102,7 @@ class InsightsService:
         # in UTC and makes the Today count reset at the wrong hour elsewhere.
         local_now = datetime.fromtimestamp(time.time())
         start = int(datetime.combine(local_now.date(), datetime_time.min).timestamp())
-        with self.repo._conn() as conn:
-            return sum(
-                int(conn.execute(f"SELECT COUNT(*) FROM {table} WHERE created_at>=?", (start,)).fetchone()[0])
-                for table in ("reviews", "grammar_reviews", "sentence_reviews", "listening_reviews")
-            )
+        return sum(self.repo.daily_review_counts(start).values())
 
     def recommended_context(self, objective: str) -> tuple[str, str, int] | None:
         if objective not in self._KINDS:

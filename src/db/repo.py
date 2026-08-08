@@ -1598,23 +1598,33 @@ class Repo:
         (vocab + grammar + sentences + listening), for created_at >= since_ts.
 
         Returns {'YYYY-MM-DD': count}. Powers the activity heatmap, so it is
-        global (not scoped to a deck) — it reflects all interaction with the app.
+        global (not scoped to a deck) and tracks primary review lanes. Vocabulary
+        production/dictation Lab events stay out of recognition activity totals.
         A missing review table (very old DB) is skipped rather than fatal.
         """
         tables = ("reviews", "grammar_reviews", "sentence_reviews", "listening_reviews")
         out: dict[str, int] = {}
         with self._conn() as conn:
             for table in tables:  # table names are fixed constants, not user input
+                lane_filter = (
+                    'AND practice_mode = ?' if table == 'reviews' else ''
+                )
+                params = (
+                    (int(since_ts), 'recognition')
+                    if lane_filter
+                    else (int(since_ts),)
+                )
                 try:
                     rows = conn.execute(
                         f"""
                         SELECT date(created_at, 'unixepoch', 'localtime') AS day,
                                COUNT(*) AS c
-                          FROM {table}
+                         FROM {table}
                          WHERE created_at >= ?
+                           {lane_filter}
                          GROUP BY day
                         """,
-                        (int(since_ts),),
+                        params,
                     ).fetchall()
                 except Exception:
                     continue
