@@ -8,9 +8,13 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
     QHBoxLayout,
+    QVBoxLayout,
     QStackedWidget,
     QSizePolicy,
     QScrollArea,
+    QFrame,
+    QLabel,
+    QPushButton,
 )
 from core.session import SessionService
 from ui.navigation import NavBar
@@ -120,6 +124,14 @@ class MainWindow(QMainWindow):
         self.page_scroll.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.page_scroll.setWidget(self.stack)
 
+        self.resume_banner = self._build_resume_banner()
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(8)
+        content_layout.addWidget(self.resume_banner)
+        content_layout.addWidget(self.page_scroll, 1)
+
         def make(PageCls):
             return PageCls(session, self.nav)
 
@@ -143,7 +155,7 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(self.pages[key])
 
         layout.addWidget(self.nav)
-        layout.addWidget(self.page_scroll, 1)
+        layout.addWidget(content, 1)
 
         self.setCentralWidget(root)
         self.setMinimumSize(860, 680)
@@ -175,7 +187,7 @@ class MainWindow(QMainWindow):
 
         # Keep the nav's objective tabs in sync as the user picks a Lektion in Setup.
         if hasattr(self.pages["setup"], "context_changed"):
-            self.pages["setup"].context_changed.connect(self._sync_nav)
+            self.pages["setup"].context_changed.connect(self._on_context_changed)
 
         # "Table" on the Vocabulary card opens the read-only study grid; its own
         # Back button returns to the objective-selection screen.
@@ -214,15 +226,134 @@ class MainWindow(QMainWindow):
         # must not reopen SQLite six times on every hop.
         self._last_nav_context: tuple[str, str, int] | None = None
 
+        has_resume = self._sync_resume_banner()
+
         alias = {
             "practice_select": "setup",
             "level_select": "setup",
             "objective_select": "setup",
         }
         start = alias.get((start_page or ""), start_page)
+        if has_resume:
+            # Review pages auto-create a queue in on_show(). Keep the saved
+            # candidate untouched until the learner chooses Continue/Discard.
+            start = "today"
         if start not in self.pages:
             start = "setup"
         self.go(start)
+
+    def _build_resume_banner(self) -> QFrame:
+        banner = QFrame()
+        banner.setObjectName("SessionResumeBanner")
+        banner.setAccessibleName("Unfinished review session")
+        banner.setStyleSheet(
+            "QFrame#SessionResumeBanner { background:#102016; border:1px solid #2F7D4A; "
+            "border-radius:12px; }"
+        )
+        row = QHBoxLayout(banner)
+        row.setContentsMargins(16, 11, 12, 11)
+        row.setSpacing(10)
+
+        self.resume_label = QLabel()
+        self.resume_label.setObjectName("SessionResumeLabel")
+        self.resume_label.setWordWrap(True)
+        self.resume_label.setStyleSheet(
+            "QLabel { color:#EAF8EE; font-size:12px; font-weight:750; "
+            "background:transparent; border:none; }"
+        )
+        row.addWidget(self.resume_label, 1)
+
+        self.resume_discard_btn = QPushButton("Discard")
+        self.resume_discard_btn.setObjectName("SessionResumeDiscardButton")
+        self.resume_discard_btn.setAccessibleName("Discard unfinished session")
+        self.resume_discard_btn.setStyleSheet(
+            "QPushButton { color:#D5DDD7; background:#172019; border:1px solid #496052; "
+            "border-radius:8px; padding:7px 12px; font-weight:800; }"
+            "QPushButton:hover { background:#202A22; }"
+        )
+        self.resume_discard_btn.clicked.connect(self._discard_resume)
+        row.addWidget(self.resume_discard_btn)
+
+        self.resume_continue_btn = QPushButton("Continue")
+        self.resume_continue_btn.setObjectName("SessionResumeContinueButton")
+        self.resume_continue_btn.setAccessibleName("Continue unfinished session")
+        self.resume_continue_btn.setStyleSheet(
+            "QPushButton { color:#07120A; background:#7AE582; border:1px solid #7AE582; "
+            "border-radius:8px; padding:7px 14px; font-weight:900; }"
+            "QPushButton:hover { background:#91EE98; }"
+        )
+        self.resume_continue_btn.clicked.connect(self._continue_resume)
+        row.addWidget(self.resume_continue_btn)
+        banner.hide()
+        return banner
+
+    def _sync_resume_banner(self) -> bool:
+        getter = getattr(self.session, "pending_resume", None)
+        candidate = getter() if callable(getter) else None
+        if candidate is None:
+            self.resume_banner.hide()
+            return False
+
+        objective = {
+            "vocab": "Vocabulary",
+            "grammar": "Grammar",
+            "sentences": "Sentence",
+            "listening": "Listening",
+        }.get(str(candidate.objective), str(candidate.objective).title())
+        context = [str(candidate.level)]
+        if candidate.book_slug:
+            context.append(
+                " ".join(
+                    word.capitalize()
+                    for word in candidate.book_slug.replace("-", "_").split("_")
+                )
+            )
+        if candidate.lektion_number:
+            context.append(f"Lektion {candidate.lektion_number}")
+        next_position = min(candidate.total, candidate.position + 1)
+        self.resume_label.setText(
+            f"Unfinished {objective} session  ·  {' · '.join(context)}  ·  "
+            f"card {next_position} of {candidate.total}"
+        )
+        self.resume_banner.show()
+        return True
+
+    def _invalidate_review_pages(self) -> None:
+        for key in (
+            "vocab_review",
+            "grammar_review",
+            "sentence_review",
+            "listening_review",
+        ):
+            page = self.pages.get(key)
+            if page is not None and hasattr(page, "current_item"):
+                page.current_item = None
+
+    def _continue_resume(self) -> None:
+        resume = getattr(self.session, "resume_pending", None)
+        if not callable(resume) or not resume():
+            self._sync_resume_banner()
+            return
+        self._invalidate_review_pages()
+        self.resume_banner.hide()
+        self._last_nav_context = None
+        self._show(self._practice_page_key())
+
+    def _discard_resume(self) -> None:
+        discard = getattr(self.session, "discard_pending_resume", None)
+        if callable(discard):
+            discard()
+        self._invalidate_review_pages()
+        self.resume_banner.hide()
+
+    def _on_context_changed(self) -> None:
+        discard = getattr(self.session, "discard_pending_resume", None)
+        if callable(discard):
+            discard()
+        self._invalidate_review_pages()
+        self.resume_banner.hide()
+        self._last_nav_context = None
+        self._sync_nav(force=True)
 
     def closeEvent(self, event) -> None:
         # A QThread.quit() call cannot interrupt Piper/ONNX while its worker
@@ -348,6 +479,7 @@ class MainWindow(QMainWindow):
             self.go("setup")
             return
         self._last_nav_context = None
+        self._sync_resume_banner()
         self._show(self._OBJ_TO_PAGE.get(objective, "vocab_review"))
 
     def _open_context_lab(
@@ -367,6 +499,7 @@ class MainWindow(QMainWindow):
         if callable(select_mode):
             select_mode(practice_mode, reload=False)
         self._last_nav_context = None
+        self._sync_resume_banner()
         self.go("lab")
 
     def set_focus_mode(self, on: bool) -> None:
@@ -574,6 +707,11 @@ class MainWindow(QMainWindow):
                 self.session.state.objective = page_key
             except Exception:
                 pass
+            try:
+                self.session.active_deck_id()
+            except Exception:
+                pass
+            self._sync_resume_banner()
             self._show(self._OBJ_TO_PAGE[page_key])
             return
 

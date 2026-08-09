@@ -272,10 +272,17 @@ class SentenceReviewPage(QWidget):
 
         # The widget stays alive in the page stack, so keep its unfinished
         # sentence instead of consuming another queue item on navigation back.
+        owns_current = True
+        current_check = getattr(self.session, "is_current_item", None)
+        if callable(current_check) and self.current_item is not None:
+            owns_current = bool(
+                current_check("sentences", getattr(self.current_item, "id", None))
+            )
         if (
             deck_id
             and self.current_item is not None
             and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+            and owns_current
         ):
             self.main_shell.show()
             self.empty_card.hide()

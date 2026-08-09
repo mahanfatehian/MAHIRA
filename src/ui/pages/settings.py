@@ -600,6 +600,10 @@ class SettingsPage(QWidget):
         if self.settings is None:
             return
         slug = str(self.profile_combo.currentData() or "default")
+        if slug != str(self.settings.value.active_profile):
+            discard = getattr(self.session, "discard_pending_resume", None)
+            if callable(discard):
+                discard()
         self.settings.update(active_profile=slug)
         self.profile_note.setText(
             "Profile selected. Restart MAHIRA to switch databases safely."
@@ -650,6 +654,9 @@ class SettingsPage(QWidget):
             return
         try:
             self.backups.restore(source)
+            discard = getattr(self.session, "discard_pending_resume", None)
+            if callable(discard):
+                discard()
             QMessageBox.information(
                 self,
                 "Backup restored",

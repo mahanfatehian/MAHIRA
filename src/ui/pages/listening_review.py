@@ -575,9 +575,16 @@ class ListeningReviewPage(QWidget):
             return
 
         # Resume: a card we haven't advanced past is restored (fresh OR answered).
+        owns_current = True
+        current_check = getattr(self.session, "is_current_item", None)
+        if callable(current_check) and self.current_item is not None:
+            owns_current = bool(
+                current_check("listening", getattr(self.current_item, "id", None))
+            )
         if (
             self.current_item is not None
             and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+            and owns_current
         ):
             self._show_main()
             self._render_current_item(reshuffle=False)

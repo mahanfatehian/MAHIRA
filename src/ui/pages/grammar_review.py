@@ -357,9 +357,16 @@ class GrammarReviewPage(QWidget):
 
         # Re-entering the page must not pop another queued item or reset the
         # learner's unfinished answer for this deck.
+        owns_current = True
+        current_check = getattr(self.session, "is_current_item", None)
+        if callable(current_check) and self.current_item is not None:
+            owns_current = bool(
+                current_check("grammar", getattr(self.current_item, "id", None))
+            )
         if (
             self.current_item is not None
             and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+            and owns_current
         ):
             self._update_counter()
             return
