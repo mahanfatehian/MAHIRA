@@ -381,6 +381,21 @@ class Repo:
             ).fetchone()
             return int(row["id"]) if row else None
 
+    def get_deck_seed_sha1(self, deck_id: int) -> str | None:
+        """Return the content revision used to build a deck.
+
+        Session checkpoints use this value to reject queues whose card IDs may
+        have been replaced by a seed reimport while the app was closed.
+        """
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT seed_sha1 FROM decks WHERE id=?",
+                (int(deck_id),),
+            ).fetchone()
+            if row is None:
+                return None
+            return str(row["seed_sha1"] or "")
+
     def has_decks_for_level(self, level: str) -> bool:
         """Return True if any deck exists for this level (any lektion, any objective)."""
         level = (level or "").upper().strip()

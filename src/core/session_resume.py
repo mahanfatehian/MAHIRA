@@ -185,11 +185,14 @@ class SessionResumeStore:
         return snapshot
 
     def save(self, snapshot: SessionSnapshot) -> None:
+        validated = SessionSnapshot.from_dict(snapshot.to_dict())
+        if validated is None:
+            raise ValueError("Refusing to persist an invalid session checkpoint")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(self.path.suffix + ".tmp")
         try:
             with temporary.open("w", encoding="utf-8", newline="\n") as handle:
-                json.dump(snapshot.to_dict(), handle, ensure_ascii=False, indent=2)
+                json.dump(validated.to_dict(), handle, ensure_ascii=False, indent=2)
                 handle.write("\n")
                 handle.flush()
                 os.fsync(handle.fileno())
