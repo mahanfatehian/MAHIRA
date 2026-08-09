@@ -57,9 +57,15 @@ See [[01_Architecture_and_Stack]], [[03_Database_and_Schema]], and [[06_CI_CD_an
 ## Persistence guardrails
 
 - A review event and its scheduler update commit in one repository transaction.
+- Primary review continuity is recognition-only, versioned, and profile-scoped. Default and named profiles must never share `active_session.json`.
+- The displayed card is persisted separately from the remaining LIFO queue; otherwise restart silently skips it.
+- Continue validates deck identity, seed SHA, item ownership, and the displayed card's pre-review state token. Invalid/stale checkpoints fail closed and never block startup.
+- A failed review write leaves the same checkpoint retryable. If SQLite committed before JSON advanced, state-token reconciliation skips the already-rated card.
+- Deck/context/profile changes, explicit Discard, and session completion remove the checkpoint. Undo and Practice Lab queues remain non-persistent by design.
 - Schema upgrades are transactional, reject future schema versions, and create an integrity-checked backup before changing an existing older database.
 - Legacy rebuilds checkpoint WAL, migrate through a temporary database, verify copied rows and foreign keys, then replace the original.
 - `tests/test_migration_backup_roundtrip.py` proves the pre-migration backup can restore the old database and that the restored file can be upgraded again without losing learner data.
+- `tests/test_session_resume_store.py`, `tests/test_session_continuity.py`, and `tests/test_session_resume_ui.py` lock the checkpoint, cold-restart, reconciliation, and Continue/Discard contracts.
 
 ## Phase 0 regression gates
 
