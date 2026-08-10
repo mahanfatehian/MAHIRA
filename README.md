@@ -55,8 +55,26 @@ data/seeds/
 - Add a new book, level, or Lektion by adding files/folders — **no code change
   required**.
 
-Currently shipped: **Starten Wir A1** (Lektionen 1–12, complete) and **A2**
-(in progress); the engine handles any additional books/levels automatically.
+An optional `data/seeds/<book>/manifest.json` can set the display `title`,
+sorting `order`, and a book-local `cover` path. Missing or invalid display
+metadata never replaces the folder/conventional-cover fallbacks.
+
+Before committing content, run the source/CI authoring command:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m mahira validate-seeds data/seeds
+```
+
+It checks layout, filenames, headers, required cells, duplicates, noun
+article/gender pairs, and manifests without creating learner state. The
+installed GUI executable has no console, so use this command from a source
+checkout. Runtime imports perform the same validation, calculate a read-only
+dry-run plan, make one verified backup when anything changed, and apply the
+whole pack transactionally while preserving unambiguous card IDs and history.
+
+Currently shipped: **Menschen A1** and **Starten Wir A1/A2**; the engine handles
+additional books and levels automatically.
 
 ---
 

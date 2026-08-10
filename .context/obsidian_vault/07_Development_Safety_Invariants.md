@@ -57,6 +57,14 @@ See [[01_Architecture_and_Stack]], [[03_Database_and_Schema]], and [[06_CI_CD_an
 ## Persistence guardrails
 
 - A review event and its scheduler update commit in one repository transaction.
+- Seed packs validate fully before database access. Planning is read-only;
+  changed batches require one verified backup and one all-or-nothing
+  transaction.
+- Seed refreshes preserve IDs/history only for exact or unambiguous one-to-one
+  matches. Ambiguous replacements fail safe as remove/add, and unchanged deck
+  hashes never rewrite rows.
+- Optional book manifests are read-only resource metadata. Missing or invalid
+  manifests must retain folder titles/order and conventional-cover fallbacks.
 - Primary review continuity is recognition-only, versioned, and profile-scoped. Default and named profiles must never share `active_session.json`.
 - The displayed card is persisted separately from the remaining LIFO queue; otherwise restart silently skips it.
 - Continue validates deck identity, seed SHA, item ownership, and the displayed card's pre-review state token. Invalid/stale checkpoints fail closed and never block startup.
