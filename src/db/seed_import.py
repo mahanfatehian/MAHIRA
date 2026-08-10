@@ -2,29 +2,57 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
 
 CEFR_LEVELS = {"a1", "a2", "b1", "b2", "c1", "c2"}
 ALLOWED_OBJECTIVES = {"vocab", "grammar", "sentences", "listening"}
 
 _TOKEN_RE = re.compile(
-    r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"""„‚''…–—-]"
+    r"[A-Za-zÄÖÜäöüß]+(?:[-'][A-Za-zÄÖÜäöüß]+)*|\d+|[.,!?;:()\[\]{}\"„‚''…–—-]"
 )
+
+
+class SeedImportError(ValueError):
+    """A seed file could not be prepared safely for import."""
+
+
+@dataclass(frozen=True)
+class PreparedSeed:
+    """One CSV snapshot shared by preflight and apply."""
+
+    path: Path
+    book_slug: str | None
+    level: str
+    lektion_number: int | None
+    objective: str
+    title: str | None
+    topic: str | None
+    seed_sha1: str
+    rows: tuple[dict[str, object], ...]
+
+    @property
+    def deck_key(self) -> tuple[str, int | None, str, str]:
+        # A book has no database identity unless there is a Lektion.
+        book = self.book_slug if self.lektion_number is not None else None
+        return (book or "", self.lektion_number, self.level, self.objective)
 
 
 def sha1_file(path: Path) -> str:
     h = hashlib.sha1()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
 def _tokenize_sentence(text: str) -> list[str]:
-    return [t for t in _TOKEN_RE.findall(text or "") if t and not t.isspace()]
+    return [token for token in _TOKEN_RE.findall(text or "") if token.strip()]
 
 
 def _split_words_bank(raw: str, fallback_sentence: str) -> list[str]:
@@ -32,122 +60,308 @@ def _split_words_bank(raw: str, fallback_sentence: str) -> list[str]:
     if raw:
         if raw.startswith("[") and raw.endswith("]"):
             try:
-                arr = json.loads(raw)
-                if isinstance(arr, list):
-                    out = [str(x).strip() for x in arr if str(x).strip()]
-                    if out:
-                        return out
-            except Exception:
+                value = json.loads(raw)
+                if isinstance(value, list):
+                    items = [str(item).strip() for item in value if str(item).strip()]
+                    if items:
+                        return items
+            except (TypeError, ValueError):
                 pass
-
-        if "|" in raw:
-            toks = [t.strip() for t in raw.split("|") if t.strip()]
-        else:
-            toks = [t.strip() for t in raw.split() if t.strip()]
-        if toks:
-            return toks
-
+        separator = "|" if "|" in raw else None
+        items = [item.strip() for item in raw.split(separator) if item.strip()]
+        if items:
+            return items
     return _tokenize_sentence(fallback_sentence)
 
 
 def parse_seed_filename(
     name: str,
 ) -> Optional[tuple[Optional[str], Optional[int], str, Optional[str], Optional[str]]]:
-    """
-    Parse a seed CSV filename and return
-        (level, lektion_number, objective, title, topic).
-
-    The CEFR level is OPTIONAL in the filename. In the folder-based layout the
-    level comes from the directory (data/seeds/<book>/<level>/...), so the
-    filename only needs "<lektion_number>_<objective>":
-
-        "1_vocab.csv", "1_grammar.csv", "3_sentences.csv"
-
-    The legacy flat layout, where the level is encoded in the filename, is also
-    still accepted for backward compatibility:
-
-        "a1_1_vocab.csv", "a1_vocab.csv"
-
-    Optional Lektion metadata may be appended after a double-underscore so the
-    Lektion's display name and topic live IN THE FILENAME (not in CSV content):
-
-        "<n>_<objective>__<Title>__<Topic>.csv"
-        e.g. "1_vocab__Super!__Greetings, names, numbers 0-20, alphabet.csv"
-
-    Only ONE file per Lektion needs the metadata (the vocab file is the
-    convention). title/topic keep their original casing; the core part is
-    matched case-insensitively. `level` is returned upper-cased or None when the
-    filename carries no level (the caller then supplies it from the folder).
-
-    Returns None if the filename doesn't match a valid pattern.
-    """
+    """Return (level, lektion, objective, title, topic) for a seed name."""
     raw = (name or "").strip()
     if not raw.lower().endswith(".csv"):
         return None
-
-    base = raw[:-4]  # keep original case for title/topic
-
-    # Split optional "__Title__Topic" metadata off the core part.
-    meta = base.split("__")
-    core = meta[0]
-    title = meta[1].strip() if len(meta) >= 2 and meta[1].strip() else None
-    topic = meta[2].strip() if len(meta) >= 3 and meta[2].strip() else None
-
-    parts = [p for p in core.lower().split("_") if p != ""]
+    metadata = raw[:-4].split("__")
+    core = metadata[0]
+    title = metadata[1].strip() if len(metadata) >= 2 and metadata[1].strip() else None
+    topic = metadata[2].strip() if len(metadata) >= 3 and metadata[2].strip() else None
+    parts = [part for part in core.lower().split("_") if part]
     if not parts:
         return None
-
-    # Optional leading CEFR level (legacy flat layout).
-    level: Optional[str] = None
+    level: str | None = None
     if parts[0] in CEFR_LEVELS:
-        level = parts[0].upper()
-        parts = parts[1:]
-
+        level = parts.pop(0).upper()
     if not parts:
         return None
-
-    # Optional leading Lektion number.
-    lektion_number: Optional[int] = None
+    lektion_number: int | None = None
     if parts[0].isdigit():
-        lektion_number = int(parts[0])
-        objective = "_".join(parts[1:])
-    else:
-        objective = "_".join(parts)
-
+        lektion_number = int(parts.pop(0))
+    objective = "_".join(parts)
     if objective not in ALLOWED_OBJECTIVES:
         return None
-
     return level, lektion_number, objective, title, topic
 
 
-def _norm_key(*parts: str) -> tuple[str, ...]:
-    return tuple((p or "").strip().lower() for p in parts)
-
-
-def _sentences_deck_needs_reimport(repo, deck_id: int) -> bool:
-    try:
-        with repo._conn() as conn:
-            row = conn.execute(
-                """
-                SELECT COUNT(*) AS c
-                FROM sentences
-                WHERE deck_id=?
-                  AND (
-                    target_text IS NULL OR TRIM(target_text)=''
-                    OR words_json IS NULL OR TRIM(words_json)=''
-                    OR TRIM(words_json)='[]'
-                  )
-                """,
-                (deck_id,),
-            ).fetchone()
-            return bool(row) and int(row["c"]) > 0
-    except Exception:
-        return False
+def _norm_key(*parts: object) -> tuple[str, ...]:
+    return tuple(str(part or "").strip().casefold() for part in parts)
 
 
 def _slug_to_title(slug: str) -> str:
-    """Convert a directory slug like 'starten_wir' to 'Starten Wir'."""
     return " ".join(word.capitalize() for word in (slug or "").replace("-", "_").split("_"))
+
+
+def _row_value(row: dict[str | None, str | list[str] | None], *names: str) -> str:
+    wanted = {name.strip().casefold() for name in names}
+    for key, value in row.items():
+        normalized = str(key or "").strip().lstrip("\ufeff").casefold()
+        if normalized in wanted:
+            return str(value or "").strip()
+    return ""
+
+
+def _require(value: str, label: str, path: Path, line_number: int) -> str:
+    value = (value or "").strip()
+    if not value:
+        raise SeedImportError(f"{path}:{line_number}: missing {label}")
+    return value
+
+
+def _prepare_vocab_row(
+    row: dict[str | None, str | list[str] | None], path: Path, line_number: int
+) -> dict[str, object]:
+    pos = _require(_row_value(row, "pos"), "pos", path, line_number).lower()
+    word = _require(_row_value(row, "word"), "word", path, line_number)
+    meaning = _require(_row_value(row, "meaning"), "meaning", path, line_number)
+
+    examples: list[tuple[str, str | None]] = []
+    seen_examples: set[tuple[str, str]] = set()
+    for index in range(1, 6):
+        german = _row_value(row, f"ex{index}_de")
+        english = _row_value(row, f"ex{index}_en")
+        if not german:
+            continue
+        key = _norm_key(german, english)
+        if key in seen_examples:
+            continue
+        seen_examples.add(key)
+        examples.append((german, english or None))
+
+    return {
+        "pos": pos,
+        "word": word,
+        "article": _row_value(row, "article") or None,
+        "gender": _row_value(row, "gender") or None,
+        "gender_tip": _row_value(row, "gender_tip") or None,
+        "plural": _row_value(row, "plural") or None,
+        "meaning": meaning,
+        "examples": tuple(examples),
+    }
+
+
+def _prepare_grammar_row(
+    row: dict[str | None, str | list[str] | None], path: Path, line_number: int
+) -> dict[str, object]:
+    return {
+        "test_text": _require(_row_value(row, "test_text"), "test_text", path, line_number),
+        "answer": _require(_row_value(row, "answer"), "answer", path, line_number),
+        "test_verb": _row_value(row, "test_verb") or None,
+        "tip": _row_value(row, "tip") or None,
+        "meaning": _row_value(row, "meaning") or None,
+        "grammar_tip": _row_value(row, "grammar_tip") or None,
+    }
+
+
+def _prepare_sentence_row(
+    row: dict[str | None, str | list[str] | None], path: Path, line_number: int
+) -> dict[str, object]:
+    target = _require(
+        _row_value(
+            row,
+            "sentence",
+            "target_text",
+            "text",
+            "prompt",
+            "sentence_de",
+            "sentence_en",
+            "sentence_fr",
+            "sentence_es",
+            "de",
+            "en",
+            "fr",
+            "es",
+        ),
+        "sentence",
+        path,
+        line_number,
+    )
+    words = _split_words_bank(_row_value(row, "words", "word_bank", "bank"), target)
+    if not words:
+        raise SeedImportError(f"{path}:{line_number}: sentence has no usable word bank")
+    return {
+        "target_text": target,
+        "translation": _row_value(row, "translation_en", "translation", "en") or None,
+        "tip": _row_value(row, "tip") or None,
+        "words_json": json.dumps(words, ensure_ascii=False),
+    }
+
+
+def _prepare_listening_row(
+    row: dict[str | None, str | list[str] | None], path: Path, line_number: int
+) -> dict[str, object]:
+    text_value = _require(
+        _row_value(row, "text", "passage", "transcript", "story", "dialogue", "audio_text"),
+        "text",
+        path,
+        line_number,
+    )
+    question = _require(_row_value(row, "question", "q", "prompt"), "question", path, line_number)
+    answer = _require(
+        _row_value(row, "answer", "correct", "correct_answer", "a"),
+        "answer",
+        path,
+        line_number,
+    )
+
+    candidates: list[str] = []
+    combined = _row_value(row, "distractors", "wrong", "options", "choices")
+    if combined:
+        separator = "|" if "|" in combined else ";" if ";" in combined else None
+        candidates.extend(part.strip() for part in combined.split(separator))
+    for index in range(1, 7):
+        value = _row_value(
+            row,
+            f"distractor{index}",
+            f"wrong{index}",
+            f"option{index}",
+            f"choice{index}",
+        )
+        if value:
+            candidates.append(value)
+
+    seen = {_norm_key(answer)}
+    distractors: list[str] = []
+    for candidate in candidates:
+        candidate = candidate.strip()
+        key = _norm_key(candidate)
+        if not candidate or key in seen:
+            continue
+        seen.add(key)
+        distractors.append(candidate)
+
+    return {
+        "text": text_value,
+        "question": question,
+        "answer": answer,
+        "distractors_json": json.dumps(distractors, ensure_ascii=False),
+        "translation": _row_value(row, "translation", "translation_en", "en") or None,
+        "tip": _row_value(row, "tip", "hint") or None,
+    }
+
+
+def _logical_key(objective: str, row: dict[str, object]) -> tuple[str, ...]:
+    if objective == "vocab":
+        return _norm_key(row["pos"], row["word"], row["meaning"])
+    if objective == "grammar":
+        return _norm_key(row["test_text"], row["answer"])
+    if objective == "sentences":
+        return _norm_key(row["target_text"])
+    return _norm_key(row["question"], row["text"])
+
+
+def prepare_seed_csv(
+    csv_path: Path,
+    *,
+    book_slug: str | None = None,
+    lektion_number: int | None = None,
+    level: str | None = None,
+) -> PreparedSeed | None:
+    """Read and normalize one seed without touching SQLite."""
+    csv_path = Path(csv_path)
+    parsed = parse_seed_filename(csv_path.name)
+    if parsed is None:
+        return None
+    file_level, file_lektion, objective, title, topic = parsed
+    effective_level = (level or file_level or "").upper().strip()
+    if effective_level.casefold() not in CEFR_LEVELS:
+        raise SeedImportError(f"{csv_path}: missing or invalid CEFR level")
+    effective_lektion = lektion_number if lektion_number is not None else file_lektion
+
+    try:
+        source = csv_path.read_bytes()
+    except OSError as exc:
+        raise SeedImportError(f"{csv_path}: could not read seed") from exc
+    if not source:
+        raise SeedImportError(f"{csv_path}: seed file is empty")
+    try:
+        text_value = source.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise SeedImportError(f"{csv_path}: seed is not valid UTF-8") from exc
+
+    reader = csv.DictReader(io.StringIO(text_value, newline=""))
+    if not reader.fieldnames:
+        raise SeedImportError(f"{csv_path}: missing CSV header")
+
+    builders = {
+        "vocab": _prepare_vocab_row,
+        "grammar": _prepare_grammar_row,
+        "sentences": _prepare_sentence_row,
+        "listening": _prepare_listening_row,
+    }
+    rows: list[dict[str, object]] = []
+    seen: set[tuple[str, ...]] = set()
+    for line_number, raw_row in enumerate(reader, start=2):
+        if None in raw_row:
+            raise SeedImportError(f"{csv_path}:{line_number}: values exceed the CSV header")
+        row = builders[objective](raw_row, csv_path, line_number)
+        key = _logical_key(objective, row)
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(row)
+    if not rows:
+        raise SeedImportError(f"{csv_path}: seed contains no importable rows")
+
+    return PreparedSeed(
+        path=csv_path,
+        book_slug=(book_slug or "").lower().strip() or None,
+        level=effective_level,
+        lektion_number=effective_lektion,
+        objective=objective,
+        title=title,
+        topic=topic,
+        seed_sha1=hashlib.sha1(source).hexdigest(),
+        rows=tuple(rows),
+    )
+
+
+def apply_prepared_seed(repo, seed: PreparedSeed) -> int:
+    """Apply a prepared seed inside the caller's database transaction."""
+    lektion_id: int | None = None
+    if seed.book_slug and seed.lektion_number is not None:
+        book_id = repo.ensure_book(seed.book_slug, _slug_to_title(seed.book_slug))
+        lektion_id = repo.ensure_lektion(
+            book_id,
+            seed.level,
+            seed.lektion_number,
+            seed.title or f"Lektion {seed.lektion_number}",
+            description=seed.topic,
+        )
+
+    deck_id, _changed = repo.upsert_deck(
+        seed.level,
+        seed.objective,
+        seed.path.name,
+        seed.seed_sha1,
+        lektion_id=lektion_id,
+    )
+    synchronizer = {
+        "vocab": repo.sync_vocab_seed,
+        "grammar": repo.sync_grammar_seed,
+        "sentences": repo.sync_sentences_seed,
+        "listening": repo.sync_listening_seed,
+    }[seed.objective]
+    synchronizer(deck_id, seed.rows)
+    return deck_id
 
 
 def import_seed_csv(
@@ -157,280 +371,18 @@ def import_seed_csv(
     lektion_number: int | None = None,
     level: str | None = None,
 ) -> None:
-    parsed = parse_seed_filename(csv_path.name)
-    if not parsed:
-        return
+    """Backward-compatible atomic one-file import.
 
-    file_level, file_lektion_number, objective, file_title, file_topic = parsed
-
-    # Level from the caller (i.e. the folder data/seeds/<book>/<level>/) takes
-    # priority over any level encoded in the filename. This is what makes the
-    # CEFR structure fully folder-driven and dynamic.
-    effective_level = (level or file_level)
-    if not effective_level:
-        return
-    effective_level = effective_level.upper().strip()
-
-    # lektion_number from caller takes priority (e.g. if parsed from dir structure),
-    # otherwise use the one embedded in the filename.
-    effective_lektion = lektion_number if lektion_number is not None else file_lektion_number
-
-    try:
-        if csv_path.stat().st_size == 0:
-            return
-    except Exception:
-        pass
-
-    seed_sha1 = sha1_file(csv_path)
-
-    # Resolve lektion_id from book/lektion if provided. The Lektion's display
-    # name (title) and topic (description) come from the filename metadata — see
-    # parse_seed_filename. ensure_lektion only overwrites them when a real name
-    # is supplied, so the metadata can live on a single file per Lektion.
-    lektion_id: int | None = None
-    if book_slug and effective_lektion is not None:
-        book_id = repo.ensure_book(
-            book_slug,
-            _slug_to_title(book_slug),
-        )
-        lektion_title = file_title or f"Lektion {effective_lektion}"
-        lektion_id = repo.ensure_lektion(
-            book_id, effective_level, effective_lektion, lektion_title, description=file_topic
-        )
-
-    deck_id, changed = repo.upsert_deck(
-        effective_level, objective, csv_path.name, seed_sha1, lektion_id=lektion_id
+    Pack imports should use db.seed_loader.load_all_seeds so every file is
+    prepared and the database is backed up before the batch is applied.
+    """
+    seed = prepare_seed_csv(
+        csv_path,
+        book_slug=book_slug,
+        lektion_number=lektion_number,
+        level=level,
     )
-
-    # ---------- VOCAB ----------
-    if objective == "vocab":
-        if not changed and repo.deck_vocab_count(deck_id) > 0:
-            return
-        repo.clear_vocab_deck(deck_id)
-
-        seen: set[tuple[str, str, str]] = set()
-
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            if not reader.fieldnames:
-                return
-
-            for row in reader:
-                pos = (row.get("pos") or "").strip()
-                word = (row.get("word") or "").strip()
-                meaning = (row.get("meaning") or "").strip()
-                if not pos or not word or not meaning:
-                    continue
-
-                key = _norm_key(pos, word, meaning)
-                if key in seen:
-                    continue
-                seen.add(key)
-
-                gender_tip = (row.get("gender_tip") or "").strip()
-
-                vocab_id = repo.insert_vocab(
-                    deck_id=deck_id,
-                    pos=pos,
-                    word=word,
-                    article=(row.get("article") or "").strip(),
-                    gender=(row.get("gender") or "").strip(),
-                    plural=(row.get("plural") or "").strip(),
-                    meaning=meaning,
-                    gender_tip=gender_tip or None,
-                )
-
-                seen_ex: set[tuple[str, str]] = set()
-                for i in range(1, 6):
-                    de = (row.get(f"ex{i}_de") or "").strip()
-                    en = (row.get(f"ex{i}_en") or "").strip()
-                    if not de:
-                        continue
-                    ex_key = _norm_key(de, en)
-                    if ex_key in seen_ex:
-                        continue
-                    seen_ex.add(ex_key)
-                    repo.insert_example(vocab_id, de, en or None)
+    if seed is None:
         return
-
-    # ---------- GRAMMAR ----------
-    if objective == "grammar":
-        if not changed and repo.deck_grammar_count(deck_id) > 0:
-            return
-        repo.clear_grammar_deck(deck_id)
-
-        seen: set[tuple[str, str]] = set()
-
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            if not reader.fieldnames:
-                return
-
-            for row in reader:
-                test_text = (row.get("test_text") or "").strip()
-                answer = (row.get("answer") or "").strip()
-                if not test_text or not answer:
-                    continue
-
-                key = _norm_key(test_text, answer)
-                if key in seen:
-                    continue
-                seen.add(key)
-
-                repo.insert_grammar(
-                    deck_id=deck_id,
-                    test_text=test_text,
-                    answer=answer,
-                    test_verb=(row.get("test_verb") or "").strip() or None,
-                    tip=(row.get("tip") or "").strip() or None,
-                    meaning=(row.get("meaning") or "").strip() or None,
-                    grammar_tip=(row.get("grammar_tip") or "").strip() or None,
-                )
-        return
-
-    # ---------- SENTENCES ----------
-    if objective == "sentences":
-        if not changed and repo.deck_sentences_count(deck_id) > 0 and not _sentences_deck_needs_reimport(repo, deck_id):
-            return
-
-        repo.clear_sentences_deck(deck_id)
-
-        def _get(row: dict, *names: str) -> str:
-            for n in names:
-                n = (n or "").strip().lower()
-                for k in row.keys():
-                    kk = (k or "").strip().lower().lstrip("﻿")
-                    if kk == n:
-                        return (row.get(k) or "").strip()
-            return ""
-
-        seen: set[tuple[str]] = set()
-
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            if not reader.fieldnames:
-                return
-
-            for row in reader:
-                target = _get(
-                    row,
-                    "sentence",
-                    "target_text",
-                    "text",
-                    "prompt",
-                    "sentence_de",
-                    "sentence_en",
-                    "sentence_fr",
-                    "sentence_es",
-                    "de",
-                    "en",
-                    "fr",
-                    "es",
-                )
-                if not target:
-                    continue
-
-                key = _norm_key(target)
-                if key in seen:
-                    continue
-                seen.add(key)
-
-                words_raw = _get(row, "words", "word_bank", "bank")
-                words = _split_words_bank(words_raw, target)
-                if not words:
-                    words = _tokenize_sentence(target)
-
-                tip = _get(row, "tip") or None
-                translation = _get(row, "translation_en", "translation", "en") or None
-
-                repo.insert_sentence(
-                    deck_id=deck_id,
-                    target_text=target,
-                    translation=translation,
-                    tip=tip,
-                    words_json=json.dumps(words, ensure_ascii=False),
-                )
-        return
-
-    # ---------- LISTENING ----------
-    if objective == "listening":
-        if not changed and repo.deck_listening_count(deck_id) > 0:
-            return
-        repo.clear_listening_deck(deck_id)
-
-        def _get(row: dict, *names: str) -> str:
-            for n in names:
-                n = (n or "").strip().lower()
-                for k in row.keys():
-                    kk = (k or "").strip().lower().lstrip("﻿")
-                    if kk == n:
-                        return (row.get(k) or "").strip()
-            return ""
-
-        def _distractors(row: dict, answer: str) -> list[str]:
-            """Collect wrong options from either numbered columns
-            (distractor1, distractor2, ... / wrong1, option_b ...) or a single
-            pipe/semicolon-separated 'distractors' column. The correct answer is
-            never included as its own distractor."""
-            out: list[str] = []
-            seen = {(_norm_key(answer))}
-
-            combined = _get(row, "distractors", "wrong", "options", "choices")
-            parts: list[str] = []
-            if combined:
-                if "|" in combined:
-                    parts = [p.strip() for p in combined.split("|")]
-                elif ";" in combined:
-                    parts = [p.strip() for p in combined.split(";")]
-                else:
-                    parts = [combined.strip()]
-
-            for i in range(1, 7):
-                v = _get(row, f"distractor{i}", f"wrong{i}", f"option{i}", f"choice{i}")
-                if v:
-                    parts.append(v)
-
-            for p in parts:
-                p = (p or "").strip()
-                if not p:
-                    continue
-                k = _norm_key(p)
-                if k in seen:
-                    continue
-                seen.add(k)
-                out.append(p)
-            return out
-
-        seen: set[tuple[str, ...]] = set()
-
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            if not reader.fieldnames:
-                return
-
-            for row in reader:
-                text = _get(row, "text", "passage", "transcript", "story", "dialogue", "audio_text")
-                question = _get(row, "question", "q", "prompt")
-                answer = _get(row, "answer", "correct", "correct_answer", "a")
-                if not text or not question or not answer:
-                    continue
-
-                key = _norm_key(question, text)
-                if key in seen:
-                    continue
-                seen.add(key)
-
-                distractors = _distractors(row, answer)
-                translation = _get(row, "translation", "translation_en", "en") or None
-                tip = _get(row, "tip", "hint") or None
-
-                repo.insert_listening(
-                    deck_id=deck_id,
-                    text=text,
-                    question=question,
-                    answer=answer,
-                    distractors_json=json.dumps(distractors, ensure_ascii=False),
-                    translation=translation,
-                    tip=tip,
-                )
-        return
+    with repo.transaction():
+        apply_prepared_seed(repo, seed)
