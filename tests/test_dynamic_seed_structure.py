@@ -7,7 +7,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = REPO_ROOT / "src" / "db" / "schema.sql"
 
-VOCAB_CSV = "pos,word,meaning\nnoun,Haus,house\nverb,gehen,to go\n"
+VOCAB_CSV = (
+    "pos,word,article,gender,meaning\n"
+    "noun,Haus,das,n,house\n"
+    "verb,gehen,,,to go\n"
+)
 
 
 def test_parse_levelless_and_legacy_filenames():
