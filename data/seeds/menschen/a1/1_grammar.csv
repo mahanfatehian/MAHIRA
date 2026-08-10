@@ -11,7 +11,6 @@ test_text,answer,test_verb,tip,meaning,grammar_tip
 "Woher null Sie?","kommen","kommen","Formal 'you' for 'to come'","Where do you come from? (formal)","kommen: Sie → kommen"
 "Paco null aus Mexiko.","kommt","kommen","3rd person singular of 'kommen'","Paco comes from Mexico.","kommen: er/sie/es → kommt"
 "Wir null aus Deutschland.","kommen","kommen","1st person plural of 'kommen'","We come from Germany.","kommen: wir → kommen"
-"Ihr null aus Österreich.","kommt","kommen","2nd person plural of 'kommen'","You all come from Austria.","kommen: ihr → kommt"
 "Sie null Frau Wachter.","sind","sein","Formal 'you' for 'to be'","You are Mrs. Wachter.","sein: Sie → sind"
 "Wir null Freunde.","sind","sein","1st person plural of 'sein'","We are friends.","sein: wir → sind"
 "Ihr null Studenten.","seid","sein","2nd person plural of 'sein'","You all are students.","sein: ihr → seid"

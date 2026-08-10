@@ -46,7 +46,6 @@ test_text,answer,test_verb,tip,meaning,grammar_tip
 "Was machen null?","Sie","(Pronoun)","You (formal)","What are you doing?","Verb ends in -en, signaling the formal 'Sie' (always capitalized)."
 "null sind im Deutschkurs.","Wir","(Pronoun)","We","We are in the German course.","'Wir' (we) is 1st person plural and uses the irregular 'sind'."
 "Was null Sie gerne?","machen","machen","to do / make","What do you like to do?","Formal 'Sie' takes the infinitive -en ending."
-"Ich null gerne Sport.","mache","machen","to do / make","I like doing sports.","1st person singular (ich) takes the -e ending."
 "Er null Yoga.","macht","machen","to do / make","He does yoga.","3rd person singular (er/sie/es) takes the -t ending."
 "Wir null Deutsch und Englisch.","sprechen","sprechen","to speak","We speak German and English.","1st person plural (wir) takes the infinitive -en ending."
 "Die Frau null Spanisch.","spricht","sprechen","to speak","The woman speaks Spanish.","Irregular verb: 'sprechen' has a vowel change (e -> i) for du/er/sie/es."
