@@ -57,13 +57,13 @@ adverb,täglich,-,-,-,-,daily,"Ich putze fast täglich.","I clean almost daily."
 adverb,wöchentlich,-,-,-,-,weekly,"Wir putzen das Bad wöchentlich.","We clean the bathroom weekly.","Ein wöchentlicher Plan.","A weekly schedule."
 adverb,selten,-,-,-,-,rarely,"Er spült nur selten ab.","He rarely washes the dishes.","Das passiert selten.","That rarely happens."
 pronoun,mich,-,-,-,-,me (Akkusativ),"Er liebt mich.","He loves me.","Das stört mich.","That bothers me."
-pronoun,dich,-,-,-,-,you (Akkusativ, informal),"Ich frage dich.","I ask you.","Ich liebe dich.","I love you."
-pronoun,ihn,-,-,-,-,him / it (Akkusativ, masculine),"Ich sehe ihn.","I see him.","Kaufst du ihn? (den Tisch)","Are you buying it?"
-pronoun,sie,-,-,-,-,her / it / them (Akkusativ, fem/plural),"Ich besuche sie.","I visit her/them.","Ich wasche sie. (die Wäsche)","I am washing it."
-pronoun,es,-,-,-,-,it (Akkusativ, neuter),"Ich lese es. (das Buch)","I read it.","Spülst du es? (das Geschirr)","Are you washing it?"
+pronoun,dich,-,-,-,-,"you (Akkusativ, informal)",Ich frage dich.,I ask you.,Ich liebe dich.,I love you.
+pronoun,ihn,-,-,-,-,"him / it (Akkusativ, masculine)",Ich sehe ihn.,I see him.,Kaufst du ihn? (den Tisch),Are you buying it?
+pronoun,sie,-,-,-,-,"her / it / them (Akkusativ, fem/plural)",Ich besuche sie.,I visit her/them.,Ich wasche sie. (die Wäsche),I am washing it.
+pronoun,es,-,-,-,-,"it (Akkusativ, neuter)",Ich lese es. (das Buch),I read it.,Spülst du es? (das Geschirr),Are you washing it?
 pronoun,uns,-,-,-,-,us (Akkusativ),"Besucht ihr uns?","Are you visiting us?","Das freut uns.","That pleases us."
-pronoun,euch,-,-,-,-,you (Akkusativ, plural informal),"Ich höre euch.","I hear you all.","Das stört euch nicht.","That doesn't bother you all."
-pronoun,Sie,-,-,-,-,you (Akkusativ, formal),"Ich verstehe Sie nicht.","I don't understand you.","Ich bitte Sie!","I ask you!"
+pronoun,euch,-,-,-,-,"you (Akkusativ, plural informal)",Ich höre euch.,I hear you all.,Das stört euch nicht.,That doesn't bother you all.
+pronoun,Sie,-,-,-,-,"you (Akkusativ, formal)",Ich verstehe Sie nicht.,I don't understand you.,Ich bitte Sie!,I ask you!
 noun,WG-Zimmer,das,n,das WG-Zimmer.,WG-Zimmer,flatshare room,"Ich suche ein WG-Zimmer.","I am looking for a flatshare room.","Das WG-Zimmer ist klein.","The flatshare room is small."
 noun,Spülmittel,das,n,das Spülmittel.,-,dish soap,"Wir brauchen Spülmittel.","We need dish soap.","Das Spülmittel ist leer.","The dish soap is empty."
 noun,Waschmittel,das,n,das Waschmittel.,-,laundry detergent,"Das Waschmittel ist teuer.","The laundry detergent is expensive.","Kaufst du Waschmittel?","Are you buying laundry detergent?"

@@ -49,9 +49,9 @@ adjective,direkt,-,-,-,-,direct / directly,"Fährt der Zug direkt nach Köln?","
 adjective,weit,-,-,-,-,far,"Der Flughafen ist weit.","The airport is far.","Ist es noch weit?","Is it still far?"
 adjective,nah,-,-,-,-,near / close,"Die Haltestelle ist sehr nah.","The stop is very close.","Es ist nicht nah.","It is not close."
 adverb,wohin,-,-,-,-,where to,"Wohin fahren Sie?","Where are you traveling to?","Wohin willst du?","Where do you want to go?"
-preposition,mit,-,-,-,-,with / by (means of transport, requires Dativ),"Ich fahre mit dem Bus.","I travel by bus.","Kommst du mit mir?","Are you coming with me?"
-preposition,nach,-,-,-,-,to (cities, countries),"Wir fliegen nach Berlin.","We are flying to Berlin.","Der Zug nach München.","The train to Munich."
-preposition,zu,-,-,-,-,to (places, people, requires Dativ),"Ich fahre zum Bahnhof.","I am going to the train station.","Er geht zur Arbeit.","He is going to work."
+preposition,mit,-,-,-,-,"with / by (means of transport, requires Dativ)",Ich fahre mit dem Bus.,I travel by bus.,Kommst du mit mir?,Are you coming with me?
+preposition,nach,-,-,-,-,"to (cities, countries)",Wir fliegen nach Berlin.,We are flying to Berlin.,Der Zug nach München.,The train to Munich.
+preposition,zu,-,-,-,-,"to (places, people, requires Dativ)",Ich fahre zum Bahnhof.,I am going to the train station.,Er geht zur Arbeit.,He is going to work.
 phrase,Achtung,-,-,-,-,Attention,"Achtung an Gleis 5!","Attention on platform 5!","Achtung, der Zug fährt ab.","Attention, the train is departing."
 phrase,Vorsicht,-,-,-,-,Caution / Careful,"Vorsicht an der Bahnsteigkante!","Caution at the platform edge!","Vorsicht, heiß!","Careful, hot!"
 phrase,bitte zurückbleiben,-,-,-,-,please stand back,"Türen schließen, bitte zurückbleiben!","Doors closing, please stand back!","Bitte zurückbleiben!","Please stand back!"
@@ -61,5 +61,4 @@ noun,Klasse,die,f,die Klasse.,Klassen,class,"Zweite Klasse, bitte.","Second clas
 verb,abholen,-,-,-,-,to pick up (separable),"Ich hole dich am Bahnhof ab.","I will pick you up at the train station.","Kannst du mich abholen?","Can you pick me up?"
 noun,Schalter,der,m,der Schalter.,Schalter,counter / ticket window,"Kaufen Sie das Ticket am Schalter.","Buy the ticket at the counter.","Der Schalter ist geschlossen.","The ticket window is closed."
 noun,Fahrplan,der,m,der Fahrplan.,Fahrpläne,schedule / timetable,"Lesen Sie den Fahrplan.","Read the timetable.","Der Fahrplan hängt dort.","The timetable is hanging there."
-noun,Gleis,das,n,das Gleis.,Gleise,platform / track,"Der Zug hält auf Gleis vier.","The train stops on track four.","Gleis zwei.","Platform two."
 noun,Information,die,f,die Information.,Informationen,information (desk),"Fragen Sie an der Information.","Ask at the information desk.","Ich brauche eine Information.","I need some information."

@@ -4,12 +4,86 @@ import json
 import random
 import sqlite3
 import time
+from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from db.connection import connect
+
+
+def _seed_key(row, fields: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(str(row[field] or "").strip().casefold() for field in fields)
+
+
+def _match_seed_rows(existing, desired, exact_fields, anchor_fields):
+    """Pair desired seed rows with stable existing IDs.
+
+    Exact logical identities win. Remaining rows reuse an ID only when a
+    weaker anchor has exactly one old and one new candidate, so ambiguous
+    homonyms/prompts are never assigned each other's learning history.
+    """
+    existing_by_exact = defaultdict(list)
+    for old_row in existing:
+        existing_by_exact[_seed_key(old_row, exact_fields)].append(old_row)
+
+    pairs = []
+    used_ids: set[int] = set()
+    used_desired: set[int] = set()
+    for index, new_row in enumerate(desired):
+        candidates = existing_by_exact.get(_seed_key(new_row, exact_fields), [])
+        old_row = next(
+            (candidate for candidate in candidates if int(candidate["id"]) not in used_ids),
+            None,
+        )
+        if old_row is None:
+            continue
+        pairs.append((old_row, new_row))
+        used_ids.add(int(old_row["id"]))
+        used_desired.add(index)
+
+    old_anchors = defaultdict(list)
+    for old_row in existing:
+        if int(old_row["id"]) in used_ids:
+            continue
+        anchor = _seed_key(old_row, anchor_fields)
+        if any(anchor):
+            old_anchors[anchor].append(old_row)
+
+    new_anchors = defaultdict(list)
+    for index, new_row in enumerate(desired):
+        if index in used_desired:
+            continue
+        anchor = _seed_key(new_row, anchor_fields)
+        if any(anchor):
+            new_anchors[anchor].append((index, new_row))
+
+    for anchor, old_rows in old_anchors.items():
+        new_rows = new_anchors.get(anchor, [])
+        if len(old_rows) != 1 or len(new_rows) != 1:
+            continue
+        index, new_row = new_rows[0]
+        old_row = old_rows[0]
+        pairs.append((old_row, new_row))
+        used_ids.add(int(old_row["id"]))
+        used_desired.add(index)
+
+    removed = [row for row in existing if int(row["id"]) not in used_ids]
+    inserted = [row for index, row in enumerate(desired) if index not in used_desired]
+    return pairs, removed, inserted
+
+
+def _delete_seed_rows(conn, table: str, rows) -> None:
+    ids = [int(row["id"]) for row in rows]
+    if not ids:
+        return
+    placeholders = ",".join("?" for _ in ids)
+    conn.execute(
+        f"DELETE FROM card_flags WHERE item_type=? AND item_id IN ({placeholders})",
+        [table, *ids],
+    )
+    conn.execute(f"DELETE FROM {table} WHERE id IN ({placeholders})", ids)
 
 
 @dataclass(frozen=True)
@@ -381,6 +455,21 @@ class Repo:
             ).fetchone()
             return int(row["id"]) if row else None
 
+    def get_deck_seed_sha1(self, deck_id: int) -> str | None:
+        """Return the content revision used to build a deck.
+
+        Session checkpoints use this value to reject queues whose card IDs may
+        have been replaced by a seed reimport while the app was closed.
+        """
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT seed_sha1 FROM decks WHERE id=?",
+                (int(deck_id),),
+            ).fetchone()
+            if row is None:
+                return None
+            return str(row["seed_sha1"] or "")
+
     def has_decks_for_level(self, level: str) -> bool:
         """Return True if any deck exists for this level (any lektion, any objective)."""
         level = (level or "").upper().strip()
@@ -445,6 +534,86 @@ class Repo:
     def clear_vocab_deck(self, deck_id: int) -> None:
         with self._conn() as conn:
             conn.execute("DELETE FROM vocab WHERE deck_id=?", (deck_id,))
+
+    def sync_vocab_seed(self, deck_id: int, rows) -> None:
+        """Synchronize seeded vocabulary without replacing stable card IDs."""
+        desired = list(rows)
+        now = int(time.time())
+        with self._conn() as conn:
+            existing = conn.execute(
+                """
+                SELECT id, pos, word, article, gender, gender_tip, plural, meaning
+                FROM vocab WHERE deck_id=? ORDER BY id
+                """,
+                (deck_id,),
+            ).fetchall()
+            pairs, removed, inserted = _match_seed_rows(
+                existing,
+                desired,
+                ("pos", "word", "meaning"),
+                ("word",),
+            )
+
+            # Removing unmatched rows first prevents uniqueness conflicts when
+            # one unambiguous card has a corrected meaning.
+            _delete_seed_rows(conn, "vocab", removed)
+            for old_row, new_row in pairs:
+                vocab_id = int(old_row["id"])
+                conn.execute(
+                    """
+                    UPDATE vocab
+                       SET pos=?, word=?, article=?, gender=?, gender_tip=?,
+                           plural=?, meaning=?
+                     WHERE id=?
+                    """,
+                    (
+                        new_row["pos"],
+                        new_row["word"],
+                        new_row["article"],
+                        new_row["gender"],
+                        new_row["gender_tip"],
+                        new_row["plural"],
+                        new_row["meaning"],
+                        vocab_id,
+                    ),
+                )
+                conn.execute("DELETE FROM vocab_examples WHERE vocab_id=?", (vocab_id,))
+                conn.executemany(
+                    "INSERT INTO vocab_examples(vocab_id,de_text,en_text) VALUES(?,?,?)",
+                    [
+                        (vocab_id, german, english)
+                        for german, english in new_row["examples"]
+                    ],
+                )
+
+            for new_row in inserted:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO vocab(
+                        deck_id,pos,word,article,gender,gender_tip,plural,meaning,created_at
+                    )
+                    VALUES(?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        deck_id,
+                        new_row["pos"],
+                        new_row["word"],
+                        new_row["article"],
+                        new_row["gender"],
+                        new_row["gender_tip"],
+                        new_row["plural"],
+                        new_row["meaning"],
+                        now,
+                    ),
+                )
+                vocab_id = int(cursor.lastrowid)
+                conn.executemany(
+                    "INSERT INTO vocab_examples(vocab_id,de_text,en_text) VALUES(?,?,?)",
+                    [
+                        (vocab_id, german, english)
+                        for german, english in new_row["examples"]
+                    ],
+                )
 
     def insert_vocab(
         self,
@@ -859,6 +1028,67 @@ class Repo:
         with self._conn() as conn:
             conn.execute("DELETE FROM grammar WHERE deck_id=?", (deck_id,))
 
+    def sync_grammar_seed(self, deck_id: int, rows) -> None:
+        """Synchronize grammar cards while keeping unambiguous IDs stable."""
+        desired = list(rows)
+        now = int(time.time())
+        with self._conn() as conn:
+            existing = conn.execute(
+                """
+                SELECT id, test_text, answer, test_verb, tip, meaning, grammar_tip
+                FROM grammar WHERE deck_id=? ORDER BY id
+                """,
+                (deck_id,),
+            ).fetchall()
+            pairs, removed, inserted = _match_seed_rows(
+                existing,
+                desired,
+                ("test_text", "answer"),
+                ("test_text",),
+            )
+            _delete_seed_rows(conn, "grammar", removed)
+
+            for old_row, new_row in pairs:
+                conn.execute(
+                    """
+                    UPDATE grammar
+                       SET test_text=?, answer=?, test_verb=?, tip=?,
+                           meaning=?, grammar_tip=?
+                     WHERE id=?
+                    """,
+                    (
+                        new_row["test_text"],
+                        new_row["answer"],
+                        new_row["test_verb"],
+                        new_row["tip"],
+                        new_row["meaning"],
+                        new_row["grammar_tip"],
+                        int(old_row["id"]),
+                    ),
+                )
+
+            conn.executemany(
+                """
+                INSERT INTO grammar(
+                    deck_id,test_text,answer,test_verb,tip,meaning,grammar_tip,created_at
+                )
+                VALUES(?,?,?,?,?,?,?,?)
+                """,
+                [
+                    (
+                        deck_id,
+                        row["test_text"],
+                        row["answer"],
+                        row["test_verb"],
+                        row["tip"],
+                        row["meaning"],
+                        row["grammar_tip"],
+                        now,
+                    )
+                    for row in inserted
+                ],
+            )
+
     def insert_grammar(
         self,
         deck_id: int,
@@ -1036,6 +1266,62 @@ class Repo:
     def clear_sentences_deck(self, deck_id: int) -> None:
         with self._conn() as conn:
             conn.execute("DELETE FROM sentences WHERE deck_id=?", (deck_id,))
+
+    def sync_sentences_seed(self, deck_id: int, rows) -> None:
+        """Synchronize sentence cards, using a unique translation as fallback."""
+        desired = list(rows)
+        now = int(time.time())
+        with self._conn() as conn:
+            existing = conn.execute(
+                """
+                SELECT id, target_text, translation, tip, words_json
+                FROM sentences WHERE deck_id=? ORDER BY id
+                """,
+                (deck_id,),
+            ).fetchall()
+            pairs, removed, inserted = _match_seed_rows(
+                existing,
+                desired,
+                ("target_text",),
+                ("translation",),
+            )
+            _delete_seed_rows(conn, "sentences", removed)
+
+            for old_row, new_row in pairs:
+                conn.execute(
+                    """
+                    UPDATE sentences
+                       SET target_text=?, translation=?, tip=?, words_json=?
+                     WHERE id=?
+                    """,
+                    (
+                        new_row["target_text"],
+                        new_row["translation"],
+                        new_row["tip"],
+                        new_row["words_json"],
+                        int(old_row["id"]),
+                    ),
+                )
+
+            conn.executemany(
+                """
+                INSERT INTO sentences(
+                    deck_id,target_text,translation,tip,words_json,created_at
+                )
+                VALUES(?,?,?,?,?,?)
+                """,
+                [
+                    (
+                        deck_id,
+                        row["target_text"],
+                        row["translation"],
+                        row["tip"],
+                        row["words_json"],
+                        now,
+                    )
+                    for row in inserted
+                ],
+            )
 
     def insert_sentence(
         self,
@@ -1262,6 +1548,68 @@ class Repo:
     def clear_listening_deck(self, deck_id: int) -> None:
         with self._conn() as conn:
             conn.execute("DELETE FROM listening WHERE deck_id=?", (deck_id,))
+
+    def sync_listening_seed(self, deck_id: int, rows) -> None:
+        """Synchronize listening cards, reusing only unique question anchors."""
+        desired = list(rows)
+        now = int(time.time())
+        with self._conn() as conn:
+            existing = conn.execute(
+                """
+                SELECT id, text, question, answer, distractors_json, translation, tip
+                FROM listening WHERE deck_id=? ORDER BY id
+                """,
+                (deck_id,),
+            ).fetchall()
+            pairs, removed, inserted = _match_seed_rows(
+                existing,
+                desired,
+                ("question", "text"),
+                ("question",),
+            )
+            _delete_seed_rows(conn, "listening", removed)
+
+            for old_row, new_row in pairs:
+                conn.execute(
+                    """
+                    UPDATE listening
+                       SET text=?, question=?, answer=?, distractors_json=?,
+                           translation=?, tip=?
+                     WHERE id=?
+                    """,
+                    (
+                        new_row["text"],
+                        new_row["question"],
+                        new_row["answer"],
+                        new_row["distractors_json"],
+                        new_row["translation"],
+                        new_row["tip"],
+                        int(old_row["id"]),
+                    ),
+                )
+
+            conn.executemany(
+                """
+                INSERT INTO listening(
+                    deck_id,text,question,answer,distractors_json,
+                    translation,tip,created_at
+                )
+                VALUES(?,?,?,?,?,?,?,?)
+                """,
+                [
+                    (
+                        deck_id,
+                        row["text"],
+                        row["question"],
+                        row["answer"],
+                        row["distractors_json"],
+                        row["translation"],
+                        row["tip"],
+                        now,
+                    )
+                    for row in inserted
+                ],
+            )
 
     def insert_listening(
         self,
@@ -1598,23 +1946,33 @@ class Repo:
         (vocab + grammar + sentences + listening), for created_at >= since_ts.
 
         Returns {'YYYY-MM-DD': count}. Powers the activity heatmap, so it is
-        global (not scoped to a deck) — it reflects all interaction with the app.
+        global (not scoped to a deck) and tracks primary review lanes. Vocabulary
+        production/dictation Lab events stay out of recognition activity totals.
         A missing review table (very old DB) is skipped rather than fatal.
         """
         tables = ("reviews", "grammar_reviews", "sentence_reviews", "listening_reviews")
         out: dict[str, int] = {}
         with self._conn() as conn:
             for table in tables:  # table names are fixed constants, not user input
+                lane_filter = (
+                    'AND practice_mode = ?' if table == 'reviews' else ''
+                )
+                params = (
+                    (int(since_ts), 'recognition')
+                    if lane_filter
+                    else (int(since_ts),)
+                )
                 try:
                     rows = conn.execute(
                         f"""
                         SELECT date(created_at, 'unixepoch', 'localtime') AS day,
                                COUNT(*) AS c
-                          FROM {table}
+                         FROM {table}
                          WHERE created_at >= ?
+                           {lane_filter}
                          GROUP BY day
                         """,
-                        (int(since_ts),),
+                        params,
                     ).fetchall()
                 except Exception:
                     continue

@@ -63,14 +63,14 @@ adjective,gemütlich,-,-,-,-,cozy / comfortable,"Das Wohnzimmer ist sehr gemütl
 adjective,breit,-,-,-,-,wide / broad,"Der Flur ist sehr breit.","The hallway is very wide.","Ein breites Bett.","A wide bed."
 adjective,schmal,-,-,-,-,narrow,"Die Treppe ist schmal.","The stairs are narrow.","Ein schmales Zimmer.","A narrow room."
 pronoun,mir,-,-,-,-,me / to me (Dativ of 'ich'),"Das gefällt mir.","I like that (It pleases me).","Gehört das dir? - Nein, das gehört mir nicht.","Does that belong to you? - No, that doesn't belong to me."
-pronoun,dir,-,-,-,-,you / to you (Dativ of 'du', informal),"Ich helfe dir.","I help you.","Gefällt dir die Wohnung?","Do you like the apartment?"
+pronoun,dir,-,-,-,-,"you / to you (Dativ of 'du', informal)",Ich helfe dir.,I help you.,Gefällt dir die Wohnung?,Do you like the apartment?
 pronoun,ihm,-,-,-,-,him / to him / to it (Dativ of 'er' & 'es'),"Das Auto gehört ihm.","The car belongs to him.","Wie geht es ihm?","How is he doing?"
 pronoun,ihr,-,-,-,-,her / to her (Dativ of 'sie' singular),"Die Wohnung gefällt ihr.","She likes the apartment.","Ich danke ihr.","I thank her."
 pronoun,uns,-,-,-,-,us / to us (Dativ of 'wir'),"Das Haus gehört uns.","The house belongs to us.","Können Sie uns helfen?","Can you help us?"
-pronoun,euch,-,-,-,-,you / to you (Dativ of 'ihr', informal plural),"Gefällt euch das Zimmer?","Do you all like the room?","Ich helfe euch gern.","I gladly help you all."
+pronoun,euch,-,-,-,-,"you / to you (Dativ of 'ihr', informal plural)",Gefällt euch das Zimmer?,Do you all like the room?,Ich helfe euch gern.,I gladly help you all.
 pronoun,ihnen,-,-,-,-,them / to them (Dativ of 'sie' plural),"Das gefällt ihnen nicht.","They do not like that.","Das gehört ihnen.","That belongs to them."
-pronoun,Ihnen,-,-,-,-,you / to you (Dativ of 'Sie', formal),"Ich danke Ihnen.","I thank you.","Gefällt Ihnen die Wohnung?","Do you like the apartment?"
-abbreviation,ZKB,-,-,-,-,rooms kitchen bathroom (Zimmer, Küche, Bad),"Suche 3 ZKB.","Looking for 3 rooms, kitchen, bathroom.","Die Wohnung hat 2 ZKB.","The apartment has 2 rooms, kitchen, and bathroom."
+pronoun,Ihnen,-,-,-,-,"you / to you (Dativ of 'Sie', formal)",Ich danke Ihnen.,I thank you.,Gefällt Ihnen die Wohnung?,Do you like the apartment?
+abbreviation,ZKB,-,-,-,-,"rooms kitchen bathroom (Zimmer, Küche, Bad)",Suche 3 ZKB.,"Looking for 3 rooms, kitchen, bathroom.",Die Wohnung hat 2 ZKB.,"The apartment has 2 rooms, kitchen, and bathroom."
 abbreviation,NK,-,-,-,-,utilities (Nebenkosten),"Plus 150 Euro NK.","Plus 150 euros utilities.","Die NK sind hoch.","The utilities are high."
 abbreviation,KM,-,-,-,-,basic rent (Kaltmiete),"KM 500 Euro.","Basic rent 500 euros.","Was ist die KM?","What is the basic rent?"
 abbreviation,WM,-,-,-,-,total rent (Warmmiete),"WM 650 Euro.","Total rent 650 euros.","Ist das inkl. WM?","Is that including total rent?"

@@ -181,7 +181,10 @@ class MistakesPage(QWidget):
     def _row_card(self, item: TroubleItem) -> QFrame:
         card = QFrame()
         card.setObjectName("MistakeRow")
-        card.setAccessibleName(f"{item.objective.title()} mistake: {item.prompt}")
+        card.setAccessibleName(
+            f"{item.objective.title()} {item.practice_mode.title()} mistake: "
+            f"{item.prompt}"
+        )
         card.setStyleSheet(
             "QFrame#MistakeRow { background:#141414; border:1px solid #2A2A2A; "
             "border-radius:14px; }"
@@ -194,9 +197,9 @@ class MistakesPage(QWidget):
 
         meta = QHBoxLayout()
         meta.setSpacing(7)
-        lane_name = item.objective.title()
-        if item.practice_mode in {"production", "dictation"}:
-            lane_name = f"Vocab · {item.practice_mode.title()}"
+        lane_name = (
+            f"{item.objective.title()} · {item.practice_mode.title()}"
+        )
         lane = self._chip(lane_name, "#1A1A1A", "#BDBDBD")
         lapses = self._chip(
             f"{item.lapses} lapse{'s' if item.lapses != 1 else ''}",

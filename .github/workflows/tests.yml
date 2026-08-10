@@ -50,5 +50,8 @@ jobs:
       - name: Compile source
         run: python -m compileall -q src
 
+      - name: Validate bundled seed library
+        run: python -m mahira validate-seeds data/seeds
+
       - name: Run fast test gate
         run: python -m pytest -m "not slow" --timeout=60 -q

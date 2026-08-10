@@ -27,7 +27,10 @@ MAHIRA is intentionally split into five layers:
 
 ## State management
 - MAHIRA keeps mutable state outside app bundle:
-  - `.mahira/` (workspace root) stores db, settings, cache, queue state, backups.
+  - `.mahira/` (workspace root) stores databases, settings, caches, backups, and the default profile's `active_session.json`.
+  - named profiles keep their checkpoint beside their database under `.mahira/profiles/<slug>/`.
+- `src/core/session_resume.py` owns the versioned, atomic checkpoint format; `SessionService` owns validation and queue restoration.
+- A checkpoint stores the remaining LIFO queue and displayed card separately. Continue validates the objective, deck, seed revision, item ownership, and pre-review state before restoring it.
 - This enables safe upgrade behavior, repair/recovery, and deterministic migration testing.
 - Backups are produced before disruptive changes to avoid silent data loss.
 

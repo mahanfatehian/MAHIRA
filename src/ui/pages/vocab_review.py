@@ -22,6 +22,7 @@ from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
 from ui.widgets.card_widget import CardWidget, VocabCheckPayload
 from ui.widgets.special_char_keyboard import SpecialCharKeyboard
+from ui.widgets.review_save_error import ReviewSaveError
 
 
 def _norm(s: str) -> str:
@@ -239,6 +240,8 @@ class VocabReviewPage(QWidget):
         ms_layout.addWidget(ms_dismiss)
         self.milestone_bar.hide()
         outer.addWidget(self.milestone_bar)
+        self.save_error = ReviewSaveError()
+        outer.addWidget(self.save_error)
 
         self.special_kbd = SpecialCharKeyboard()
         self.special_kbd.setVisible(False)
@@ -385,9 +388,16 @@ class VocabReviewPage(QWidget):
 
         # Keep the unfinished card and its typed/revealed UI state when the
         # learner briefly visits another page in the same deck.
+        owns_current = True
+        current_check = getattr(self.session, "is_current_item", None)
+        if callable(current_check) and self.current_item is not None:
+            owns_current = bool(
+                current_check("vocab", getattr(self.current_item, "id", None))
+            )
         if (
             self.current_item is not None
             and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+            and owns_current
         ):
             self._update_counter()
             return
@@ -578,6 +588,7 @@ class VocabReviewPage(QWidget):
             self._load_next()
 
     def _load_next(self) -> None:
+        self.save_error.clear_failure()
         self.playback_service.stop()
         self._set_rating_keys_enabled(False)
 
@@ -781,6 +792,7 @@ class VocabReviewPage(QWidget):
             except Exception:
                 # Stay on the card so the learner can retry; do not fake progress.
                 self._set_rating_keys_enabled(True)
+                self.save_error.show_failure()
                 return
 
         self._clear_current_audio_cache()

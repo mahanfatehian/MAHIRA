@@ -78,6 +78,12 @@ jobs:
           $env:PYTHONPATH = "src"
           python -c "import mahira, PySide6.QtWidgets, sklearn, scipy, numpy, joblib; print('imports OK')"
 
+      - name: Validate bundled seed library
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          python -m mahira validate-seeds data/seeds
+
       - name: Run fast test gate
         shell: pwsh
         run: |
@@ -148,6 +154,9 @@ jobs:
 
       - name: Smoke-check imports
         run: PYTHONPATH=src python -c "import mahira, PySide6.QtWidgets, sklearn, scipy, numpy, joblib; print('imports OK')"
+
+      - name: Validate bundled seed library
+        run: PYTHONPATH=src python -m mahira validate-seeds data/seeds
 
       - name: Run fast test gate
         run: PYTHONPATH=src python -m pytest -m "not slow" --timeout=60 -q

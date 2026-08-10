@@ -49,6 +49,13 @@ class InsightsService:
         "listening": ("listening", "listening_states", "listening_id"),
     }
 
+    _PRIMARY_MODES = {
+        'vocab': 'recognition',
+        'grammar': 'production',
+        'sentences': 'builder',
+        'listening': 'comprehension',
+    }
+
     def __init__(self, repo):
         self.repo = repo
 
@@ -102,11 +109,7 @@ class InsightsService:
         # in UTC and makes the Today count reset at the wrong hour elsewhere.
         local_now = datetime.fromtimestamp(time.time())
         start = int(datetime.combine(local_now.date(), datetime_time.min).timestamp())
-        with self.repo._conn() as conn:
-            return sum(
-                int(conn.execute(f"SELECT COUNT(*) FROM {table} WHERE created_at>=?", (start,)).fetchone()[0])
-                for table in ("reviews", "grammar_reviews", "sentence_reviews", "listening_reviews")
-            )
+        return sum(self.repo.daily_review_counts(start).values())
 
     def recommended_context(self, objective: str) -> tuple[str, str, int] | None:
         if objective not in self._KINDS:
@@ -170,6 +173,7 @@ class InsightsService:
                         objective, int(r["id"]), str(r["prompt"] or ""), str(r["answer"] or ""),
                         int(r["lapses"]), int(r["reps"]), bool(r["suspended"]), int(r["deck_id"]),
                         str(r["level"] or ""), str(r["book_slug"] or ""), int(r["lektion_number"] or 0),
+                        self._PRIMARY_MODES[objective],
                     )
                     for r in rows
                 )

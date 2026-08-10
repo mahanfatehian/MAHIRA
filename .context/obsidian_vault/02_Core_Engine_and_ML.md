@@ -27,6 +27,13 @@ Cross-link to repo behavior decisions:
 - Due counts and cooldown policy are surfaced in practice and progress screens.
 - If a card is due repeatedly, app-level business logic handles lockout/retry semantics.
 
+## Session continuity
+- `src/core/session.py` owns primary recognition queues, the displayed item identity, session position, and one-deep in-memory undo.
+- `src/core/session_resume.py` persists one versioned `active_session.json` per profile using fsync + atomic replacement.
+- The displayed card is not part of the remaining queue in memory, so checkpoints store `current_item_id` separately and reinsert it at the LIFO tail only after Continue.
+- Resume rejects changed deck seed hashes and foreign/missing IDs. A pre-review state token detects a DB commit that outlived its JSON update and prevents a duplicate rating.
+- Production/dictation Lab queues and undo snapshots are intentionally not serialized; see [[07_Development_Safety_Invariants]].
+
 ## `src/ml/sklearn_ranker.py`
 Adds a second prioritization layer for candidate selection:
 - transforms card/deck/user-context features into ranking scores

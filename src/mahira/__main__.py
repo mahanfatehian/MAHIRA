@@ -18,7 +18,6 @@ if "qt.multimedia.ffmpeg" not in _rules:
         _rules + ";qt.multimedia.ffmpeg.info=false;qt.multimedia.ffmpeg.debug=false"
     ).strip(";")
 
-from mahira.app import health_check, run
 from mahira.config import (
     STATE_DIRNAME,
     get_paths,
@@ -27,11 +26,42 @@ from mahira.config import (
 )
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--page", default=None)
     parser.add_argument("--health-check", action="store_true")
-    args = parser.parse_args()
+    commands = parser.add_subparsers(dest="command")
+    validate_parser = commands.add_parser(
+        "validate-seeds",
+        help="validate seed CSVs without changing learner data",
+    )
+    validate_parser.add_argument(
+        "seed_root",
+        nargs="?",
+        type=Path,
+        help="seed directory (defaults to the bundled data/seeds directory)",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "validate-seeds":
+        # Keep authoring tools independent from Qt and learner state. In
+        # particular, this branch must run before importing mahira.app or
+        # resolving/creating the writable .mahira directory.
+        from db.seed_validation import validate_seed_tree
+
+        seed_root = args.seed_root or (resource_root() / "data" / "seeds")
+        try:
+            report = validate_seed_tree(seed_root)
+        except (OSError, ValueError) as exc:
+            print(f"validate-seeds: {exc}", file=sys.stderr)
+            raise SystemExit(2) from exc
+        print(report.render())
+        raise SystemExit(0 if report.ok else 1)
 
     # Resources are read from the bundle; writable learner state lives in the
     # platform's per-user application-data directory. The Windows legacy move
@@ -79,6 +109,10 @@ def main() -> None:
         sys.__excepthook__(t, v, tb)
 
     sys.excepthook = _excepthook
+
+    # Import the Qt application only for GUI and packaged health-check paths;
+    # validate-seeds intentionally remains a lightweight standard-library CLI.
+    from mahira.app import health_check, run
 
     if args.health_check:
         raise SystemExit(health_check(project_root))

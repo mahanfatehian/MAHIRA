@@ -1,38 +1,56 @@
 # Folder-Driven Seed System
 
-MAHIRA content is disk-driven, not hardcoded.
+MAHIRA content is read-only, disk-driven data under
+`data/seeds/<book_slug>/<level>/`; book/level availability is never hardcoded.
 
-## Directory model
-`data/seeds/<book>/<level>/`
+## File identity
 
-- `<book>`: content collection (course/module family)
-- `<level>`: level or proficiency tier (A1, A2, B1, B2, etc.)
-- files: CSV seed tables loaded at runtime
+- Preferred filename:
+  `<lektion>_<objective>__<Title>__<Topic>.csv`.
+- Objectives: `vocab`, `grammar`, `sentences`, `listening`.
+- The level comes from the lowercase CEFR folder; filename-level and legacy
+  flat layouts remain supported.
+- One logical `(book, level, Lektion, objective)` deck may have one source.
 
-This design lets maintainers add/edit curriculum by filesystem changes only.
+## Optional book manifest
 
-## Lektion and topic parsing
-CSV filenames encode structure:
-- Lektion index is parsed from filename tokens
-- lesson/topic labels are extracted from file naming convention
-- parser keeps title parsing independent from UI strings
+`data/seeds/<book_slug>/manifest.json` may contain `title`, non-negative
+`order`, and a book-local relative `cover`. The parser rejects unknown or
+duplicate keys, unsafe/symlink paths, unsupported/corrupt image types, invalid
+UTF-8, and traversal. Missing/malformed runtime metadata falls back to the
+slug, deterministic ordering, conventional cover, then initials.
 
-If a file is renamed/moved:
-- discovery changes reflect automatically on next load
-- no Python code changes needed for new books/levels
+## Validation gate
 
-## Runtime behavior
-1. Discover seed folders recursively in `data/seeds/...`
-2. Validate CSV schema minimally (headers + records)
-3. Build deck/topic metadata from path and filename
-4. Seed importer writes cards/rows into SQLite with stable identity mapping
+`src/db/seed_validation.py` is the shared source/CI/runtime preflight:
 
-## Why it scales
-- adds new materials by copy/paste conventions
-- supports localized/country-specific decks
-- reduces merge conflict risk in code during content updates
+```powershell
+$env:PYTHONPATH = "src"
+python -m mahira validate-seeds data/seeds
+```
 
-Cross-links:
-- [[01_Architecture_and_Stack]]
-- [[03_Database_and_Schema]]
-- [[04_UI_and_Frontend]]
+It performs no learner-state writes. Errors include noncanonical layout,
+invalid filenames/metadata, headers, CSV shape/encoding, empty card-creation
+fields, importer-equivalent duplicates, noun article/gender mismatches, and
+invalid manifests. CI and release workflows run this command before tests or
+packaging.
+
+## Import lifecycle
+
+1. `prepare_seed_csv()` snapshots and normalizes every CSV in memory.
+2. `plan_seed_import()` compares hashes/metadata through SQLite `mode=ro`;
+   missing databases are never created.
+3. Unchanged decks are skipped. Any changed batch requires one verified
+   `pre-seed-import` backup.
+4. All changes apply in one `Repo.transaction()`; a failure rolls back the
+   complete batch.
+5. `Repo.sync_*_seed()` matches exact identities first, then only unambiguous
+   one-to-one anchors. Matched cards keep IDs, FSRS state, reviews, and flags;
+   ambiguous cards never inherit unrelated history.
+
+`load_all_seeds(..., dry_run=True)` returns the same plan without backup or
+mutation. Removed cards cascade their owned state/reviews and explicitly clear
+non-FK `card_flags`.
+
+See [[01_Architecture_and_Stack]], [[03_Database_and_Schema]],
+[[04_UI_and_Frontend]], and [[07_Development_Safety_Invariants]].

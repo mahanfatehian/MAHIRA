@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import random
 import re
 import time
@@ -23,6 +24,7 @@ from core.srs import schedule_next
 from core.ml.sklearn_ranker import SklearnRanker
 from core.semantic_match import get_matcher
 from core.german_feedback import classify_german_answer
+from core.session_resume import SessionResumeStore, SessionSnapshot
 
 
 # ---------------------------------------------------------------------
@@ -156,6 +158,20 @@ def _rating_0_3(value: int | str | None) -> int:
         value = 0
 
     return max(0, min(3, value))
+
+
+_MAX_RESPONSE_MS = 60 * 60 * 1000
+
+
+def _bounded_response_ms(value: int | None) -> int | None:
+    # Keep persisted timing useful and within the SQLite integer range.
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        milliseconds = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return max(0, min(_MAX_RESPONSE_MS, milliseconds))
 
 
 def _fmt_interval(seconds: int) -> str:
@@ -305,7 +321,12 @@ class SessionPlan:
 
 
 class SessionService:
-    def __init__(self, repo: Repo, state: AppState):
+    def __init__(
+        self,
+        repo: Repo,
+        state: AppState,
+        resume_store: SessionResumeStore | None = None,
+    ):
         self.repo = repo
         self.state = state
 
@@ -316,6 +337,11 @@ class SessionService:
         self.plan = SessionPlan()
         self._queue: list[int] = []
         self._undo = None
+        self._current_item_id: int | None = None
+        self._current_objective: str | None = None
+        self._current_state_token: str | None = None
+        self._session_position = 0
+        self._session_total = 0
 
         self.rng = random.SystemRandom()
 
@@ -340,6 +366,288 @@ class SessionService:
         # Global study session tracker — shared across all panels
         self.study_answered: int = 0
         self.study_next_milestone: int = 30
+
+        if resume_store is None:
+            db_path = getattr(repo, "db_path", None)
+            if db_path is not None:
+                resume_store = SessionResumeStore(
+                    Path(db_path).expanduser().resolve().parent
+                    / "active_session.json"
+                )
+        self._resume_store = resume_store
+        self._pending_resume = self._load_resume_candidate()
+
+    # -----------------------------------------------------------------
+    # Crash-safe primary review continuity
+    # -----------------------------------------------------------------
+    def _load_resume_candidate(self) -> SessionSnapshot | None:
+        store = getattr(self, "_resume_store", None)
+        if store is None:
+            return None
+        try:
+            return store.load()
+        except Exception:
+            logging.exception("Could not read the active review checkpoint")
+            return None
+
+    def pending_resume(self) -> SessionSnapshot | None:
+        """Return the cold-start candidate without applying it."""
+        return getattr(self, "_pending_resume", None)
+
+    def _clear_resume_file(self) -> None:
+        store = getattr(self, "_resume_store", None)
+        if store is None:
+            return
+        try:
+            store.clear()
+        except Exception:
+            logging.exception("Could not clear the active review checkpoint")
+
+    def _reset_active_session(self, *, clear_checkpoint: bool) -> None:
+        self._queue = []
+        self._undo = None
+        self._current_item_id = None
+        self._current_objective = None
+        self._current_state_token = None
+        self._session_position = 0
+        self._session_total = 0
+        self._pending_resume = None
+        if clear_checkpoint:
+            self._clear_resume_file()
+
+    def discard_pending_resume(self) -> None:
+        """Discard the offered/active primary session, never review history."""
+        self._reset_active_session(clear_checkpoint=True)
+
+    def _deck_seed_sha1(self, deck_id: int) -> str | None:
+        getter = getattr(self.repo, "get_deck_seed_sha1", None)
+        if not callable(getter):
+            return ""
+        try:
+            value = getter(int(deck_id))
+        except Exception:
+            return None
+        return None if value is None else str(value)
+
+    def _item_for_objective(self, objective: str, item_id: int):
+        getter_name = {
+            "vocab": "get_vocab_by_id",
+            "grammar": "get_grammar_by_id",
+            "sentences": "get_sentence_by_id",
+            "listening": "get_listening_by_id",
+        }.get(_norm_objective(objective))
+        getter = getattr(self.repo, getter_name or "", None)
+        if not callable(getter):
+            return None
+        try:
+            return getter(int(item_id))
+        except Exception:
+            return None
+
+    def _state_token(self, objective: str, item_id: int) -> str:
+        getter_name = {
+            "vocab": "get_state",
+            "grammar": "get_grammar_state",
+            "sentences": "get_sentence_state",
+            "listening": "get_listening_state",
+        }.get(_norm_objective(objective))
+        getter = getattr(self.repo, getter_name or "", None)
+        if not callable(getter):
+            return "unavailable"
+        try:
+            state = getter(int(item_id))
+        except Exception:
+            return "unavailable"
+        if state is None:
+            return "missing"
+        fields = (
+            getattr(state, "reps", None),
+            getattr(state, "lapses", None),
+            getattr(state, "due_at", None),
+            getattr(state, "last_review_at", None),
+            getattr(state, "stability", None),
+            getattr(state, "difficulty", None),
+        )
+        return "|".join("" if value is None else repr(value) for value in fields)
+
+    def _checkpoint_session(self) -> None:
+        store = getattr(self, "_resume_store", None)
+        if store is None:
+            return
+        current_id = getattr(self, "_current_item_id", None)
+        if not self._queue and current_id is None:
+            self._clear_resume_file()
+            return
+        deck_id = getattr(self, "_active_deck_id", None)
+        if deck_id is None:
+            return
+        seed_sha1 = self._deck_seed_sha1(deck_id)
+        if seed_sha1 is None:
+            return
+
+        active_count = len(self._queue) + int(current_id is not None)
+        minimum_total = self._session_position + active_count
+        self._session_total = max(self._session_total, minimum_total)
+        snapshot = SessionSnapshot(
+            level=_norm_level(getattr(self.state, "level", "A1")),
+            objective=_norm_objective(getattr(self.state, "objective", "vocab")),
+            book_slug=(getattr(self.state, "book_slug", "") or "").strip(),
+            lektion_number=int(getattr(self.state, "lektion_number", 0) or 0),
+            deck_id=int(deck_id),
+            deck_seed_sha1=seed_sha1,
+            queue=tuple(int(item_id) for item_id in self._queue),
+            current_item_id=(None if current_id is None else int(current_id)),
+            current_state_token=(
+                None if current_id is None else self._current_state_token
+            ),
+            position=max(0, int(self._session_position)),
+            total=max(1, int(self._session_total)),
+            study_answered=max(0, int(self.study_answered)),
+            study_next_milestone=max(30, int(self.study_next_milestone)),
+            saved_at=int(time.time()),
+        )
+        try:
+            store.save(snapshot)
+            self._pending_resume = None
+        except Exception:
+            logging.exception("Could not persist the active review checkpoint")
+
+    def _serve_next(self, objective: str):
+        objective = _norm_objective(objective)
+        self._current_item_id = None
+        self._current_objective = None
+        self._current_state_token = None
+        while self._queue:
+            item_id = int(self._queue.pop())
+            item = self._item_for_objective(objective, item_id)
+            if item is None:
+                self._session_total = max(
+                    self._session_position + len(self._queue),
+                    self._session_total - 1,
+                )
+                continue
+            self._current_item_id = item_id
+            self._current_objective = objective
+            self._current_state_token = self._state_token(objective, item_id)
+            self._checkpoint_session()
+            return item
+        self._checkpoint_session()
+        return None
+
+    def _complete_current_item(self, objective: str, item_id: int) -> None:
+        objective = _norm_objective(objective)
+        if (
+            getattr(self, "_current_item_id", None) != int(item_id)
+            or getattr(self, "_current_objective", None) != objective
+        ):
+            return
+        self._current_item_id = None
+        self._current_objective = None
+        self._current_state_token = None
+        self._session_position = min(
+            self._session_total,
+            self._session_position + 1,
+        )
+        self._checkpoint_session()
+
+    def is_current_item(self, objective: str, item_id: int | None) -> bool:
+        try:
+            item_id = int(item_id)
+        except (TypeError, ValueError):
+            return False
+        return (
+            getattr(self, "_current_item_id", None) == item_id
+            and getattr(self, "_current_objective", None)
+            == _norm_objective(objective)
+        )
+
+    def resume_pending(self) -> bool:
+        """Validate and apply one cold-start primary review checkpoint."""
+        snapshot = self.pending_resume()
+        if snapshot is None:
+            return False
+
+        lektion_id = None
+        if snapshot.book_slug and snapshot.lektion_number > 0:
+            try:
+                book_id = self.repo.get_book_id(snapshot.book_slug)
+                if book_id is None:
+                    raise LookupError("book missing")
+                lektion_id = self.repo.get_lektion_id(
+                    book_id,
+                    snapshot.level,
+                    snapshot.lektion_number,
+                )
+            except Exception:
+                self.discard_pending_resume()
+                return False
+        try:
+            deck_id = self.repo.get_deck_id(
+                snapshot.level,
+                snapshot.objective,
+                lektion_id=lektion_id,
+            )
+        except Exception:
+            deck_id = None
+        if deck_id != snapshot.deck_id:
+            self.discard_pending_resume()
+            return False
+        if self._deck_seed_sha1(snapshot.deck_id) != snapshot.deck_seed_sha1:
+            self.discard_pending_resume()
+            return False
+
+        valid_queue: list[int] = []
+        removed = 0
+        for item_id in snapshot.queue:
+            item = self._item_for_objective(snapshot.objective, item_id)
+            if item is None or int(getattr(item, "deck_id", -1)) != snapshot.deck_id:
+                removed += 1
+                continue
+            valid_queue.append(item_id)
+
+        position = snapshot.position
+        current_id = snapshot.current_item_id
+        reconciled_current = False
+        if current_id is not None:
+            current = self._item_for_objective(snapshot.objective, current_id)
+            if current is None or int(getattr(current, "deck_id", -1)) != snapshot.deck_id:
+                current_id = None
+                removed += 1
+            elif self._state_token(snapshot.objective, current_id) != snapshot.current_state_token:
+                # SQLite advanced but the process died before JSON did. Treat
+                # the card as completed so restart cannot submit it twice.
+                current_id = None
+                position = min(snapshot.total, position + 1)
+                reconciled_current = True
+
+        if current_id is not None:
+            valid_queue.append(current_id)
+        if not valid_queue:
+            self.discard_pending_resume()
+            return False
+
+        self.state.level = snapshot.level
+        self.state.objective = snapshot.objective
+        self.state.book_slug = snapshot.book_slug
+        self.state.lektion_number = snapshot.lektion_number
+        self._active_deck_id = snapshot.deck_id
+        self._queue = valid_queue
+        self._undo = None
+        self._current_item_id = None
+        self._current_objective = None
+        self._current_state_token = None
+        self._session_position = position
+        self._session_total = max(
+            position + len(valid_queue),
+            snapshot.total - removed,
+        )
+        self.study_answered = snapshot.study_answered + int(reconciled_current)
+        self.study_next_milestone = snapshot.study_next_milestone
+        while self.study_answered >= self.study_next_milestone:
+            self.study_next_milestone += 30
+        self._pending_resume = None
+        self._checkpoint_session()
+        return True
 
     # -----------------------------------------------------------------
     # Context / deck selection
@@ -389,8 +697,7 @@ class SessionService:
         deck_id = self.repo.get_deck_id(lvl, obj, lektion_id=lektion_id)
         if deck_id is None:
             self._active_deck_id = None
-            self._queue = []
-            self._undo = None
+            self._reset_active_session(clear_checkpoint=True)
             raise RuntimeError(
                 f"No deck found for {lvl}/{obj} "
                 f"(book={book_slug or 'none'}, lektion={lektion_number or 'none'}). "
@@ -398,8 +705,7 @@ class SessionService:
             )
 
         if self._active_deck_id != deck_id:
-            self._queue = []
-            self._undo = None
+            self._reset_active_session(clear_checkpoint=True)
 
         self.state.level = lvl
         self.state.objective = obj
@@ -413,8 +719,7 @@ class SessionService:
         deck_id = self.repo.get_deck_id(lvl, obj, lektion_id=lektion_id)
 
         if deck_id != self._active_deck_id:
-            self._queue = []
-            self._undo = None
+            self._reset_active_session(clear_checkpoint=True)
             self._active_deck_id = deck_id
 
         self.state.level = lvl
@@ -467,6 +772,7 @@ class SessionService:
             picker = getattr(self.repo, "pick_vocab_practice_ids", None)
         if not callable(picker):
             return []
+        self.clear_undo()
         requested = self.plan.limit if limit is None else int(limit)
         return _unique_preserve_order(
             picker(
@@ -494,7 +800,7 @@ class SessionService:
         return bool(self._queue)
 
     def clear_session(self) -> None:
-        self._queue = []
+        self._reset_active_session(clear_checkpoint=True)
 
     def exclude_from_queue(self, objective: str, item_id: int) -> bool:
         """Remove a learner-controlled card from the active in-memory queue.
@@ -515,7 +821,25 @@ class SessionService:
 
         previous_size = len(self._queue)
         self._queue[:] = [queued for queued in self._queue if int(queued) != target]
-        return len(self._queue) != previous_size
+        removed = previous_size - len(self._queue)
+        if getattr(self, "_current_item_id", None) == target:
+            self._current_item_id = None
+            self._current_objective = None
+            self._current_state_token = None
+            removed += 1
+        if removed:
+            position = max(0, int(getattr(self, "_session_position", 0)))
+            total = max(
+                position + previous_size,
+                int(getattr(self, "_session_total", 0)),
+            )
+            self._session_position = position
+            self._session_total = max(
+                position + len(self._queue),
+                total - removed,
+            )
+            self._checkpoint_session()
+        return bool(removed)
 
     def record_item_answered(self) -> bool:
         """
@@ -523,8 +847,10 @@ class SessionService:
         Returns True when a milestone of 30 is reached, so the UI can celebrate.
         """
         self.study_answered += 1
+        self._checkpoint_session()
         if self.study_answered >= self.study_next_milestone:
             self.study_next_milestone += 30
+            self._checkpoint_session()
             return True
         return False
 
@@ -731,8 +1057,12 @@ class SessionService:
         """
         deck_id = self.active_deck_id()
         if deck_id is None:
-            self._queue = []
+            self._reset_active_session(clear_checkpoint=True)
             return False
+
+        # "New set" is an explicit replacement, even when it targets the same
+        # deck as an unfinished checkpoint.
+        self._reset_active_session(clear_checkpoint=True)
 
         objective = _norm_objective(getattr(self.state, "objective", "vocab"))
 
@@ -755,14 +1085,14 @@ class SessionService:
 
         spec = specs.get(objective)
         if spec is None:
-            self._queue = []
+            self._reset_active_session(clear_checkpoint=True)
             return False
 
         full_fn, table, state_table, fk, rank_fn = spec
 
         full = _unique_preserve_order(full_fn(deck_id))
         if not full:
-            self._queue = []
+            self._reset_active_session(clear_checkpoint=True)
             return False
 
         unseen = self._unseen_ids_for_deck(deck_id, table, state_table, fk)
@@ -786,6 +1116,9 @@ class SessionService:
         self._queue = self._assemble_queue(
             full_ids=full, unseen_ids=unseen, ranked_ids=ranked, limit=limit
         )
+        self._session_position = 0
+        self._session_total = len(self._queue)
+        self._checkpoint_session()
         return bool(self._queue)
 
     # -----------------------------------------------------------------
@@ -985,12 +1318,7 @@ class SessionService:
     # Vocab
     # -----------------------------------------------------------------
     def next_vocab_item(self) -> Optional[VocabItem]:
-        while self._queue:
-            vid = self._queue.pop()
-            item = self.repo.get_vocab_by_id(vid)
-            if item is not None:
-                return item
-        return None
+        return self._serve_next("vocab")
 
     def prompt_text(self, item: VocabItem) -> str:
         return getattr(item, "word", "") or ""
@@ -1119,6 +1447,9 @@ class SessionService:
     def can_undo(self) -> bool:
         return getattr(self, "_undo", None) is not None
 
+    def clear_undo(self) -> None:
+        self._undo = None
+
     def undo_last(self, requeue_current=None):
         """Reverse the most recent submission (one-deep): restore the pre-review
         FSRS state and delete the logged review row, then re-queue the undone item
@@ -1171,6 +1502,9 @@ class SessionService:
             self.study_answered = max(0, int(study_progress[0]))
             self.study_next_milestone = max(30, int(study_progress[1]))
         self._undo = None  # one-deep: consume only after the DB reversal succeeded
+        self._current_item_id = None
+        self._current_objective = None
+        self._current_state_token = None
         try:
             # Queue pops from the END, so append the current card first and the
             # undone item last -> undone item is served NEXT, current right after.
@@ -1180,6 +1514,15 @@ class SessionService:
                 self._queue.append(int(iid))
         except Exception:
             pass
+        self._session_position = max(
+            0,
+            int(getattr(self, "_session_position", 0)) - 1,
+        )
+        self._session_total = max(
+            int(getattr(self, "_session_total", 0)),
+            self._session_position + len(self._queue),
+        )
+        self._checkpoint_session()
         return snap.get("item")
 
     def submit_vocab(
@@ -1196,6 +1539,7 @@ class SessionService:
         response_ms: int | None,
         accept_override: bool = False,
     ) -> dict:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_vocab_fields(item, typed_meaning, typed_gender, typed_plural)
 
         # Learner override ("Accept my answer"): they assert their meaning was a
@@ -1244,6 +1588,7 @@ class SessionService:
                     response_ms=response_ms,
                 )
             self.repo.update_state(st2)
+        self._complete_current_item("vocab", item.id)
         self._undo = {
             "objective": "vocab",
             "item": item,
@@ -1279,12 +1624,7 @@ class SessionService:
     # Grammar
     # -----------------------------------------------------------------
     def next_grammar_item(self) -> Optional[GrammarItem]:
-        while self._queue:
-            gid = self._queue.pop()
-            item = self.repo.get_grammar_by_id(gid)
-            if item is not None:
-                return item
-        return None
+        return self._serve_next("grammar")
 
     def grammar_prompt_text(self, item: GrammarItem) -> str:
         return _render_blank(getattr(item, "test_text", "") or "")
@@ -1310,6 +1650,7 @@ class SessionService:
         response_ms: int | None,
         accept_override: bool = False,
     ) -> dict:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_grammar(item, typed_blank)
 
         # Learner override ("Accept my answer"): count the answer as correct.
@@ -1350,6 +1691,7 @@ class SessionService:
                     response_ms=response_ms,
                 )
             self.repo.update_grammar_state(st2)
+        self._complete_current_item("grammar", item.id)
         self._undo = {
             "objective": "grammar",
             "item": item,
@@ -1386,12 +1728,7 @@ class SessionService:
     # Sentences
     # -----------------------------------------------------------------
     def next_sentence_item(self) -> Optional[SentenceItem]:
-        while self._queue:
-            sid = self._queue.pop()
-            item = self.repo.get_sentence_by_id(sid)
-            if item is not None:
-                return item
-        return None
+        return self._serve_next("sentences")
 
     def check_sentence(self, item: Any, typed_text: str) -> Dict[str, Any]:
         """
@@ -1464,6 +1801,7 @@ class SessionService:
         was_skipped: bool,
         response_ms: int | None,
     ) -> Dict[str, Any]:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_sentence(item, typed_text)
         language_feedback = classify_german_answer(typed_text, getattr(item, "target_text", "") or "")
         res["error_tags"] = list(language_feedback.tags)
@@ -1510,6 +1848,7 @@ class SessionService:
                     error_tags=",".join(res.get("error_tags") or []) or None,
                 )
             self.repo.update_sentence_state(st2)
+        self._complete_current_item("sentences", item.id)
         self._undo = {
             "objective": "sentence",
             "item": item,
@@ -1545,12 +1884,7 @@ class SessionService:
     # Listening (multiple choice over a hidden, read-aloud passage)
     # -----------------------------------------------------------------
     def next_listening_item(self) -> Optional[ListeningItem]:
-        while self._queue:
-            lid = self._queue.pop()
-            item = self.repo.get_listening_by_id(lid)
-            if item is not None:
-                return item
-        return None
+        return self._serve_next("listening")
 
     def listening_options(self, item: ListeningItem, *, count: int = 4) -> list[str]:
         """Return the shuffled multiple-choice options for a listening item.
@@ -1599,6 +1933,7 @@ class SessionService:
         replay_count: int = 0,
         rating: int | None = None,
     ) -> dict:
+        response_ms = _bounded_response_ms(response_ms)
         res = self.check_listening(item, chosen)
 
         # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),
@@ -1635,6 +1970,7 @@ class SessionService:
                     response_ms=response_ms,
                 )
             self.repo.update_listening_state(st2)
+        self._complete_current_item("listening", item.id)
         self._undo = {
             "objective": "listening",
             "item": item,
@@ -1683,6 +2019,8 @@ class SessionService:
         if not article and (item.pos or "").strip().lower() == "noun":
             article = Repo._article_from_gender(item.gender)
         expected = f"{article} {item.word}".strip() if article else item.word
+        self.clear_undo()
+        response_ms = _bounded_response_ms(response_ms)
         feedback = classify_german_answer(typed_german, expected)
         # Non-nouns do not need an article. For nouns, accepting the bare word as
         # fully correct would train exactly the gender omission MAHIRA aims to fix.
@@ -1710,7 +2048,6 @@ class SessionService:
             self.repo.update_vocab_practice_state(schedule_next(state, rating))
         # Lab lanes do not own the recognition undo stack; drop any stale snap
         # so Ctrl+Z cannot restore recognition state while deleting a Lab row.
-        self._undo = None
         return {
             "ok": feedback.correct,
             "expected": expected,

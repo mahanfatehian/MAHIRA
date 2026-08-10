@@ -33,6 +33,7 @@ def _items():
             "a1",
             "starten_wir",
             7,
+            practice_mode="recognition",
         ),
         TroubleItem(
             "grammar",
@@ -46,6 +47,7 @@ def _items():
             "a1",
             "starten_wir",
             7,
+            practice_mode="production",
         ),
     ]
 
@@ -192,12 +194,19 @@ def test_mistake_actions_update_visible_state_and_session_queue():
 
 
 def test_practice_action_is_discoverable_and_emits_context():
-    from PySide6.QtWidgets import QPushButton
+    from PySide6.QtWidgets import QLabel, QPushButton
 
     page, _session = _page(100)
     received: list[tuple[str, str, str, int]] = []
     page.practice_requested.connect(lambda *args: received.append(args))
     try:
+        labels = [
+            label.text()
+            for label in page.rows_widget.findChildren(QLabel)
+        ]
+        assert "Vocab · Recognition" in labels
+        assert "Grammar · Production" in labels
+
         practice = page.rows_widget.findChild(
             QPushButton,
             "MistakePracticeButton",

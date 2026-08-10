@@ -700,3 +700,27 @@ def test_setup_due_reminder_waits_until_page_is_visible():
     assert calls == [86400]
     assert page._due_strip_seen is True
     assert strip.show_calls == 1
+
+
+def test_book_card_treats_manifest_title_as_plain_text():
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QLabel
+    from ui.pages.setup import BookCard
+
+    _qapp()
+    card = BookCard(
+        title="<b>Local Course</b>",
+        level="A1",
+        lektion_count=1,
+        vocab_n=1,
+        grammar_n=0,
+        sentences_n=0,
+        accent="#66CCAA",
+        selected=False,
+        on_click=lambda: None,
+    )
+
+    title = card.findChild(QLabel, "BookTitle")
+    assert title is not None
+    assert title.text() == "<b>Local Course</b>"
+    assert title.textFormat() == Qt.TextFormat.PlainText

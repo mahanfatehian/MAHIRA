@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from core.session import SessionService
 from ui.widgets.grammar_card_widget import GrammarCardWidget
 from ui.widgets.special_char_keyboard import SpecialCharKeyboard
+from ui.widgets.review_save_error import ReviewSaveError
 
 
 class GrammarReviewPage(QWidget):
@@ -206,6 +207,8 @@ class GrammarReviewPage(QWidget):
         ms_layout.addWidget(ms_dismiss)
         self.milestone_bar.hide()
         outer.addWidget(self.milestone_bar)
+        self.save_error = ReviewSaveError()
+        outer.addWidget(self.save_error)
 
         self.special_kbd = SpecialCharKeyboard()
         self.special_kbd.setVisible(False)
@@ -354,9 +357,16 @@ class GrammarReviewPage(QWidget):
 
         # Re-entering the page must not pop another queued item or reset the
         # learner's unfinished answer for this deck.
+        owns_current = True
+        current_check = getattr(self.session, "is_current_item", None)
+        if callable(current_check) and self.current_item is not None:
+            owns_current = bool(
+                current_check("grammar", getattr(self.current_item, "id", None))
+            )
         if (
             self.current_item is not None
             and int(getattr(self.current_item, "deck_id", -1)) == int(deck_id)
+            and owns_current
         ):
             self._update_counter()
             return
@@ -430,6 +440,7 @@ class GrammarReviewPage(QWidget):
             self._load_next()
 
     def _load_next(self) -> None:
+        self.save_error.clear_failure()
         self._set_rating_keys_enabled(False)
         self._update_counter()
         self.current_item = self.session.next_grammar_item()
@@ -496,18 +507,23 @@ class GrammarReviewPage(QWidget):
             else max(0, int((time.time() - self.card_started_at) * 1000))
         )
 
-        self.session.submit_grammar(
-            item=self.current_item,
-            typed_blank=self.typed_blank,
-            rating=rating,
-            meaning_tip_used=self.meaning_tip_used,
-            hint_used=self.hint_used,
-            grammar_tip_used=self.grammar_tip_used,
-            was_checked=self.was_checked,
-            was_skipped=self.was_skipped,
-            response_ms=response_ms,
-            accept_override=self._accept_override,
-        )
+        try:
+            self.session.submit_grammar(
+                item=self.current_item,
+                typed_blank=self.typed_blank,
+                rating=rating,
+                meaning_tip_used=self.meaning_tip_used,
+                hint_used=self.hint_used,
+                grammar_tip_used=self.grammar_tip_used,
+                was_checked=self.was_checked,
+                was_skipped=self.was_skipped,
+                response_ms=response_ms,
+                accept_override=self._accept_override,
+            )
+        except Exception:
+            self._set_rating_keys_enabled(True)
+            self.save_error.show_failure()
+            return
 
         milestone_hit = False
         if hasattr(self.session, "record_item_answered"):
