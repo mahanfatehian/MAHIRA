@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
+from db.seed_manifest import BookManifestCatalog
 from ui.book_covers import cover_stem_for_slug, find_book_cover
 from ui.widgets.images import rounded_cover_pixmap
 
@@ -106,9 +107,26 @@ def _book_camel(slug: str) -> str:
     return cover_stem_for_slug(slug)
 
 
-def _book_icon_path(slug: str, level: str) -> Optional[str]:
+def _load_book_catalog() -> BookManifestCatalog:
+    """Load optional display metadata without making Setup startup-fragile."""
+    try:
+        from mahira.config import resource_root
+
+        return BookManifestCatalog.from_seed_root(
+            resource_root() / "data" / "seeds",
+        )
+    except Exception:
+        return BookManifestCatalog()
+
+
+def _book_icon_path(
+    slug: str,
+    level: str,
+    catalog: BookManifestCatalog | None = None,
+) -> Optional[str]:
     """Resolve a per-book cover, falling back to initials when absent."""
-    return find_book_cover(slug, level)
+    preferred = catalog.cover_for(slug) if catalog is not None else None
+    return find_book_cover(slug, level, preferred_path=preferred)
 
 
 def _level_blurb(level: str) -> str:
@@ -365,6 +383,7 @@ class BookCard(_ClickCard):
             cov.setSpacing(2)
             cov.addStretch(1)
             ini = QLabel(_book_initials(title))
+            ini.setTextFormat(Qt.TextFormat.PlainText)
             ini.setAlignment(Qt.AlignCenter)
             ini.setStyleSheet("QLabel { color:#FFFFFF; font-size:24px; font-weight:900; background:transparent; border:none; }")
             cov.addWidget(ini)
@@ -382,6 +401,8 @@ class BookCard(_ClickCard):
         title_row = QHBoxLayout()
         title_row.setSpacing(10)
         title_lbl = QLabel(title)
+        title_lbl.setObjectName("BookTitle")
+        title_lbl.setTextFormat(Qt.TextFormat.PlainText)
         title_lbl.setFont(QFont("Segoe UI", 17, QFont.Weight.Black))
         title_lbl.setStyleSheet("QLabel { color:#FFFFFF; font-weight:900; background:transparent; border:none; }")
         lvl_badge = QLabel((level or "").upper())
@@ -550,6 +571,7 @@ class SetupPage(QWidget):
         super().__init__()
         self.session = session
         self.nav = nav
+        self._book_catalog = _load_book_catalog()
 
         self.setFont(QFont("Segoe UI", 10))
         self.setObjectName("SetupPage")
@@ -599,6 +621,7 @@ class SetupPage(QWidget):
         self.title.setStyleSheet("QLabel { color:#FFFFFF; }")
 
         self.breadcrumb = QLabel(" ")
+        self.breadcrumb.setTextFormat(Qt.TextFormat.PlainText)
         self.breadcrumb.setFont(QFont("Segoe UI", 9, QFont.Weight.Medium))
         self.breadcrumb.setStyleSheet("""
             QLabel {
@@ -657,6 +680,7 @@ class SetupPage(QWidget):
         self._refresh_due_strip()
 
     def on_show(self):
+        self._book_catalog = _load_book_catalog()
         self._sync_from_state()
         self._refresh_levels_enabled()
         self._refresh_books()
@@ -772,7 +796,7 @@ class SetupPage(QWidget):
         if self.level:
             parts.append(self.level)
         if self.book_slug:
-            parts.append(" ".join(w.capitalize() for w in self.book_slug.split("_")))
+            parts.append(self._book_catalog.title_for(self.book_slug))
         if self.lektion_number:
             parts.append(f"Lektion {self.lektion_number}")
         if self.objective:
@@ -1056,6 +1080,10 @@ class SetupPage(QWidget):
             books = self.session.repo.get_books_for_level(self.level)
         except Exception:
             books = []
+        books = sorted(
+            books,
+            key=lambda book: self._book_catalog.sort_key(book.slug, book.title),
+        )
 
         if hasattr(self, "book_count_lbl"):
             n = len(books)
@@ -1071,7 +1099,7 @@ class SetupPage(QWidget):
         for i, book in enumerate(books):
             lek_n, vocab_n, grammar_n, sentences_n, listening_n = self._book_summary(book.id, self.level)
             card = BookCard(
-                title=book.title,
+                title=self._book_catalog.title_for(book.slug, book.title),
                 level=self.level,
                 lektion_count=lek_n,
                 vocab_n=vocab_n,
@@ -1081,7 +1109,7 @@ class SetupPage(QWidget):
                 accent=_accent_for_index(i),
                 selected=(book.slug == self.book_slug),
                 on_click=lambda slug=book.slug: self._choose_book(slug),
-                icon_path=_book_icon_path(book.slug, self.level),
+                icon_path=_book_icon_path(book.slug, self.level, self._book_catalog),
                 completed=self._book_complete(book.id, self.level),
             )
             self.book_layout.addWidget(card)

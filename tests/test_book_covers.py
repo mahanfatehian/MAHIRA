@@ -33,6 +33,45 @@ def test_find_book_cover_keeps_legacy_fallback(tmp_path: Path):
     assert find_book_cover("menschen", "D1", books_dir=tmp_path) is None
 
 
+def test_find_book_cover_prefers_manifest_asset_then_falls_back(tmp_path: Path):
+    books = tmp_path / "books"
+    books.mkdir()
+    conventional = books / "menschen_a1.jpg"
+    conventional.touch()
+    preferred = tmp_path / "pack" / "cover.webp"
+    preferred.parent.mkdir()
+    preferred.touch()
+
+    assert find_book_cover(
+        "custom-book",
+        "A1",
+        books_dir=books,
+        preferred_path=preferred,
+    ) == str(preferred)
+
+    preferred.unlink()
+    assert find_book_cover(
+        "menschen",
+        "A1",
+        books_dir=books,
+        preferred_path=preferred,
+    ) == str(conventional)
+
+
+def test_find_book_cover_ignores_unsupported_preferred_asset(tmp_path: Path):
+    conventional = tmp_path / "menschen_a1.jpg"
+    conventional.touch()
+    unsupported = tmp_path / "cover.txt"
+    unsupported.touch()
+
+    assert find_book_cover(
+        "menschen",
+        "A1",
+        books_dir=tmp_path,
+        preferred_path=unsupported,
+    ) == str(conventional)
+
+
 def test_level_cover_paths_filters_and_sorts_supported_images(tmp_path: Path):
     for name in (
         "startenWir_a1.webp",

@@ -37,14 +37,25 @@ def find_book_cover(
     level: str,
     *,
     books_dir: Path | None = None,
+    preferred_path: str | Path | None = None,
 ) -> str | None:
-    """Return the preferred bundled cover for one book and CEFR level."""
-    stem = cover_stem_for_slug(slug)
+    """Return a validated pack cover or the conventional bundled fallback."""
     normalised_level = _normalise_level(level)
-    if not stem or not normalised_level:
+    if not normalised_level:
         return None
 
     try:
+        if preferred_path is not None:
+            preferred = Path(preferred_path)
+            if (
+                preferred.suffix.lower() in BOOK_COVER_SUFFIXES
+                and preferred.is_file()
+            ):
+                return str(preferred)
+
+        stem = cover_stem_for_slug(slug)
+        if not stem:
+            return None
         directory = books_dir if books_dir is not None else _default_books_dir()
         base = directory / f"{stem}_{normalised_level}"
         for suffix in BOOK_COVER_SUFFIXES:
