@@ -1667,6 +1667,17 @@ class SessionService:
             res = dict(res)
             res["meaning_ok"] = True
 
+        error_tags = [
+            name
+            for name, value in (
+                ("meaning", res.get("meaning_ok")),
+                ("gender", res.get("gender_ok")),
+                ("plural", res.get("plural_ok")),
+            )
+            if value is False
+        ]
+        res["error_tags"] = error_tags
+
         effective_rating = _effective_vocab_rating(
             result=res,
             user_rating=rating,
@@ -1705,6 +1716,8 @@ class SessionService:
                     was_skipped=1 if was_skipped else 0,
                     rating=effective_rating,
                     response_ms=response_ms,
+                    practice_mode="recognition",
+                    error_tags=",".join(error_tags) or None,
                 )
             self.repo.update_state(st2)
         self._complete_current_item("vocab", item.id)
@@ -1777,6 +1790,14 @@ class SessionService:
             res = dict(res)
             res["ok"] = True
 
+        error_tags: list[str] = []
+        if not bool(res["ok"]):
+            feedback = classify_german_answer(
+                typed_blank, getattr(item, "answer", "") or ""
+            )
+            error_tags = list(feedback.tags) or ["different_answer"]
+        res["error_tags"] = error_tags
+
         used_help = bool(meaning_tip_used or hint_used or grammar_tip_used)
 
         effective_rating = _effective_binary_rating(
@@ -1808,6 +1829,8 @@ class SessionService:
                     was_skipped=(1 if was_skipped else 0),
                     rating=effective_rating,
                     response_ms=response_ms,
+                    practice_mode="production",
+                    error_tags=",".join(error_tags) or None,
                 )
             self.repo.update_grammar_state(st2)
         self._complete_current_item("grammar", item.id)
@@ -2054,6 +2077,8 @@ class SessionService:
     ) -> dict:
         response_ms = _bounded_response_ms(response_ms)
         res = self.check_listening(item, chosen)
+        error_tags = [] if bool(res["ok"]) else ["different_answer"]
+        res["error_tags"] = error_tags
 
         # The learner may self-rate how the passage felt (Again/Hard/Good/Easy),
         # exactly like the other review tabs. When no manual rating is given we
@@ -2087,6 +2112,8 @@ class SessionService:
                     was_skipped=1 if was_skipped else 0,
                     rating=effective_rating,
                     response_ms=response_ms,
+                    practice_mode="comprehension",
+                    error_tags=",".join(error_tags) or None,
                 )
             self.repo.update_listening_state(st2)
         self._complete_current_item("listening", item.id)

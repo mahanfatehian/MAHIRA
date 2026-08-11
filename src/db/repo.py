@@ -1237,6 +1237,8 @@ class Repo:
         was_skipped: int,
         rating: int | None,
         response_ms: int | None,
+        practice_mode: str = "production",
+        error_tags: str | None = None,
     ) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -1246,13 +1248,14 @@ class Repo:
                     typed_blank, correct,
                     meaning_tip_used, hint_used, grammar_tip_used,
                     was_checked, was_skipped,
-                    rating, response_ms
+                    rating, response_ms, practice_mode, error_tags
                 )
-                VALUES(?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (grammar_id, typed_blank, correct,
                  int(meaning_tip_used), int(hint_used), int(grammar_tip_used),
-                 int(was_checked), int(was_skipped), rating, response_ms),
+                 int(was_checked), int(was_skipped), rating, response_ms,
+                 practice_mode, error_tags),
             )
 
     # ======================
@@ -1784,15 +1787,18 @@ class Repo:
         was_skipped: int = 0,
         rating: int | None = None,
         response_ms: int | None = None,
+        practice_mode: str = "comprehension",
+        error_tags: str | None = None,
     ) -> None:
         with self._conn() as conn:
             conn.execute(
                 """
                 INSERT INTO listening_reviews(
                     listening_id, chosen, correct, replay_count,
-                    was_checked, was_skipped, rating, response_ms
+                    was_checked, was_skipped, rating, response_ms,
+                    practice_mode, error_tags
                 )
-                VALUES(?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     listening_id,
@@ -1803,6 +1809,8 @@ class Repo:
                     int(was_skipped),
                     rating,
                     response_ms,
+                    practice_mode,
+                    error_tags,
                 ),
             )
 
