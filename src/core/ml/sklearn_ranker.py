@@ -361,7 +361,9 @@ class SklearnRanker:
                 AVG(r.response_ms) AS avg_response_ms
             FROM vocab v
             LEFT JOIN vocab_states s ON s.vocab_id = v.id
-            LEFT JOIN reviews r ON r.vocab_id = v.id
+            LEFT JOIN reviews r
+              ON r.vocab_id = v.id
+             AND r.practice_mode = 'recognition'
             WHERE v.id IN ({placeholders})
             GROUP BY v.id
         """
@@ -810,12 +812,20 @@ class SklearnRanker:
     # ------------------------------------------------------------------
     # Model persistence
     # ------------------------------------------------------------------
-    # Bump when the feature vector layout changes so stale joblib models
-    # (trained on a different feature count) are never loaded.
+    # Bump when a feature vector's layout or meaning changes so stale joblib
+    # models are never applied to incompatible inputs. Vocabulary moved to v3
+    # when its aggregates became recognition-only; the other objectives keep
+    # their compatible v2 models.
     _MODEL_VERSION = "v2"
+    _MODEL_VERSION_BY_OBJECTIVE = {"vocab": "v3"}
 
     def _model_name(self, objective: str, level: str | None) -> str:
-        return f"{_safe_key(objective)}__{_safe_key(level)}__{self._MODEL_VERSION}"
+        objective_key = _safe_key(objective)
+        version = self._MODEL_VERSION_BY_OBJECTIVE.get(
+            objective_key,
+            self._MODEL_VERSION,
+        )
+        return f"{objective_key}__{_safe_key(level)}__{version}"
 
     def _model_path(self, objective: str, level: str | None) -> Path:
         return self.model_dir / f"{self._model_name(objective, level)}.joblib"
@@ -954,11 +964,15 @@ class SklearnRanker:
                             FROM reviews r
                             JOIN vocab v ON v.id = r.vocab_id
                             WHERE v.deck_id = ?
+                              AND r.practice_mode = 'recognition'
                             """,
                             (deck_id,),
                         ).fetchone()
                     else:
-                        row = conn.execute("SELECT COUNT(*) AS c FROM reviews").fetchone()
+                        row = conn.execute(
+                            "SELECT COUNT(*) AS c FROM reviews "
+                            "WHERE practice_mode = 'recognition'"
+                        ).fetchone()
 
             return int(row["c"] or 0) if row else 0
 
