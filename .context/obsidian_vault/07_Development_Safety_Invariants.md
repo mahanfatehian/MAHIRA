@@ -75,6 +75,18 @@ See [[01_Architecture_and_Stack]], [[03_Database_and_Schema]], and [[06_CI_CD_an
 - `tests/test_migration_backup_roundtrip.py` proves the pre-migration backup can restore the old database and that the restored file can be upgraded again without losing learner data.
 - `tests/test_session_resume_store.py`, `tests/test_session_continuity.py`, and `tests/test_session_resume_ui.py` lock the checkpoint, cold-restart, reconciliation, and Continue/Discard contracts.
 
+## Phase 5 mistake-remediation guardrails
+
+- Recent failures come from persisted effective `rating=0` review events. Queries preserve the exact `(objective, practice_mode)` lane, require all three lesson fields `(level, book_slug, lektion_number)` together, use exact normalized tag tokens, and apply these filters before `limit`.
+- A leech is three or more failures in that same lane within the inclusive trailing 30-day window. It may suggest bury/suspend and an exact Learn rule, but must never mutate card controls automatically.
+- Learn links are allow-listed only for unambiguous tags and open only when the curriculum index finds one unique `(level, order_token)` match. Unknown/ambiguous tags and zero or multiple lesson matches fail closed.
+- Targeted drills contain only revalidated IDs from the existing seeded deck. Do not clone content, create a permanent drill deck, or allow suspended/future-buried/foreign IDs into the queue.
+- Preflight a targeted request without changing state before offering to replace any unfinished session. Cancel is the default; a stale request must never show the replacement dialog or clear its checkpoint.
+- Targeted primary and Practice Lab queues are intentionally process-local and non-resumable; `active_session.json` remains reserved for normal primary review continuity.
+- Primary drills update their objective's normal lane. Vocabulary production/dictation drills update `vocab_practice_states` and explicit Lab event modes; recognition due state, totals, undo, and `sklearn_ranker` features remain isolated.
+
+Primary coverage: `tests/test_recent_failures.py`, `tests/test_targeted_drills.py`, `tests/test_mistakes_ui.py`, `tests/test_mistake_drill_routing.py`, `tests/test_learn_reference_resolution.py`, and `tests/test_ml_lane_isolation.py`. See [[02_Core_Engine_and_ML]] and [[04_UI_and_Frontend]].
+
 ## Phase 0 regression gates
 
 Run from the repository root with the project virtual environment:
