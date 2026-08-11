@@ -342,6 +342,7 @@ class SessionService:
         self._current_state_token: str | None = None
         self._session_position = 0
         self._session_total = 0
+        self._session_kind = "review"
 
         self.rng = random.SystemRandom()
 
@@ -411,6 +412,7 @@ class SessionService:
         self._current_state_token = None
         self._session_position = 0
         self._session_total = 0
+        self._session_kind = "review"
         self._pending_resume = None
         if clear_checkpoint:
             self._clear_resume_file()
@@ -473,6 +475,13 @@ class SessionService:
     def _checkpoint_session(self) -> None:
         store = getattr(self, "_resume_store", None)
         if store is None:
+            return
+        if getattr(self, "_session_kind", "review") != "review":
+            # Phase-3 checkpoints deliberately describe one ordinary primary
+            # review session. A short mistake drill is process-local and must
+            # never be resurrected or labeled as that ordinary session type.
+            self._pending_resume = None
+            self._clear_resume_file()
             return
         current_id = getattr(self, "_current_item_id", None)
         if not self._queue and current_id is None:
@@ -632,6 +641,7 @@ class SessionService:
         self.state.lektion_number = snapshot.lektion_number
         self._active_deck_id = snapshot.deck_id
         self._queue = valid_queue
+        self._session_kind = "review"
         self._undo = None
         self._current_item_id = None
         self._current_objective = None
@@ -749,6 +759,115 @@ class SessionService:
             return self.repo.vocab_table_rows(deck_id)
         except Exception:
             return []
+
+    def targeted_item_ids(
+        self,
+        objective: str,
+        item_ids: Iterable[int],
+        *,
+        limit: int = 50,
+    ) -> list[int]:
+        """Return active IDs that safely belong to the current objective deck.
+
+        Mistake queries are only a read-time suggestion. Revalidating here
+        closes the race with seed updates and learner bury/suspend actions
+        before any queue is replaced. The returned order matches the request;
+        no content, deck, or scheduling row is created by this operation.
+        """
+        normalized = _norm_objective(objective)
+        if normalized != _norm_objective(
+            getattr(self.state, "objective", "")
+        ):
+            return []
+
+        specs = {
+            "vocab": ("vocab", "vocab_states", "vocab_id"),
+            "grammar": ("grammar", "grammar_states", "grammar_id"),
+            "sentences": ("sentences", "sentence_states", "sentence_id"),
+            "listening": ("listening", "listening_states", "listening_id"),
+        }
+        spec = specs.get(normalized)
+        if spec is None:
+            return []
+
+        try:
+            safe_limit = max(1, min(50, int(limit)))
+            values = iter(item_ids)
+        except (TypeError, ValueError, OverflowError):
+            return []
+
+        requested: list[int] = []
+        seen: set[int] = set()
+        for value in values:
+            if isinstance(value, bool):
+                continue
+            try:
+                item_id = int(value)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if item_id <= 0 or item_id in seen:
+                continue
+            seen.add(item_id)
+            requested.append(item_id)
+            if len(requested) >= safe_limit:
+                break
+        if not requested:
+            return []
+
+        deck_id = self.active_deck_id()
+        if deck_id is None:
+            return []
+        items, states, foreign_key = spec
+        placeholders = ",".join("?" for _ in requested)
+        now = int(time.time())
+        try:
+            with self.repo._conn() as conn:
+                rows = conn.execute(
+                    f"""
+                    SELECT i.id
+                      FROM {items} i
+                      LEFT JOIN {states} s ON s.{foreign_key}=i.id
+                     WHERE i.deck_id=?
+                       AND i.id IN ({placeholders})
+                       AND COALESCE(s.suspended, 0)=0
+                       AND (s.buried_until IS NULL OR s.buried_until<=?)
+                    """,
+                    (int(deck_id), *requested, now),
+                ).fetchall()
+        except Exception:
+            return []
+        eligible = {int(row["id"]) for row in rows}
+        return [item_id for item_id in requested if item_id in eligible]
+
+    def start_targeted_session(
+        self,
+        objective: str,
+        item_ids: Iterable[int],
+        *,
+        limit: int = 50,
+    ) -> bool:
+        """Replace the open queue with one validated, process-local drill.
+
+        Primary review pages and their atomic submit methods remain unchanged;
+        only selection is targeted. Queue order is reversed because the page
+        serves with pop(), making the newest requested mistake appear first.
+        """
+        normalized = _norm_objective(objective)
+        selected = self.targeted_item_ids(
+            normalized,
+            item_ids,
+            limit=limit,
+        )
+        if not selected:
+            return False
+
+        self._reset_active_session(clear_checkpoint=True)
+        self._session_kind = "drill"
+        self._queue = list(reversed(selected))
+        self._session_position = 0
+        self._session_total = len(self._queue)
+        self._checkpoint_session()
+        return True
 
     def pick_vocab_practice_ids(
         self,

@@ -70,6 +70,8 @@ class PracticeLabPage(QWidget):
         self.session = session
         self.current = None
         self._ids: list[int] = []
+        self._pending_target_ids: list[int] | None = None
+        self._targeted_drill = False
         self._mode = "production"
         self._started_at = 0.0
         self._checked = False
@@ -251,7 +253,15 @@ class PracticeLabPage(QWidget):
 
     def on_show(self) -> None:
         self.context.setText(self.session.context_label() or "No lesson selected")
-        self._ids = []
+        pending = self._pending_target_ids
+        self._pending_target_ids = None
+        if pending is None:
+            self._ids = []
+            self._targeted_drill = False
+        else:
+            # The page consumes IDs with pop(), so reverse the visible order.
+            self._ids = list(reversed(pending))
+            self._targeted_drill = True
         self._seen = 0
         self.session_chip.setText("0 practiced")
         self._load_next()
@@ -278,8 +288,38 @@ class PracticeLabPage(QWidget):
             else "AUDIO → GERMAN"
         )
         self._ids = []
+        self._pending_target_ids = None
+        self._targeted_drill = False
         if reload:
             self._load_next()
+        return True
+
+    def start_targeted_drill(
+        self,
+        item_ids,
+        practice_mode: str,
+    ) -> bool:
+        """Stage a validated one-off Lab queue for the next on_show call."""
+        if not self.select_mode(practice_mode, reload=False):
+            return False
+        selected: list[int] = []
+        seen: set[int] = set()
+        for value in item_ids:
+            if isinstance(value, bool):
+                continue
+            try:
+                item_id = int(value)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if item_id <= 0 or item_id in seen:
+                continue
+            seen.add(item_id)
+            selected.append(item_id)
+            if len(selected) >= 50:
+                break
+        if not selected:
+            return False
+        self._pending_target_ids = selected
         return True
 
     def _pick_ids(self, deck_id: int) -> list[int]:
@@ -316,6 +356,16 @@ class PracticeLabPage(QWidget):
             self._show_empty("Choose a lesson with vocabulary in Setup to begin.")
             return
 
+        if not self._ids and self._targeted_drill:
+            self._targeted_drill = False
+            self._show_empty(
+                "Targeted drill complete.",
+                detail=(
+                    "Your drill ratings were saved in this practice lane; "
+                    "the recognition schedule remains unchanged."
+                ),
+            )
+            return
         if not self._ids:
             self._ids = self._pick_ids(deck_id)
         self.current = self.session.repo.get_vocab_by_id(self._ids.pop()) if self._ids else None
@@ -356,7 +406,7 @@ class PracticeLabPage(QWidget):
         if self._mode == "dictation" and autoplay:
             self._play()
 
-    def _show_empty(self, message: str) -> None:
+    def _show_empty(self, message: str, *, detail: str | None = None) -> None:
         self.current = None
         self.prompt.setText(message)
         self.card_position.clear()
@@ -365,7 +415,9 @@ class PracticeLabPage(QWidget):
         self.answer.setEnabled(False)
         self.skip_button.setEnabled(False)
         self.action.setEnabled(False)
-        self.feedback.setText("Your existing review schedule is unchanged.")
+        self.feedback.setText(
+            detail or "Your recognition review schedule is unchanged."
+        )
         self.feedback.setStyleSheet(f"color:{COLORS['muted']};background:transparent;")
 
     def _check_or_next(self) -> None:
