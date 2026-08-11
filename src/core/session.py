@@ -780,6 +780,84 @@ class SessionService:
         ):
             return []
 
+        deck_id = self.active_deck_id()
+        if deck_id is None:
+            return []
+        return self._targeted_item_ids_for_deck(
+            normalized,
+            deck_id,
+            item_ids,
+            limit=limit,
+        )
+
+    def preview_targeted_item_ids(
+        self,
+        level: str,
+        objective: str,
+        book_slug: str,
+        lektion_number: int,
+        deck_id: int,
+        item_ids: Iterable[int],
+        *,
+        limit: int = 50,
+    ) -> list[int]:
+        """Validate a drill request without changing context or review state."""
+        normalized_level = _norm_level(level)
+        normalized_objective = _norm_objective(objective)
+        normalized_book = str(book_slug or "").strip().lower()
+        if isinstance(lektion_number, bool) or isinstance(deck_id, bool):
+            return []
+        try:
+            normalized_lektion = int(lektion_number or 0)
+            expected_deck_id = int(deck_id)
+        except (TypeError, ValueError, OverflowError):
+            return []
+        if (
+            not normalized_level
+            or expected_deck_id <= 0
+            or bool(normalized_book) != bool(normalized_lektion)
+            or normalized_lektion < 0
+        ):
+            return []
+
+        lektion_id = None
+        try:
+            if normalized_book:
+                book_id = self.repo.get_book_id(normalized_book)
+                if book_id is None:
+                    return []
+                lektion_id = self.repo.get_lektion_id(
+                    book_id,
+                    normalized_level,
+                    normalized_lektion,
+                )
+                if lektion_id is None:
+                    return []
+            resolved_deck_id = self.repo.get_deck_id(
+                normalized_level,
+                normalized_objective,
+                lektion_id=lektion_id,
+            )
+        except Exception:
+            return []
+        if resolved_deck_id != expected_deck_id:
+            return []
+        return self._targeted_item_ids_for_deck(
+            normalized_objective,
+            expected_deck_id,
+            item_ids,
+            limit=limit,
+        )
+
+    def _targeted_item_ids_for_deck(
+        self,
+        objective: str,
+        deck_id: int,
+        item_ids: Iterable[int],
+        *,
+        limit: int,
+    ) -> list[int]:
+        normalized = _norm_objective(objective)
         specs = {
             "vocab": ("vocab", "vocab_states", "vocab_id"),
             "grammar": ("grammar", "grammar_states", "grammar_id"),
@@ -814,9 +892,6 @@ class SessionService:
         if not requested:
             return []
 
-        deck_id = self.active_deck_id()
-        if deck_id is None:
-            return []
         items, states, foreign_key = spec
         placeholders = ",".join("?" for _ in requested)
         now = int(time.time())
@@ -846,12 +921,18 @@ class SessionService:
         *,
         limit: int = 50,
     ) -> bool:
-        """Replace the open queue with one validated, process-local drill.
+        """Start one validated, process-local drill when no session is open.
 
         Primary review pages and their atomic submit methods remain unchanged;
         only selection is targeted. Queue order is reversed because the page
         serves with pop(), making the newest requested mistake appear first.
         """
+        if self.has_unfinished_session():
+            # Mistakes is reachable while a learner is part-way through a
+            # review or another drill. A replacement must never erase queued
+            # or displayed work without the UI obtaining explicit consent.
+            return False
+
         normalized = _norm_objective(objective)
         selected = self.targeted_item_ids(
             normalized,
@@ -917,6 +998,27 @@ class SessionService:
 
     def has_active_session(self) -> bool:
         return bool(self._queue)
+
+    def has_unfinished_session(self) -> bool:
+        """Whether replacing context would discard queued or displayed work."""
+        return bool(
+            self._queue
+            or getattr(self, "_current_item_id", None) is not None
+            or getattr(self, "_pending_resume", None) is not None
+        )
+
+    def has_unfinished_review(self) -> bool:
+        """Whether replacing context would discard an ordinary review.
+
+        The displayed card has already been popped from the queue, so checking
+        the queue alone misses the final visible card. A cold-start resume
+        candidate is unfinished work too, even before the learner presses
+        Continue.
+        """
+        return bool(
+            getattr(self, "_session_kind", "review") == "review"
+            and self.has_unfinished_session()
+        )
 
     def clear_session(self) -> None:
         self._reset_active_session(clear_checkpoint=True)

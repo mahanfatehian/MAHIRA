@@ -299,25 +299,34 @@ class PracticeLabPage(QWidget):
         item_ids,
         practice_mode: str,
     ) -> bool:
-        """Stage a validated one-off Lab queue for the next on_show call."""
-        if not self.select_mode(practice_mode, reload=False):
+        """Validate and stage a one-off Lab queue for the next on_show call."""
+        normalized = str(practice_mode or "").strip().lower()
+        if normalized not in self.mode_buttons:
             return False
-        selected: list[int] = []
-        seen: set[int] = set()
-        for value in item_ids:
-            if isinstance(value, bool):
-                continue
-            try:
-                item_id = int(value)
-            except (TypeError, ValueError, OverflowError):
-                continue
-            if item_id <= 0 or item_id in seen:
-                continue
-            seen.add(item_id)
-            selected.append(item_id)
-            if len(selected) >= 50:
-                break
+
+        validator = getattr(self.session, "targeted_item_ids", None)
+        if callable(validator):
+            selected = list(validator("vocab", item_ids, limit=50))
+        else:
+            selected = []
+            seen: set[int] = set()
+            for value in item_ids:
+                if isinstance(value, bool):
+                    continue
+                try:
+                    item_id = int(value)
+                except (TypeError, ValueError, OverflowError):
+                    continue
+                if item_id <= 0 or item_id in seen:
+                    continue
+                seen.add(item_id)
+                selected.append(item_id)
+                if len(selected) >= 50:
+                    break
         if not selected:
+            return False
+
+        if not self.select_mode(normalized, reload=False):
             return False
         self._pending_target_ids = selected
         return True

@@ -104,16 +104,96 @@ def test_invalid_target_set_does_not_replace_an_open_review(tmp_path):
     assert session._session_kind == "review"
 
 
+def test_targeted_preview_is_read_only_and_rejects_stale_deck(tmp_path):
+    repo, deck_id, ids, foreign_id = _vocab_library(tmp_path)
+    session = _session(repo)
+    session.plan.limit = 1
+    assert session.start_new_session()
+    current = session.next_vocab_item()
+    assert current is not None
+    checkpoint = repo.db_path.parent / "active_session.json"
+    checkpoint_before = checkpoint.read_bytes()
+    queue_before = list(session._queue)
+    state_before = (
+        session.state.level,
+        session.state.objective,
+        session.state.book_slug,
+        session.state.lektion_number,
+        session._active_deck_id,
+    )
+
+    assert session.preview_targeted_item_ids(
+        "A1",
+        "vocab",
+        "drills",
+        1,
+        deck_id,
+        [ids[-1], foreign_id],
+    ) == [ids[-1]]
+    assert session.preview_targeted_item_ids(
+        "A1",
+        "vocab",
+        "drills",
+        1,
+        deck_id + 999,
+        [ids[-1]],
+    ) == []
+
+    assert list(session._queue) == queue_before
+    assert session.is_current_item("vocab", current.id)
+    assert (
+        session.state.level,
+        session.state.objective,
+        session.state.book_slug,
+        session.state.lektion_number,
+        session._active_deck_id,
+    ) == state_before
+    assert checkpoint.read_bytes() == checkpoint_before
+
+
+def test_targeted_drill_refuses_to_replace_unfinished_review(tmp_path):
+    repo, _deck_id, ids, _foreign_id = _vocab_library(tmp_path)
+    session = _session(repo)
+    checkpoint = repo.db_path.parent / "active_session.json"
+
+    session.plan.limit = 1
+    session.plan.new_limit = 1
+    assert session.start_new_session() is True
+    current = session.next_vocab_item()
+    assert current is not None
+    assert session._queue == []
+    queue_before = list(session._queue)
+    checkpoint_before = checkpoint.read_bytes()
+    assert checkpoint.exists()
+
+    assert session.start_targeted_session("vocab", ids[:3]) is False
+    assert session._queue == queue_before
+    assert session.is_current_item("vocab", current.id)
+    assert session._session_kind == "review"
+    assert checkpoint.read_bytes() == checkpoint_before
+
+
+def test_targeted_drill_refuses_to_replace_displayed_drill_card(tmp_path):
+    repo, _deck_id, ids, _foreign_id = _vocab_library(tmp_path)
+    session = _session(repo)
+
+    assert session.start_targeted_session("vocab", [ids[0]])
+    current = session.next_vocab_item()
+    assert current is not None
+    assert session._queue == []
+
+    assert not session.start_targeted_session("vocab", [ids[1]])
+    assert session.is_current_item("vocab", current.id)
+    assert session._session_kind == "drill"
+
+
 def test_three_card_drill_writes_normal_ratings_without_copying_content(tmp_path):
     repo, _deck_id, ids, _foreign_id = _vocab_library(tmp_path)
     session = _session(repo)
     selected = ids[:3]
     checkpoint = repo.db_path.parent / "active_session.json"
 
-    # A targeted drill explicitly replaces an ordinary checkpoint, but is not
-    # serialized as an ordinary resumable review session itself.
-    assert session.start_new_session() is True
-    assert checkpoint.exists()
+    # A short drill is not serialized as an ordinary resumable review.
     assert session.start_targeted_session("vocab", selected) is True
     assert not checkpoint.exists()
 
@@ -180,6 +260,44 @@ def test_practice_lab_targeted_drill_stops_instead_of_refilling(tmp_path, monkey
 
         assert page.current is None
         assert "complete" in page.prompt.text().lower()
+    finally:
+        page.close()
+        page.deleteLater()
+        app.processEvents()
+
+
+def test_practice_lab_revalidates_targeted_ids(tmp_path):
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    from ui.pages.practice_lab import PracticeLabPage
+
+    app = QApplication.instance() or QApplication([])
+    repo, _deck_id, ids, foreign_id = _vocab_library(tmp_path)
+    session = _session(repo)
+    active, suspended, buried = ids[:3]
+    repo.ensure_state(suspended)
+    repo.ensure_state(buried)
+    with repo._conn() as conn:
+        conn.execute(
+            "UPDATE vocab_states SET suspended=1 WHERE vocab_id=?",
+            (suspended,),
+        )
+        conn.execute(
+            "UPDATE vocab_states SET buried_until=? WHERE vocab_id=?",
+            (int(time.time()) + 3600, buried),
+        )
+
+    page = PracticeLabPage(session)
+    try:
+        assert page.start_targeted_drill(
+            [foreign_id, suspended, buried, active],
+            "dictation",
+        )
+        assert page._pending_target_ids == [active]
+        page.on_show()
+        assert page.current is not None
+        assert page.current.id == active
     finally:
         page.close()
         page.deleteLater()

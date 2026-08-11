@@ -226,6 +226,21 @@ class CurriculumIndex:
         level = _norm_level(level)
         return self._by_level.get(level, {})
 
+    def resolve_reference(self, level: str, order_token: str) -> LessonRef | None:
+        normalized_level = _norm_level(level)
+        normalized_token = (order_token or '').strip()
+        if normalized_level not in CEFR_LEVELS or not normalized_token:
+            return None
+
+        matches = [
+            ref
+            for lessons in self.objectives_for(normalized_level).values()
+            for ref in lessons
+            if ref.level == normalized_level
+            and (ref.order_token or '').strip() == normalized_token
+        ]
+        return matches[0] if len(matches) == 1 else None
+
 
 # -------------------------
 # Answers parsing + masking (MARKERS ONLY)
@@ -720,6 +735,16 @@ class LearnPage(QWidget):
         self._refresh_levels_enabled()
         if self.stack.currentIndex() == 1:
             self._render_objectives()
+
+    def open_reference(self, level: str, order_token: str) -> bool:
+        self.index.reload()
+        ref = self.index.resolve_reference(level, order_token)
+        if ref is None:
+            return False
+
+        self.level = ref.level
+        self._open_lesson(ref)
+        return True
 
     def _goto(self, idx: int):
         self.stack.setCurrentIndex(idx)

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QFrame,
     QLabel,
+    QMessageBox,
     QPushButton,
 )
 from core.session import SessionService
@@ -30,7 +31,7 @@ from ui.pages.learn import LearnPage
 from ui.pages.vocab_table import VocabTablePage
 from ui.pages.conjugation import ConjugationPage
 from ui.pages.today import TodayPage
-from ui.pages.mistakes import MistakesPage
+from ui.pages.mistakes import MistakeDrillRequest, MistakesPage
 from ui.pages.settings import SettingsPage
 from ui.pages.practice_lab import PracticeLabPage
 from ui.theme import apply_application_theme, apply_typography_scale
@@ -217,8 +218,8 @@ class MainWindow(QMainWindow):
 
         self.pages["today"].practice_requested.connect(self._open_context_practice)
         self.pages["today"].open_mistakes.connect(lambda: self.go("mistakes"))
-        self.pages["mistakes"].practice_requested.connect(self._open_context_practice)
-        self.pages["mistakes"].lab_requested.connect(self._open_context_lab)
+        self.pages["mistakes"].drill_requested.connect(self._open_mistake_drill)
+        self.pages["mistakes"].learn_requested.connect(self._open_learn_reference)
         self.pages["settings"].settings_changed.connect(self._apply_settings)
 
         # Objective availability depends only on level/book/Lektion.  Page
@@ -471,6 +472,146 @@ class MainWindow(QMainWindow):
         if settings is not None and app is not None:
             apply_application_theme(app, settings.value.font_scale, settings.value.theme)
             apply_typography_scale(self, settings.value.font_scale)
+
+    def _mistake_drill_error(self, message: str) -> None:
+        page = self.pages.get('mistakes')
+        show_error = getattr(page, 'show_drill_error', None)
+        if callable(show_error):
+            show_error(message)
+
+    def _confirm_discard_for_mistake_drill(self) -> bool:
+        choice = QMessageBox.question(
+            self,
+            'Unfinished session',
+            'Discard unfinished session and start drill?\n\n'
+            'Completed ratings stay saved.',
+            QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return choice == QMessageBox.StandardButton.Discard
+
+    def _open_mistake_drill(self, request: MistakeDrillRequest) -> None:
+        if not isinstance(request, MistakeDrillRequest):
+            self._mistake_drill_error('This mistake drill request is no longer valid.')
+            return
+
+        primary_modes = {
+            'vocab': 'recognition',
+            'grammar': 'production',
+            'sentences': 'builder',
+            'listening': 'comprehension',
+        }
+        is_lab = (
+            request.objective == 'vocab'
+            and request.practice_mode in {'production', 'dictation'}
+        )
+        if not is_lab and primary_modes.get(request.objective) != request.practice_mode:
+            self._mistake_drill_error('This practice lane is not supported here.')
+            return
+
+        preview = getattr(self.session, 'preview_targeted_item_ids', None)
+        try:
+            previewed = (
+                list(
+                    preview(
+                        request.level,
+                        request.objective,
+                        request.book_slug,
+                        request.lektion_number,
+                        request.deck_id,
+                        request.item_ids,
+                        limit=50,
+                    )
+                )
+                if callable(preview)
+                else []
+            )
+        except Exception:
+            logging.exception("Could not preflight the requested mistake drill")
+            previewed = []
+        if not previewed:
+            self._mistake_drill_error(
+                'These cards were hidden, suspended, removed, or moved to another deck. '
+                'Refresh Mistakes and try again.'
+            )
+            return
+
+        has_unfinished = getattr(self.session, 'has_unfinished_session', None)
+        if not callable(has_unfinished):
+            has_unfinished = getattr(self.session, 'has_unfinished_review', None)
+        if callable(has_unfinished) and has_unfinished():
+            if not self._confirm_discard_for_mistake_drill():
+                return
+            discard = getattr(self.session, 'discard_pending_resume', None)
+            if not callable(discard):
+                self._mistake_drill_error('The unfinished session could not be discarded.')
+                return
+            try:
+                discard()
+            except Exception:
+                logging.exception("Could not discard the unfinished session")
+                self._mistake_drill_error('The unfinished session could not be discarded.')
+                return
+
+        try:
+            self.session.set_context(
+                request.level,
+                request.objective,
+                request.book_slug,
+                request.lektion_number,
+            )
+            active_deck = self.session.active_deck_id()
+        except Exception:
+            logging.exception("Could not activate the requested mistake drill context")
+            self._mistake_drill_error('That lesson is no longer available for practice.')
+            return
+        if active_deck is None or int(active_deck) != int(request.deck_id):
+            self._mistake_drill_error('That mistake now belongs to a different deck.')
+            return
+
+        selected = self.session.targeted_item_ids(
+            request.objective,
+            previewed,
+            limit=50,
+        )
+        if not selected:
+            self._mistake_drill_error(
+                'These cards were hidden, suspended, or removed. Refresh Mistakes and try again.'
+            )
+            return
+
+        if is_lab:
+            page = self.pages.get('lab')
+            start_drill = getattr(page, 'start_targeted_drill', None)
+            if not callable(start_drill) or not start_drill(
+                selected,
+                request.practice_mode,
+            ):
+                self._mistake_drill_error('These cards are no longer available in Practice Lab.')
+                return
+            destination = 'lab'
+        else:
+            if not self.session.start_targeted_session(
+                request.objective,
+                selected,
+                limit=50,
+            ):
+                self._mistake_drill_error('No active cards remain in this mistake drill.')
+                return
+            destination = self._OBJ_TO_PAGE[request.objective]
+
+        self._invalidate_review_pages()
+        self.resume_banner.hide()
+        self._last_nav_context = None
+        self._show(destination)
+
+    def _open_learn_reference(self, level: str, order_token: str) -> None:
+        page = self.pages.get('learn')
+        open_reference = getattr(page, 'open_reference', None)
+        if callable(open_reference) and open_reference(level, order_token):
+            self._show('learn')
+            return
+        self._mistake_drill_error('That learning reference is not available.')
 
     def _open_context_practice(self, objective: str, level: str, book: str, lesson: int) -> None:
         try:
