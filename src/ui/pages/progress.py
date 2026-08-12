@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import time
 import datetime as _dt
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton,
     QHBoxLayout, QGridLayout, QGroupBox, QFrame
 )
 
+from core.planner import DailyPlannerService
 from core.session import SessionService
 from ui.widgets.activity_heatmap import ActivityHeatmap
 
@@ -77,6 +78,7 @@ class ProgressPage(QWidget):
     def __init__(self, session: SessionService, _nav=None):
         super().__init__()
         self.session = session
+        self._snapshot = None
 
         self.setObjectName("ProgressPage")
         self.setStyleSheet("""
@@ -112,6 +114,39 @@ class ProgressPage(QWidget):
         header_layout.addWidget(self.title)
         header_layout.addStretch(1)
         header_layout.addWidget(btn_learn)
+
+        plan_group = QGroupBox("Today's plan")
+        plan_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 13px;
+                font-weight: 900;
+                color: #FFFFFF;
+                border: 1px solid #2E2E2E;
+                border-radius: 12px;
+                margin-top: 10px;
+                padding-top: 12px;
+                background-color: #151515;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 12px;
+                padding: 0 8px 0 8px;
+            }
+        """)
+        plan_layout = QHBoxLayout(plan_group)
+        plan_layout.setContentsMargins(12, 14, 12, 10)
+        plan_layout.setSpacing(8)
+        self.plan_completed_label = self._plan_metric("0 completed")
+        self.plan_planned_label = self._plan_metric("0 planned")
+        self.plan_due_label = self._plan_metric("0 due")
+        self.plan_new_label = self._plan_metric("0 new")
+        for label in (
+            self.plan_completed_label,
+            self.plan_planned_label,
+            self.plan_due_label,
+            self.plan_new_label,
+        ):
+            plan_layout.addWidget(label)
 
         session_group = QGroupBox("Current Context")
         session_group.setStyleSheet("""
@@ -184,15 +219,15 @@ class ProgressPage(QWidget):
         )
         activity_layout.addWidget(self.activity_caption)
 
-        stats_group = QGroupBox("Statistics")
+        stats_group = QGroupBox("Current lesson")
         stats_group.setStyleSheet(session_group.styleSheet())
 
         stats_layout = QGridLayout(stats_group)
         stats_layout.setSpacing(9)
         stats_layout.setContentsMargins(12, 10, 12, 10)
 
-        self.due_card = ProgressCard("Due Now")
-        self.reviewed_today_card = ProgressCard("Reviewed (24h)")
+        self.due_card = ProgressCard("Ready now")
+        self.reviewed_today_card = ProgressCard("Reviewed today")
         self.reviewed_total_card = ProgressCard("Total Reviews")
         self.unseen_card = ProgressCard("Unseen")
         self.total_card = ProgressCard("Total Cards")
@@ -218,11 +253,29 @@ class ProgressPage(QWidget):
         perf_layout.addWidget(self.performance_label)
 
         main_layout.addLayout(header_layout)
+        main_layout.addWidget(plan_group)
         main_layout.addWidget(session_group)
         main_layout.addWidget(activity_group)
         main_layout.addWidget(stats_group)
         main_layout.addWidget(perf_group)
         main_layout.addStretch(1)
+
+    @staticmethod
+    def _plan_metric(text: str) -> QLabel:
+        label = QLabel(text)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("""
+            QLabel {
+                font-size: 13px;
+                font-weight: 800;
+                color: #E6E6E6;
+                padding: 9px 10px;
+                background-color: #101010;
+                border: 1px solid #2A2A2A;
+                border-radius: 9px;
+            }
+        """)
+        return label
 
     # --------- Activity (heatmap + streaks) ----------
     def _streak_chip(self, caption_text: str, accent: str = "#FFFFFF"):
@@ -282,11 +335,21 @@ class ProgressPage(QWidget):
                     longest = run
         return cur, longest, total_active
 
-    def _refresh_activity(self) -> None:
+    def _refresh_activity(self, plan_snapshot=None) -> None:
         daily_goal = int(
-            getattr(getattr(getattr(self.session, "settings", None), "value", None), "daily_goal", DAILY_GOAL)
+            getattr(plan_snapshot, "goal", None)
+            if plan_snapshot is not None
+            else getattr(
+                getattr(getattr(self.session, "settings", None), "value", None),
+                "daily_goal",
+                DAILY_GOAL,
+            )
         )
-        today = _dt.date.today()
+        today = (
+            _dt.datetime.fromtimestamp(plan_snapshot.captured_at).date()
+            if plan_snapshot is not None
+            else _dt.date.today()
+        )
         try:
             # Streak records are all-time statistics.  The heatmap itself only
             # paints its visible 53 weeks, so retaining older active days here
@@ -294,11 +357,28 @@ class ProgressPage(QWidget):
             counts = self.session.repo.daily_review_counts(0)
         except Exception:
             counts = {}
+            self.heatmap.set_data(counts, daily_goal, today)
+            self.streak_value.setText("--")
+            self.longest_value.setText("--")
+            self.today_value.setText(
+                f"{int(getattr(plan_snapshot, 'completed_total', 0))} / {daily_goal}"
+                if plan_snapshot is not None
+                else "--"
+            )
+            self.today_caption.setText("today vs goal")
+            self.activity_caption.setText(
+                "Activity history is unavailable. Your reviews were not changed."
+            )
+            return
 
         self.heatmap.set_data(counts, daily_goal, today)
 
         cur, longest, _ = self._compute_streaks(counts, today)
-        today_count = int(counts.get(today.isoformat(), 0))
+        today_count = int(
+            getattr(plan_snapshot, "completed_total", 0)
+            if plan_snapshot is not None
+            else counts.get(today.isoformat(), 0)
+        )
         year_prefix = f"{today.year:04d}-"
         year_counts = {
             day: int(count)
@@ -376,11 +456,19 @@ class ProgressPage(QWidget):
             row = conn.execute("SELECT COUNT(*) AS c FROM vocab WHERE deck_id=?", (deck_id,)).fetchone()
             return int(row["c"]) if row else 0
 
-    def _due_count(self, deck_id: int) -> int:
+    def _due_count(
+        self,
+        deck_id: int,
+        *,
+        now: int | float | None = None,
+    ) -> int:
+        kwargs = {"cooldown_hours": _PRACTICE_COOLDOWN_HOURS}
+        if now is not None:
+            kwargs["now"] = now
         return int(
             self.session.repo.due_count(
                 deck_id,
-                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+                **kwargs,
             )
         )
 
@@ -474,11 +562,19 @@ class ProgressPage(QWidget):
             row = conn.execute("SELECT COUNT(*) AS c FROM grammar WHERE deck_id=?", (deck_id,)).fetchone()
             return int(row["c"]) if row else 0
 
-    def _grammar_due_count(self, deck_id: int) -> int:
+    def _grammar_due_count(
+        self,
+        deck_id: int,
+        *,
+        now: int | float | None = None,
+    ) -> int:
+        kwargs = {"cooldown_hours": _PRACTICE_COOLDOWN_HOURS}
+        if now is not None:
+            kwargs["now"] = now
         return int(
             self.session.repo.grammar_due_count(
                 deck_id,
-                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+                **kwargs,
             )
         )
 
@@ -567,19 +663,35 @@ class ProgressPage(QWidget):
             ).fetchone()
             return int(row["c"]) if row else 0
 
-    def _sentence_due(self, deck_id: int) -> int:
+    def _sentence_due(
+        self,
+        deck_id: int,
+        *,
+        now: int | float | None = None,
+    ) -> int:
+        kwargs = {"cooldown_hours": _PRACTICE_COOLDOWN_HOURS}
+        if now is not None:
+            kwargs["now"] = now
         return int(
             self.session.repo.sentence_due_count(
                 deck_id,
-                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+                **kwargs,
             )
         )
 
-    def _listening_due(self, deck_id: int) -> int:
+    def _listening_due(
+        self,
+        deck_id: int,
+        *,
+        now: int | float | None = None,
+    ) -> int:
+        kwargs = {"cooldown_hours": _PRACTICE_COOLDOWN_HOURS}
+        if now is not None:
+            kwargs["now"] = now
         return int(
             self.session.repo.listening_due_count(
                 deck_id,
-                cooldown_hours=_PRACTICE_COOLDOWN_HOURS,
+                **kwargs,
             )
         )
 
@@ -712,6 +824,64 @@ class ProgressPage(QWidget):
             blended = (seen_pct * 0.4) + (success_pct * 0.6)
             return int(min(100, max(0, blended)))
 
+    def _refresh_daily_plan(self):
+        """Build and render one fresh canonical snapshot for this refresh."""
+        planner = None
+        for name in ("planner", "_planner", "planner_service", "_daily_planner"):
+            candidate = getattr(self, name, None)
+            if callable(getattr(candidate, "snapshot", None)):
+                planner = candidate
+                break
+        if planner is None:
+            settings = getattr(getattr(self.session, "settings", None), "value", None)
+            ranker = (
+                getattr(self.session, "ml", None)
+                if bool(getattr(self.session, "enable_ml_ranking", True))
+                else None
+            )
+            planner = DailyPlannerService(
+                self.session.repo,
+                settings,
+                ranker=ranker,
+            )
+        snapshot = planner.snapshot()
+        self._snapshot = snapshot
+        self.plan_completed_label.setText(f"{snapshot.completed_total} completed")
+        self.plan_planned_label.setText(f"{snapshot.planned_total} planned")
+        self.plan_due_label.setText(f"{snapshot.ready_due} due")
+        self.plan_new_label.setText(f"{snapshot.ready_new} new")
+        return snapshot
+
+    def _show_refresh_unavailable(self) -> None:
+        """Clear refresh-dependent UI without replacing failures with zeroes."""
+        self._snapshot = None
+        self.plan_completed_label.setText("Plan unavailable")
+        self.plan_planned_label.setText("-- planned")
+        self.plan_due_label.setText("-- due")
+        self.plan_new_label.setText("-- new")
+
+        self.heatmap.set_data({}, DAILY_GOAL, _dt.date.today())
+        self.streak_value.setText("--")
+        self.longest_value.setText("--")
+        self.today_value.setText("-- / --")
+        self.today_caption.setText("today vs goal")
+        self.activity_caption.setText(
+            "Activity is unavailable until today's plan can be refreshed."
+        )
+
+        for card in (
+            self.due_card,
+            self.reviewed_today_card,
+            self.reviewed_total_card,
+            self.unseen_card,
+            self.total_card,
+            self.mastery_card,
+        ):
+            card.set_value("--", "unavailable")
+        self.performance_label.setText(
+            "Progress is unavailable until today's plan can be refreshed."
+        )
+
     # ---------- UI ----------
     def _set_empty(self, msg: str) -> None:
         self.due_card.set_value(0, "")
@@ -723,8 +893,12 @@ class ProgressPage(QWidget):
         self.performance_label.setText(msg)
 
     def on_show(self):
-        # Global activity first — independent of any deck selection.
-        self._refresh_activity()
+        try:
+            plan_snapshot = self._refresh_daily_plan()
+        except Exception:
+            self._show_refresh_unavailable()
+            return
+        self._refresh_activity(plan_snapshot)
 
         deck_id = None
         if hasattr(self.session, "active_deck_id"):
@@ -753,14 +927,19 @@ class ProgressPage(QWidget):
                 self._set_empty("This deck is empty.")
                 return
 
-            total_due = self._listening_due(deck_id)
-            reviewed_today = self.session.repo.listening_reviewed_last_24h(deck_id)
+            total_due = self._listening_due(
+                deck_id,
+                now=plan_snapshot.captured_at,
+            )
+            reviewed_today = self.session.repo.deck_primary_review_count(
+                obj, deck_id, plan_snapshot.day_start, plan_snapshot.day_end
+            )
             unseen = self.session.repo.listening_unseen_count(deck_id)
             total_reviews = self._listening_reviews_total(deck_id)
             mastery = self._calculate_listening_mastery(deck_id, total)
 
-            self.due_card.set_value(total_due, "items waiting")
-            self.reviewed_today_card.set_value(reviewed_today, "reviews in 24h")
+            self.due_card.set_value(total_due, "eligible in this lesson")
+            self.reviewed_today_card.set_value(reviewed_today, "primary reviews today")
             self.reviewed_total_card.set_value(total_reviews, "all-time reviews")
             self.unseen_card.set_value(unseen, "new to learn")
             self.total_card.set_value(total, "cards in deck")
@@ -774,8 +953,8 @@ class ProgressPage(QWidget):
             self.performance_label.setText(
                 "<p><b>Progress Overview</b></p>"
                 f"<p>Learned: <span style='color:#66E39A; font-weight:900;'>{learned_percent:.1f}%</span> ({learned}/{total})</p>"
-                f"<p>Due now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
-                f"<p>Reviewed (24h): <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
+                f"<p>Ready now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
+                f"<p>Reviewed today: <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
                 f"<p>Mastery: <span style='color:#FFFFFF; font-weight:900;'>{mastery}%</span></p>"
             )
             return
@@ -786,14 +965,19 @@ class ProgressPage(QWidget):
                 self._set_empty("This deck is empty.")
                 return
 
-            total_due = self._sentence_due(deck_id)
-            reviewed_today = self._sentence_reviews_24h(deck_id)
+            total_due = self._sentence_due(
+                deck_id,
+                now=plan_snapshot.captured_at,
+            )
+            reviewed_today = self.session.repo.deck_primary_review_count(
+                obj, deck_id, plan_snapshot.day_start, plan_snapshot.day_end
+            )
             unseen = self._sentence_unseen(deck_id)
             total_reviews = self._sentence_reviews_total(deck_id)
             mastery = self._calculate_sentence_mastery(deck_id, total)
 
-            self.due_card.set_value(total_due, "items waiting")
-            self.reviewed_today_card.set_value(reviewed_today, "reviews in 24h")
+            self.due_card.set_value(total_due, "eligible in this lesson")
+            self.reviewed_today_card.set_value(reviewed_today, "primary reviews today")
             self.reviewed_total_card.set_value(total_reviews, "all-time reviews")
             self.unseen_card.set_value(unseen, "new to learn")
             self.total_card.set_value(total, "cards in deck")
@@ -807,8 +991,8 @@ class ProgressPage(QWidget):
             self.performance_label.setText(
                 "<p><b>Progress Overview</b></p>"
                 f"<p>Learned: <span style='color:#66E39A; font-weight:900;'>{learned_percent:.1f}%</span> ({learned}/{total})</p>"
-                f"<p>Due now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
-                f"<p>Reviewed (24h): <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
+                f"<p>Ready now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
+                f"<p>Reviewed today: <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
                 f"<p>Mastery: <span style='color:#FFFFFF; font-weight:900;'>{mastery}%</span></p>"
             )
             return
@@ -819,14 +1003,19 @@ class ProgressPage(QWidget):
                 self._set_empty("This deck is empty.")
                 return
 
-            total_due = self._grammar_due_count(deck_id)
-            reviewed_today = self._grammar_reviewed_last_24h(deck_id)
+            total_due = self._grammar_due_count(
+                deck_id,
+                now=plan_snapshot.captured_at,
+            )
+            reviewed_today = self.session.repo.deck_primary_review_count(
+                obj, deck_id, plan_snapshot.day_start, plan_snapshot.day_end
+            )
             unseen = self._grammar_unseen_count(deck_id)
             total_reviews = self._get_total_grammar_reviews(deck_id)
             mastery = self._calculate_grammar_mastery(deck_id, total)
 
-            self.due_card.set_value(total_due, "items waiting")
-            self.reviewed_today_card.set_value(reviewed_today, "reviews in 24h")
+            self.due_card.set_value(total_due, "eligible in this lesson")
+            self.reviewed_today_card.set_value(reviewed_today, "primary reviews today")
             self.reviewed_total_card.set_value(total_reviews, "all-time reviews")
             self.unseen_card.set_value(unseen, "new to learn")
             self.total_card.set_value(total, "cards in deck")
@@ -840,8 +1029,8 @@ class ProgressPage(QWidget):
             self.performance_label.setText(
                 "<p><b>Progress Overview</b></p>"
                 f"<p>Learned: <span style='color:#66E39A; font-weight:900;'>{learned_percent:.1f}%</span> ({learned}/{total})</p>"
-                f"<p>Due now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
-                f"<p>Reviewed (24h): <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
+                f"<p>Ready now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
+                f"<p>Reviewed today: <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
                 f"<p>Mastery: <span style='color:#FFFFFF; font-weight:900;'>{mastery}%</span></p>"
             )
             return
@@ -851,14 +1040,19 @@ class ProgressPage(QWidget):
             self._set_empty("This deck is empty.")
             return
 
-        total_due = self._due_count(deck_id)
-        reviewed_today = self._reviewed_last_24h(deck_id)
+        total_due = self._due_count(
+            deck_id,
+            now=plan_snapshot.captured_at,
+        )
+        reviewed_today = self.session.repo.deck_primary_review_count(
+            obj, deck_id, plan_snapshot.day_start, plan_snapshot.day_end
+        )
         unseen = self._unseen_count(deck_id)
         total_reviews = self._get_total_reviews(deck_id)
         mastery = self._calculate_mastery(deck_id, total)
 
-        self.due_card.set_value(total_due, "items waiting")
-        self.reviewed_today_card.set_value(reviewed_today, "reviews in 24h")
+        self.due_card.set_value(total_due, "eligible in this lesson")
+        self.reviewed_today_card.set_value(reviewed_today, "primary reviews today")
         self.reviewed_total_card.set_value(total_reviews, "all-time reviews")
         self.unseen_card.set_value(unseen, "new to learn")
         self.total_card.set_value(total, "cards in deck")
@@ -872,7 +1066,7 @@ class ProgressPage(QWidget):
         self.performance_label.setText(
             "<p><b>Progress Overview</b></p>"
             f"<p>Learned: <span style='color:#66E39A; font-weight:900;'>{learned_percent:.1f}%</span> ({learned}/{total})</p>"
-            f"<p>Due now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
-            f"<p>Reviewed (24h): <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
+            f"<p>Ready now: <span style='color:#FFD700; font-weight:900;'>{due_percent:.1f}%</span> ({total_due})</p>"
+            f"<p>Reviewed today: <span style='color:#6B9FFF; font-weight:900;'>{reviewed_percent:.1f}%</span> ({reviewed_today})</p>"
             f"<p>Mastery: <span style='color:#FFFFFF; font-weight:900;'>{mastery}%</span></p>"
         )

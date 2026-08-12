@@ -1886,9 +1886,11 @@ class Repo:
         self,
         deck_id: int,
         cooldown_hours: float = 0,
+        *,
+        now: int | float | None = None,
     ) -> int:
-        now = int(time.time())
-        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
+        now_ts = int(time.time() if now is None else now)
+        cooldown_since = now_ts - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1900,7 +1902,7 @@ class Repo:
                    AND st.suspended=0
                    AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now, cooldown_since, now),
+                (deck_id, now_ts, cooldown_since, now_ts),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -1984,9 +1986,15 @@ class Repo:
             return {}
 
     # ---------- Progress helpers ----------
-    def due_count(self, deck_id: int, cooldown_hours: float = 0) -> int:
-        now = int(time.time())
-        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
+    def due_count(
+        self,
+        deck_id: int,
+        cooldown_hours: float = 0,
+        *,
+        now: int | float | None = None,
+    ) -> int:
+        now_ts = int(time.time() if now is None else now)
+        cooldown_since = now_ts - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -1998,7 +2006,7 @@ class Repo:
                    AND s.suspended=0
                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now, cooldown_since, now),
+                (deck_id, now_ts, cooldown_since, now_ts),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -2245,6 +2253,61 @@ class Repo:
             for row in rows
         ]
 
+    def deck_primary_review_count(
+        self,
+        objective: str,
+        deck_id: int,
+        day_start: int,
+        day_end: int,
+    ) -> int:
+        """Count genuine primary reviews for one deck in a half-open day."""
+        specs = {
+            "vocab": ("reviews", "vocab", "vocab_id", "recognition"),
+            "grammar": (
+                "grammar_reviews",
+                "grammar",
+                "grammar_id",
+                "production",
+            ),
+            "sentences": (
+                "sentence_reviews",
+                "sentences",
+                "sentence_id",
+                "builder",
+            ),
+            "listening": (
+                "listening_reviews",
+                "listening",
+                "listening_id",
+                "comprehension",
+            ),
+        }
+        normalized = str(objective or "").strip().lower()
+        spec = specs.get(normalized)
+        if spec is None:
+            raise ValueError(f"Unsupported objective: {objective!r}")
+        if isinstance(deck_id, bool) or int(deck_id) <= 0:
+            raise ValueError("deck_id must be a positive integer")
+        start_ts = int(day_start)
+        end_ts = int(day_end)
+        if end_ts <= start_ts:
+            raise ValueError("day_end must be later than day_start")
+        reviews, items, fk, practice_mode = spec
+        with self._conn() as conn:
+            row = conn.execute(
+                f"""
+                SELECT COUNT(*) AS c
+                  FROM {reviews} r
+                  JOIN {items} i ON i.id=r.{fk}
+                 WHERE i.deck_id=?
+                   AND r.created_at>=? AND r.created_at<?
+                   AND r.practice_mode=?
+                   AND r.was_checked=1 AND r.was_skipped=0
+                """,
+                (int(deck_id), start_ts, end_ts, practice_mode),
+            ).fetchone()
+        return int(row["c"] or 0) if row else 0
+
     def upcoming_due_counts(self, within_seconds: int = 86400) -> dict[str, int]:
         """Global (all decks + objectives) schedule pressure for the launch strip:
         how many SEEN items are due right now vs. ripen within `within_seconds`.
@@ -2381,9 +2444,11 @@ class Repo:
         self,
         deck_id: int,
         cooldown_hours: float = 0,
+        *,
+        now: int | float | None = None,
     ) -> int:
-        now = int(time.time())
-        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
+        now_ts = int(time.time() if now is None else now)
+        cooldown_since = now_ts - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -2395,7 +2460,7 @@ class Repo:
                    AND s.suspended=0
                    AND (s.buried_until IS NULL OR s.buried_until<=?)
                 """,
-                (deck_id, now, cooldown_since, now),
+                (deck_id, now_ts, cooldown_since, now_ts),
             ).fetchone()
             return int(row["c"]) if row else 0
 
@@ -2430,9 +2495,11 @@ class Repo:
         self,
         deck_id: int,
         cooldown_hours: float = 0,
+        *,
+        now: int | float | None = None,
     ) -> int:
-        now = int(time.time())
-        cooldown_since = now - max(0, int(float(cooldown_hours) * 3600))
+        now_ts = int(time.time() if now is None else now)
+        cooldown_since = now_ts - max(0, int(float(cooldown_hours) * 3600))
         with self._conn() as conn:
             row = conn.execute(
                 """
@@ -2444,7 +2511,7 @@ class Repo:
                    AND st.suspended=0
                    AND (st.buried_until IS NULL OR st.buried_until<=?)
                 """,
-                (deck_id, now, cooldown_since, now),
+                (deck_id, now_ts, cooldown_since, now_ts),
             ).fetchone()
             return int(row["c"]) if row else 0
 

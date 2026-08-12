@@ -71,6 +71,7 @@ class PronunciationWorker(QObject):
 
 class VocabReviewPage(QWidget):
     go_progress = Signal()
+    go_today = Signal()
 
     def __init__(self, session: SessionService, nav=None) -> None:
         super().__init__()
@@ -308,6 +309,19 @@ class VocabReviewPage(QWidget):
         empty_layout.addStretch(1)
         empty_layout.addWidget(self.empty_title)
         empty_layout.addWidget(self.empty_desc)
+        self.today_btn = QPushButton("Return to Today")
+        self.today_btn.setObjectName("ReturnToTodayButton")
+        self.today_btn.setAccessibleName("Return to Today")
+        self.today_btn.setStyleSheet(
+            "QPushButton { background-color:#244B36; color:#F4FFF7; "
+            "border:1px solid #4CAF50; border-radius:10px; padding:9px 14px; "
+            "font-weight:900; }"
+        )
+        self.today_btn.clicked.connect(self.go_today.emit)
+        self.today_btn.hide()
+        empty_layout.addWidget(
+            self.today_btn, 0, Qt.AlignmentFlag.AlignHCenter
+        )
         empty_layout.addStretch(1)
 
         self.empty_card.hide()
@@ -329,6 +343,7 @@ class VocabReviewPage(QWidget):
     def _show_empty(self, title: str, desc: str) -> None:
         self.empty_title.setText(title)
         self.empty_desc.setText(desc)
+        self.today_btn.setVisible(title.strip().lower().startswith("session finished"))
         self.main_shell.hide()
         self.empty_card.show()
 
@@ -629,8 +644,8 @@ class VocabReviewPage(QWidget):
             self.card.configure_fields(ask_gender=False, ask_plural=False)
             self.card.lock_after_check()
             self._show_empty(
-                "No vocabulary reviews available.",
-                "Select New set to practice another set.",
+                "Session finished",
+                "Return to Today for the next planned set, or select New set.",
             )
             self._update_counter()
             return

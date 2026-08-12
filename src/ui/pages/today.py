@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -14,6 +15,8 @@ from PySide6.QtWidgets import (
 )
 
 from core.insights import InsightsService
+from core.planner import DailyPlannerService
+from ui.widgets.daily_plan_dialog import DailyPlanDialog
 from ui.theme import (
     BUTTON_STYLE,
     COLORS,
@@ -38,6 +41,7 @@ def _set_font(widget: QWidget, size: int, weight: QFont.Weight) -> None:
 
 class TodayPage(QWidget):
     practice_requested = Signal(str, str, str, int)
+    plan_segment_requested = Signal(object)
     open_mistakes = Signal()
 
     def __init__(self, session, _nav=None):
@@ -48,6 +52,7 @@ class TodayPage(QWidget):
         self.insights = InsightsService(session.repo)
         self._lane_widgets: dict[str, tuple[QLabel, QPushButton]] = {}
         self._recommended_context: tuple[str, str, str, int] | None = None
+        self._snapshot = None
         self._build()
 
     def _build(self) -> None:
@@ -115,9 +120,48 @@ class TodayPage(QWidget):
         lanes_layout.setContentsMargins(16, 14, 16, 14)
         lanes_layout.setSpacing(0)
 
-        lanes_title = QLabel("Study lanes")
+        plan_header = QHBoxLayout()
+        lanes_title = QLabel("Today's plan")
         _set_font(lanes_title, 11, QFont.Weight.Black)
-        lanes_layout.addWidget(lanes_title)
+        self.adjust_plan_btn = QPushButton("Adjust plan...")
+        self.adjust_plan_btn.setAccessibleName("Adjust daily plan")
+        self.adjust_plan_btn.setStyleSheet(BUTTON_STYLE)
+        self.adjust_plan_btn.clicked.connect(self._adjust_plan)
+        plan_header.addWidget(lanes_title)
+        plan_header.addStretch(1)
+        plan_header.addWidget(self.adjust_plan_btn)
+        lanes_layout.addLayout(plan_header)
+
+        self.plan_totals = QLabel()
+        self.plan_totals.setWordWrap(True)
+        _set_font(self.plan_totals, 10, QFont.Weight.Black)
+        self.plan_ready = QLabel()
+        self.plan_ready.setWordWrap(True)
+        self.plan_ready.setStyleSheet(f"color:{COLORS['muted']};")
+        self.plan_backlog = QLabel()
+        self.plan_backlog.setWordWrap(True)
+        self.plan_backlog.setStyleSheet(f"color:{COLORS['muted']};")
+        self.plan_segments = QLabel()
+        self.plan_segments.setWordWrap(True)
+        self.plan_segments.setStyleSheet(f"color:{COLORS['muted']};")
+        self.plan_error = QLabel()
+        self.plan_error.setWordWrap(True)
+        self.plan_error.setStyleSheet(
+            "QLabel { color:#FF9B9B; background:#261515; border:1px solid #5A2929; "
+            "border-radius:8px; padding:8px; font-weight:750; }"
+        )
+        self.plan_error.hide()
+        lanes_layout.addWidget(self.plan_totals)
+        lanes_layout.addWidget(self.plan_ready)
+        lanes_layout.addWidget(self.plan_backlog)
+        lanes_layout.addWidget(self.plan_segments)
+        lanes_layout.addWidget(self.plan_error)
+
+        self.start_next_btn = QPushButton("Start next set")
+        self.start_next_btn.setAccessibleName("Start next set from today's plan")
+        self.start_next_btn.setStyleSheet(PRIMARY_BUTTON_STYLE)
+        self.start_next_btn.clicked.connect(self._start_next_segment)
+        lanes_layout.addWidget(self.start_next_btn)
         lanes_layout.addSpacing(7)
         for index, objective in enumerate(_LABELS):
             lanes_layout.addWidget(self._lane_row(objective))
@@ -178,8 +222,8 @@ class TodayPage(QWidget):
         trouble_layout.addLayout(trouble_text, 1)
         trouble_layout.addWidget(open_button, 0, Qt.AlignmentFlag.AlignVCenter)
         next_layout.addWidget(trouble_row)
-        root.addWidget(next_card)
         root.addWidget(lanes_card)
+        root.addWidget(next_card)
         root.addStretch(1)
 
     @staticmethod
@@ -220,12 +264,115 @@ class TodayPage(QWidget):
         return row
 
     def _start(self, objective: str) -> None:
-        context = self.insights.recommended_context(objective)
-        if context is None:
-            state = self.session.state
-            context = (state.level, state.book_slug, state.lektion_number)
-        level, book, lesson = context
-        self.practice_requested.emit(objective, level, book, lesson)
+        segment = self._segment_for_objective(objective)
+        if segment is not None:
+            self.plan_segment_requested.emit(segment)
+
+    def _start_next_segment(self) -> None:
+        segments = tuple(getattr(self._snapshot, "segments", ()) or ())
+        if segments:
+            self.plan_segment_requested.emit(segments[0])
+
+    def _segment_for_objective(self, objective: str):
+        for segment in tuple(getattr(self._snapshot, "segments", ()) or ()):
+            if segment.objective == objective:
+                return segment
+        return None
+
+    def _adjust_plan(self) -> None:
+        settings = getattr(self.session, "settings", None)
+        if settings is None:
+            self.show_plan_error("Planner settings are not available.")
+            return
+        if DailyPlanDialog(settings, self).exec() == QDialog.DialogCode.Accepted:
+            self.on_show()
+
+    def _planner_snapshot(self):
+        for name in ("planner", "_planner", "planner_service", "_daily_planner"):
+            service = getattr(self, name, None)
+            if service is not None and callable(getattr(service, "snapshot", None)):
+                return service.snapshot()
+        settings = getattr(getattr(self.session, "settings", None), "value", None)
+        if settings is None:
+            raise RuntimeError("Planner settings are unavailable")
+        ranker = (
+            getattr(self.session, "ml", None)
+            if bool(getattr(self.session, "enable_ml_ranking", True))
+            else None
+        )
+        return DailyPlannerService(
+            self.session.repo,
+            settings,
+            ranker=ranker,
+        ).snapshot()
+
+    def show_plan_error(self, message: str) -> None:
+        self.plan_error.setText(str(message or "Today's plan could not be started."))
+        self.plan_error.show()
+
+    def _render_plan(self, snapshot) -> None:
+        self._snapshot = snapshot
+        self.plan_error.clear()
+        self.plan_error.hide()
+        goal = max(0, int(snapshot.goal))
+        completed = max(0, int(snapshot.completed_total))
+        planned = max(0, int(snapshot.planned_total))
+        self.goal_chip.setText(f"{completed} / {goal}")
+        self.goal_value.setText(f"{completed} completed · {planned} planned")
+        self.goal_bar.setRange(0, max(1, goal))
+        self.goal_bar.setValue(min(completed, goal))
+        self.plan_totals.setText(f"{completed} completed · {planned} planned")
+        self.plan_ready.setText(
+            f"{snapshot.ready_due} due · {snapshot.ready_new} new ready now"
+        )
+
+        backlog_parts = []
+        if snapshot.backlog_due:
+            backlog_parts.append(f"{snapshot.backlog_due} more due")
+        if snapshot.backlog_new:
+            backlog_parts.append(f"{snapshot.backlog_new} more new")
+        self.plan_backlog.setText(
+            f"{' · '.join(backlog_parts)} stay ready for later."
+            if backlog_parts
+            else "No work is waiting beyond today's plan."
+        )
+        count = len(snapshot.segments)
+        self.plan_segments.setText(
+            f"{count} focused set{'s' if count != 1 else ''}"
+            if count
+            else "No focused set is planned right now."
+        )
+        self.start_next_btn.setEnabled(bool(snapshot.segments))
+
+        rows = {row.objective: row for row in snapshot.objectives}
+        for objective in _LABELS:
+            detail, button = self._lane_widgets[objective]
+            row = rows.get(objective)
+            segment = self._segment_for_objective(objective)
+            if row is None:
+                detail.setText("0 completed · 0 planned")
+            else:
+                detail.setText(
+                    f"{row.completed} completed · {row.planned} planned · "
+                    f"{row.planned_due} due + {row.planned_new} new"
+                )
+            button.setEnabled(segment is not None)
+            button.setText("Start" if segment is not None else "No set")
+            button.setAccessibleName(
+                f"Start {_LABELS[objective][0]} planned set"
+            )
+
+        if snapshot.segments:
+            self.summary.setText(
+                f"{snapshot.ready_due} due and {snapshot.ready_new} new are ready "
+                "across your library."
+            )
+        elif snapshot.backlog_due or snapshot.backlog_new:
+            self.summary.setText(
+                "Today's limits are reached; remaining work stays ready for later."
+            )
+        else:
+            self.summary.setText("You are caught up. Today's plan is complete.")
 
     def _start_recommended(self) -> None:
         if self._recommended_context is None:
@@ -233,56 +380,35 @@ class TodayPage(QWidget):
         self.practice_requested.emit(*self._recommended_context)
 
     def on_show(self) -> None:
-        lanes = self.insights.lanes()
-        reviewed = self.insights.reviewed_today()
-        settings = getattr(self.session, "settings", None)
-        prefs = getattr(settings, "value", None)
-        goal = int(getattr(prefs, "daily_goal", 30))
-        configured_new = getattr(
-            prefs,
-            "new_card_limit",
-            getattr(getattr(self.session, "plan", None), "new_limit", 8),
-        )
         try:
-            new_limit = max(0, int(configured_new))
-        except (TypeError, ValueError):
-            new_limit = 8
-        self.goal_chip.setText(f"{reviewed} / {goal}")
-        self.goal_value.setText(f"{min(reviewed, goal)} of {goal}")
-        self.goal_bar.setRange(0, max(1, goal))
-        self.goal_bar.setValue(min(reviewed, goal))
+            self._render_plan(self._planner_snapshot())
+        except Exception:
+            self._snapshot = None
+            self.start_next_btn.setEnabled(False)
+            self.summary.setText("Today's plan is temporarily unavailable.")
+            self.goal_chip.setText("-- / --")
+            self.goal_value.setText("Plan unavailable")
+            self.goal_bar.setRange(0, 1)
+            self.goal_bar.setValue(0)
+            self.plan_totals.setText("Plan unavailable")
+            self.plan_ready.clear()
+            self.plan_backlog.clear()
+            self.plan_segments.clear()
+            for detail, button in self._lane_widgets.values():
+                detail.setText("Refresh Today to rebuild this plan.")
+                button.setEnabled(False)
+                button.setText("Unavailable")
+            self.show_plan_error("Today's plan could not be refreshed.")
 
-        due_total = sum(lane.due for lane in lanes)
-        self.summary.setText(
-            f"{due_total} review{'s' if due_total != 1 else ''} ready across your library."
-            if due_total
-            else "You are caught up. Choose a lane to learn something new."
-        )
-
-        trouble_total = 0
-        for lane in lanes:
-            trouble_total += lane.trouble
-            detail, button = self._lane_widgets[lane.objective]
-            lane_health = (
-                f"{lane.trouble} trouble spot{'s' if lane.trouble != 1 else ''}"
-                if lane.trouble
-                else "on track"
-            )
-            available_new = min(lane.unseen, new_limit)
-            new_copy = (
-                "no new cards"
-                if not lane.unseen
-                else (
-                    f"up to {available_new} new"
-                    if available_new
-                    else "new cards paused"
+        try:
+            if callable(getattr(self.insights, "trouble_items", None)):
+                trouble_total = len(self.insights.trouble_items(limit=100))
+            else:
+                trouble_total = sum(
+                    lane.trouble for lane in self.insights.lanes()
                 )
-            )
-            detail.setText(
-                f"{_LABELS[lane.objective][1]} · {lane.due} due · "
-                f"{new_copy} · {lane_health}"
-            )
-            button.setText("Review" if lane.due else "Learn")
+        except Exception:
+            trouble_total = 0
 
         self.trouble_caption.setText(
             f"{trouble_total} recurring item{'s' if trouble_total != 1 else ''} need attention."

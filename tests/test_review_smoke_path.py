@@ -60,6 +60,9 @@ def test_today_review_progress_smoke_path(tmp_path):
         assert window._current_page_key() == "today"
 
         today = window.pages["today"]
+        initial_snapshot = today._snapshot
+        assert initial_snapshot.planned_total == 1
+        assert initial_snapshot.segments[0].objective == "vocab"
         today._lane_widgets["vocab"][1].click()
         app.processEvents()
 
@@ -73,10 +76,25 @@ def test_today_review_progress_smoke_path(tmp_path):
         app.processEvents()
 
         assert repo.reviewed_last_24h(deck_id) == 1
+        usage = repo.daily_plan_usage(
+            initial_snapshot.day_start,
+            initial_snapshot.day_end,
+        )
+        assert [(row.objective, row.completed, row.new) for row in usage] == [
+            ("vocab", 1, 1)
+        ]
+
+        assert review.today_btn.isVisible()
+        review.today_btn.click()
+        app.processEvents()
+        assert window._current_page_key() == "today"
+        assert window.pages["today"]._snapshot.completed_total == 1
+        assert window.pages["today"]._snapshot.planned_total == 0
 
         window.nav.btn_progress.click()
         app.processEvents()
         assert window._current_page_key() == "progress"
+        assert window.pages["progress"].plan_completed_label.text() == "1 completed"
         assert window.pages["progress"].reviewed_today_card.value_label.text() == "1"
     finally:
         window.close()

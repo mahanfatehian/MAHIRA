@@ -172,3 +172,66 @@ def test_daily_activity_filters_all_lanes_and_honors_until(tmp_path):
             )
 
     assert sum(repo.daily_review_counts(100, 200).values()) == 4
+
+
+def test_deck_primary_review_count_is_lane_scoped_and_half_open(tmp_path):
+    import pytest
+
+    from db.init_db import init_db
+    from db.repo import Repo
+
+    db_path = tmp_path / "lesson-activity.db"
+    init_db(db_path)
+    repo = Repo(db_path)
+    vocab_deck, _ = repo.upsert_deck("A1", "vocab", "v.csv", "v")
+    grammar_deck, _ = repo.upsert_deck("A1", "grammar", "g.csv", "g")
+    sentence_deck, _ = repo.upsert_deck("A1", "sentences", "s.csv", "s")
+    listening_deck, _ = repo.upsert_deck("A1", "listening", "l.csv", "l")
+    vocab_id = repo.insert_vocab(
+        vocab_deck, "noun", "Haus", "das", "n", "Haeuser", "house"
+    )
+    grammar_id = repo.insert_grammar(
+        grammar_deck, "Ich ___ Deutsch.", "lerne", None, None, None, None
+    )
+    sentence_id = repo.insert_sentence(
+        sentence_deck, "Ich lerne Deutsch.", None, None, None
+    )
+    listening_id = repo.insert_listening(
+        listening_deck, "Ich lerne.", "Was?", "Deutsch", None, None, None
+    )
+    specs = (
+        ("vocab", "reviews", "vocab_id", vocab_id, vocab_deck, "recognition", "production"),
+        ("grammar", "grammar_reviews", "grammar_id", grammar_id, grammar_deck, "production", "future"),
+        ("sentences", "sentence_reviews", "sentence_id", sentence_id, sentence_deck, "builder", "future"),
+        (
+            "listening",
+            "listening_reviews",
+            "listening_id",
+            listening_id,
+            listening_deck,
+            "comprehension",
+            "future",
+        ),
+    )
+    with repo._conn() as conn:
+        for _objective, table, fk, item_id, _deck, primary, other in specs:
+            conn.executemany(
+                f"""
+                INSERT INTO {table}(
+                    {fk}, created_at, was_checked, was_skipped, rating, practice_mode
+                ) VALUES(?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    (item_id, 99, 1, 0, 2, primary),
+                    (item_id, 120, 1, 0, 2, primary),
+                    (item_id, 130, 1, 0, 2, other),
+                    (item_id, 140, 0, 0, 2, primary),
+                    (item_id, 150, 1, 1, 2, primary),
+                    (item_id, 200, 1, 0, 2, primary),
+                ),
+            )
+
+    for objective, _table, _fk, _item, deck, _primary, _other in specs:
+        assert repo.deck_primary_review_count(objective, deck, 100, 200) == 1
+    with pytest.raises(ValueError):
+        repo.deck_primary_review_count("unknown", vocab_deck, 100, 200)

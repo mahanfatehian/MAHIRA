@@ -176,6 +176,7 @@ class ListeningReviewPage(QWidget):
     """
 
     go_progress = Signal()
+    go_today = Signal()
 
     def __init__(self, session: SessionService, nav=None) -> None:
         super().__init__()
@@ -513,6 +514,13 @@ class ListeningReviewPage(QWidget):
         lay.addStretch(1)
         lay.addWidget(self.empty_title)
         lay.addWidget(self.empty_desc)
+        self.today_btn = QPushButton("Return to Today")
+        self.today_btn.setObjectName("ReturnToTodayButton")
+        self.today_btn.setAccessibleName("Return to Today")
+        self.today_btn.setStyleSheet(STYLE_PRIMARY_BUTTON)
+        self.today_btn.clicked.connect(self.go_today.emit)
+        self.today_btn.hide()
+        lay.addWidget(self.today_btn, 0, Qt.AlignmentFlag.AlignHCenter)
         lay.addStretch(1)
         self.empty_card.hide()
         return self.empty_card
@@ -525,6 +533,7 @@ class ListeningReviewPage(QWidget):
     def _show_empty(self, title: str, desc: str) -> None:
         self.empty_title.setText(title)
         self.empty_desc.setText(desc)
+        self.today_btn.setVisible(title.strip().lower().startswith("session finished"))
         self.content.hide()
         self.empty_card.show()
 

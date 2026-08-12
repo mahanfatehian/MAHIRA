@@ -213,11 +213,21 @@ class MainWindow(QMainWindow):
             self.pages["sentence_review"].go_progress.connect(lambda: self.go("progress"))
         if hasattr(self.pages["listening_review"], "go_progress"):
             self.pages["listening_review"].go_progress.connect(lambda: self.go("progress"))
+        for key in (
+            "vocab_review",
+            "grammar_review",
+            "sentence_review",
+            "listening_review",
+        ):
+            go_today = getattr(self.pages[key], "go_today", None)
+            if go_today is not None:
+                go_today.connect(lambda: self.go("today"))
 
         if hasattr(self.pages["progress"], "go_learn"):
             self.pages["progress"].go_learn.connect(lambda: self.go("practice"))
 
         self.pages["today"].practice_requested.connect(self._open_context_practice)
+        self.pages["today"].plan_segment_requested.connect(self._open_plan_segment)
         self.pages["today"].open_mistakes.connect(lambda: self.go("mistakes"))
         self.pages["mistakes"].drill_requested.connect(self._open_mistake_drill)
         self.pages["mistakes"].learn_requested.connect(self._open_learn_reference)
@@ -516,27 +526,12 @@ class MainWindow(QMainWindow):
         if has_unfinished:
             if not self._confirm_discard_for_plan_segment():
                 return
-            try:
-                self.session.discard_pending_resume()
-            except Exception:
-                logging.exception("Could not discard the unfinished session")
-                self._plan_segment_error("The unfinished session could not be discarded.")
-                return
 
         try:
-            self.session.set_context(
-                previewed.level,
-                previewed.objective,
-                previewed.book_slug,
-                previewed.lektion_number,
+            started = self.session.start_planned_segment_for_context(
+                previewed,
+                replace_unfinished=has_unfinished,
             )
-        except Exception:
-            logging.exception("Could not activate the planned review context")
-            self._plan_segment_error("That planned lesson is no longer available.")
-            return
-
-        try:
-            started = self.session.start_planned_segment(previewed)
         except Exception:
             logging.exception("Could not start the planned review set")
             started = False

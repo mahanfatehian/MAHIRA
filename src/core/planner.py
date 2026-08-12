@@ -308,7 +308,16 @@ class DailyPlannerService:
             tuple[str, int, str, str, int, tuple[int, ...], int, int]
         ] = []
         for objective in OBJECTIVES:
-            cohorts: dict[tuple[int, str, str, int], list[PlannerInventoryItem]] = {}
+            # Finish every due cohort before emitting any new-material cohort.
+            # Otherwise new cards from an earlier deck can leapfrog due cards
+            # in a later deck even though selection itself is due-first.
+            cohorts: dict[
+                str,
+                dict[
+                    tuple[int, str, str, int],
+                    list[PlannerInventoryItem],
+                ],
+            ] = {"due": {}, "new": {}}
             for item in selected[objective]:
                 key = (
                     item.deck_id,
@@ -316,22 +325,65 @@ class DailyPlannerService:
                     item.book_slug,
                     item.lektion_number,
                 )
-                cohorts.setdefault(key, []).append(item)
-            for (deck_id, level, book_slug, lektion_number), items in cohorts.items():
+                cohorts[item.bucket].setdefault(key, []).append(item)
+
+            objective_segments: list[
+                list
+            ] = []
+            for key, items in cohorts["due"].items():
                 for offset in range(0, len(items), session_limit):
                     chunk = items[offset : offset + session_limit]
-                    pending_segments.append(
-                        (
+                    objective_segments.append(
+                        [
                             objective,
-                            deck_id,
-                            level,
-                            book_slug,
-                            lektion_number,
-                            tuple(item.item_id for item in chunk),
-                            sum(item.bucket == "due" for item in chunk),
-                            sum(item.bucket == "new" for item in chunk),
-                        )
+                            *key,
+                            [item.item_id for item in chunk],
+                            len(chunk),
+                            0,
+                        ]
                     )
+
+            # The final due segment may absorb new cards from that same deck.
+            # It remains after every other due segment and keeps due IDs first,
+            # avoiding an unnecessary split for the common single-deck case.
+            if objective_segments:
+                last = objective_segments[-1]
+                last_key = tuple(last[1:5])
+                new_same_deck = cohorts["new"].get(last_key, [])
+                capacity = session_limit - len(last[5])
+                if capacity > 0 and new_same_deck:
+                    added = new_same_deck[:capacity]
+                    last[5].extend(item.item_id for item in added)
+                    last[7] += len(added)
+                    cohorts["new"][last_key] = new_same_deck[capacity:]
+
+            for key, items in cohorts["new"].items():
+                for offset in range(0, len(items), session_limit):
+                    chunk = items[offset : offset + session_limit]
+                    if not chunk:
+                        continue
+                    objective_segments.append(
+                        [
+                            objective,
+                            *key,
+                            [item.item_id for item in chunk],
+                            0,
+                            len(chunk),
+                        ]
+                    )
+            pending_segments.extend(
+                (
+                    values[0],
+                    values[1],
+                    values[2],
+                    values[3],
+                    values[4],
+                    tuple(values[5]),
+                    values[6],
+                    values[7],
+                )
+                for values in objective_segments
+            )
         total_segments = len(pending_segments)
         segments = tuple(
             PlanSegment(

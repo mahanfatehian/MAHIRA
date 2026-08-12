@@ -202,6 +202,75 @@ def test_progress_activity_uses_all_time_streaks_and_calendar_year_counts(monkey
         page.deleteLater()
 
 
+def test_progress_activity_uses_snapshot_local_date_for_all_daily_views(monkeypatch):
+    import datetime as dt
+
+    import ui.pages.progress as progress_module
+
+    snapshot_day = dt.date(2025, 12, 31)
+    captured_at = int(dt.datetime(2025, 12, 31, 12, 0).timestamp())
+
+    class LaterSystemDate(dt.date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 1, 2)
+
+    counts = {
+        "2025-12-29": 1,
+        "2025-12-30": 1,
+        "2025-12-31": 2,
+    }
+    session = SimpleNamespace(
+        repo=SimpleNamespace(daily_review_counts=lambda _since: counts),
+        settings=SimpleNamespace(value=SimpleNamespace(daily_goal=30)),
+    )
+    snapshot = SimpleNamespace(
+        captured_at=captured_at,
+        completed_total=2,
+        goal=5,
+    )
+    monkeypatch.setattr(progress_module._dt, "date", LaterSystemDate)
+
+    _qapp()
+    page = progress_module.ProgressPage(session)
+    try:
+        page._refresh_activity(snapshot)
+
+        assert page.heatmap._today == snapshot_day
+        assert page.streak_value.text() == "3"
+        assert page.today_value.text() == "2 / 5"
+        assert "4 reviews this year" in page.activity_caption.text()
+        assert "3 active days" in page.activity_caption.text()
+    finally:
+        page.close()
+        page.deleteLater()
+
+
+def test_progress_activity_failure_is_explicit_not_a_plausible_zero():
+    import ui.pages.progress as progress_module
+
+    class Repo:
+        def daily_review_counts(self, _since):
+            raise RuntimeError("database read failed")
+
+    session = SimpleNamespace(
+        repo=Repo(),
+        settings=SimpleNamespace(value=SimpleNamespace(daily_goal=30)),
+    )
+    _qapp()
+    page = progress_module.ProgressPage(session)
+    try:
+        page._refresh_activity()
+
+        assert page.streak_value.text() == "--"
+        assert page.longest_value.text() == "--"
+        assert "unavailable" in page.activity_caption.text().casefold()
+        assert "reviews were not changed" in page.activity_caption.text().casefold()
+    finally:
+        page.close()
+        page.deleteLater()
+
+
 @pytest.mark.parametrize(
     ("checks", "expected"),
     [
@@ -323,7 +392,8 @@ def test_review_page_reentry_only_keeps_same_deck_card(
 def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
     from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
-    from core.insights import LessonReadiness, StudyLane
+    from core.insights import LessonReadiness
+    from core.planner import DailyPlanSnapshot, ObjectivePlan, PlanSegment
     from ui.pages.today import TodayPage
     from ui.theme import apply_application_theme
 
@@ -335,12 +405,32 @@ def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
         state=SimpleNamespace(level="A1", book_slug="starten_wir", lektion_number=7),
     )
     page = TodayPage(session)
+    objectives = ("vocab", "grammar", "sentences", "listening")
+    rows = tuple(
+        ObjectivePlan(objective, 0, 0, 0, 12, 5, 12, 5, 0, 0)
+        for objective in objectives
+    )
+    segments = tuple(
+        PlanSegment(
+            objective,
+            index + 1,
+            "A1",
+            "starten_wir",
+            7,
+            (index + 1,),
+            1,
+            0,
+            index + 1,
+            4,
+        )
+        for index, objective in enumerate(objectives)
+    )
+    snapshot = DailyPlanSnapshot(
+        1, 0, 2, 30, 11, 19, 48, 20, 0, 0, rows, segments
+    )
+    page.planner = SimpleNamespace(snapshot=lambda: snapshot)
     page.insights = SimpleNamespace(
-        lanes=lambda: [
-            StudyLane(objective, 12, 5, 3)
-            for objective in ("vocab", "grammar", "sentences", "listening")
-        ],
-        reviewed_today=lambda: 11,
+        trouble_items=lambda limit=100: [object(), object(), object()],
         lesson_path=lambda *_args: [
             LessonReadiness(7, "Mein Tag und Termine", 62, True)
         ],
@@ -352,12 +442,12 @@ def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
         QApplication.processEvents()
         labels = {label.text(): label for label in page.findChildren(QLabel)}
         title_size = labels["Today"].font().pointSizeF()
-        section_size = labels["Study lanes"].font().pointSizeF()
+        section_size = labels["Today's plan"].font().pointSizeF()
         lane_size = labels["Wortschatz"].font().pointSizeF()
         body_label = next(
             label
             for label in page.findChildren(QLabel)
-            if label.text().startswith("Words, articles and plurals")
+            if label.text().startswith("0 completed")
         )
         body_size = body_label.font().pointSizeF()
 
@@ -368,7 +458,7 @@ def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
         lane_buttons = [
             button
             for button in page.findChildren(QPushButton)
-            if button.text() == "Review"
+            if button.text() == "Start"
         ]
         assert len(lane_buttons) == 4
         for button in lane_buttons:
@@ -379,10 +469,11 @@ def test_today_semantic_type_scale_preserves_hierarchy_and_cta_text(font_scale):
         page.deleteLater()
 
 
-def test_today_bounds_new_counts_and_routes_recommended_lesson():
+def test_today_renders_bounded_plan_and_routes_recommended_lesson():
     from PySide6.QtWidgets import QApplication, QLabel
 
-    from core.insights import LessonReadiness, StudyLane
+    from core.insights import LessonReadiness
+    from core.planner import DailyPlanSnapshot, ObjectivePlan, PlanSegment
     from ui.pages.today import TodayPage
 
     _qapp()
@@ -399,14 +490,23 @@ def test_today_bounds_new_counts_and_routes_recommended_lesson():
         ),
     )
     page = TodayPage(session)
+    rows = (
+        ObjectivePlan("vocab", 0, 0, 0, 160, 3899, 0, 8, 160, 3891),
+        ObjectivePlan("grammar", 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        ObjectivePlan("sentences", 0, 0, 0, 0, 12, 0, 8, 0, 4),
+        ObjectivePlan("listening", 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    )
+    segments = (
+        PlanSegment("vocab", 1, "A1", "menschen", 1, (1,), 0, 1, 1, 2),
+        PlanSegment("sentences", 2, "A1", "menschen", 1, (2,), 0, 1, 2, 2),
+    )
+    page.planner = SimpleNamespace(
+        snapshot=lambda: DailyPlanSnapshot(
+            1, 0, 2, 30, 0, 16, 160, 3911, 160, 3895, rows, segments
+        )
+    )
     page.insights = SimpleNamespace(
-        lanes=lambda: [
-            StudyLane("vocab", 160, 3899, 1),
-            StudyLane("grammar", 0, 0, 0),
-            StudyLane("sentences", 0, 12, 0),
-            StudyLane("listening", 0, 0, 0),
-        ],
-        reviewed_today=lambda: 0,
+        trouble_items=lambda limit=100: [object()],
         lesson_path=lambda *_args: [
             LessonReadiness(1, "Hallo!", 35, True),
         ],
@@ -419,14 +519,11 @@ def test_today_bounds_new_counts_and_routes_recommended_lesson():
     try:
         QApplication.processEvents()
         details = [label.text() for label in page.findChildren(QLabel)]
-        vocab_detail = next(text for text in details if text.startswith("Words,"))
-        grammar_detail = next(text for text in details if text.startswith("Forms and"))
-        sentence_detail = next(text for text in details if text.startswith("Word order"))
+        plan_details = [text for text in details if text.startswith("0 completed")]
 
-        assert "up to 8 new" in vocab_detail
-        assert "3899 new" not in vocab_detail
-        assert "no new cards" in grammar_detail
-        assert "up to 8 new" in sentence_detail
+        assert sum("8 new" in text for text in plan_details) == 2
+        assert all("3899 new" not in text for text in plan_details)
+        assert any("0 planned" in text for text in plan_details)
         assert page.path_button.isEnabled()
 
         page.path_button.click()

@@ -274,6 +274,11 @@ def classify_selection_bucket(
     """Classify one primary review from its pre-mutation scheduler state."""
     if state is None:
         return "new"
+    if bool(getattr(state, "suspended", False)):
+        return "extra"
+    buried_until = getattr(state, "buried_until", None)
+    if buried_until is not None and int(buried_until) > int(now):
+        return "extra"
     due_at = int(getattr(state, "due_at", int(now) + 1))
     last_review_at = getattr(state, "last_review_at", None)
     if due_at <= int(now) and (
@@ -504,27 +509,31 @@ class SessionService:
         )
         return "|".join("" if value is None else repr(value) for value in fields)
 
-    def _checkpoint_session(self) -> None:
+    def _checkpoint_session(self, *, strict: bool = False) -> bool:
         store = getattr(self, "_resume_store", None)
         if store is None:
-            return
+            return True
         if getattr(self, "_session_kind", "review") != "review":
             # Phase-3 checkpoints deliberately describe one ordinary primary
             # review session. A short mistake drill is process-local and must
             # never be resurrected or labeled as that ordinary session type.
             self._pending_resume = None
             self._clear_resume_file()
-            return
+            return True
         current_id = getattr(self, "_current_item_id", None)
         if not self._queue and current_id is None:
             self._clear_resume_file()
-            return
+            return True
         deck_id = getattr(self, "_active_deck_id", None)
         if deck_id is None:
-            return
+            if strict:
+                raise RuntimeError("active review has no deck to checkpoint")
+            return False
         seed_sha1 = self._deck_seed_sha1(deck_id)
         if seed_sha1 is None:
-            return
+            if strict:
+                raise RuntimeError("active review deck could not be checkpointed")
+            return False
 
         active_count = len(self._queue) + int(current_id is not None)
         minimum_total = self._session_position + active_count
@@ -550,8 +559,56 @@ class SessionService:
         try:
             store.save(snapshot)
             self._pending_resume = None
+            return True
         except Exception:
+            if strict:
+                raise
             logging.exception("Could not persist the active review checkpoint")
+            return False
+
+    def _capture_runtime_state(self) -> dict[str, Any]:
+        """Capture every field a planned context replacement may mutate."""
+        return {
+            "state": (
+                getattr(self.state, "level", "A1"),
+                getattr(self.state, "objective", "vocab"),
+                getattr(self.state, "book_slug", ""),
+                getattr(self.state, "lektion_number", 0),
+            ),
+            "active_deck_id": self._active_deck_id,
+            "queue": list(self._queue),
+            "undo": self._undo,
+            "current_item_id": self._current_item_id,
+            "current_objective": self._current_objective,
+            "current_state_token": self._current_state_token,
+            "session_position": self._session_position,
+            "session_total": self._session_total,
+            "session_kind": self._session_kind,
+            "pending_resume": self._pending_resume,
+            "study_answered": self.study_answered,
+            "study_next_milestone": self.study_next_milestone,
+        }
+
+    def _restore_runtime_state(self, snapshot: dict[str, Any]) -> None:
+        """Restore a snapshot captured before an atomic planned replacement."""
+        (
+            self.state.level,
+            self.state.objective,
+            self.state.book_slug,
+            self.state.lektion_number,
+        ) = snapshot["state"]
+        self._active_deck_id = snapshot["active_deck_id"]
+        self._queue = list(snapshot["queue"])
+        self._undo = snapshot["undo"]
+        self._current_item_id = snapshot["current_item_id"]
+        self._current_objective = snapshot["current_objective"]
+        self._current_state_token = snapshot["current_state_token"]
+        self._session_position = snapshot["session_position"]
+        self._session_total = snapshot["session_total"]
+        self._session_kind = snapshot["session_kind"]
+        self._pending_resume = snapshot["pending_resume"]
+        self.study_answered = snapshot["study_answered"]
+        self.study_next_milestone = snapshot["study_next_milestone"]
 
     def _serve_next(self, objective: str):
         objective = _norm_objective(objective)
@@ -1014,10 +1071,15 @@ class SessionService:
         if settings_value is None:
             return None
         try:
+            ranker = (
+                getattr(self, "ml", None)
+                if bool(getattr(self, "enable_ml_ranking", True))
+                else None
+            )
             return DailyPlannerService(
                 self.repo,
                 settings_value,
-                ranker=getattr(self, "ml", None),
+                ranker=ranker,
             ).revalidate_segment(segment, now=now)
         except Exception:
             logging.exception("Could not revalidate the planned review segment")
@@ -1053,6 +1115,98 @@ class SessionService:
         self._session_total = len(self._queue)
         self._checkpoint_session()
         return bool(self._queue)
+
+    def start_planned_segment_for_context(
+        self,
+        segment,
+        *,
+        replace_unfinished: bool = False,
+        now=None,
+    ) -> bool:
+        """Atomically revalidate, switch context, and start one planned set.
+
+        Every repository-dependent check completes under the immediate writer
+        lock before current context or checkpoint state is changed.  This keeps
+        an existing session intact when the plan goes stale between the UI
+        preview and the learner's final confirmation.
+        """
+        runtime_before = self._capture_runtime_state()
+        runtime_changed = False
+        try:
+            with _repo_transaction(self.repo):
+                validated = self.preview_planned_segment(segment, now=now)
+                if validated is None:
+                    return False
+
+                if validated.book_slug:
+                    book_id = self.repo.get_book_id(validated.book_slug)
+                    if book_id is None:
+                        return False
+                    lektion_id = self.repo.get_lektion_id(
+                        book_id,
+                        validated.level,
+                        validated.lektion_number,
+                    )
+                    if lektion_id is None:
+                        return False
+                else:
+                    if validated.lektion_number != 0:
+                        return False
+                    lektion_id = None
+
+                target_deck_id = self.repo.get_deck_id(
+                    validated.level,
+                    validated.objective,
+                    lektion_id=lektion_id,
+                )
+                if (
+                    target_deck_id is None
+                    or int(target_deck_id) != int(validated.deck_id)
+                ):
+                    return False
+                if self.has_unfinished_session() and not replace_unfinished:
+                    return False
+
+                old_level = _norm_level(getattr(self.state, "level", ""))
+                old_book = (
+                    getattr(self.state, "book_slug", "") or ""
+                ).strip()
+                old_lektion = int(
+                    getattr(self.state, "lektion_number", 0) or 0
+                )
+                context_changed = (
+                    old_level != validated.level
+                    or old_book != validated.book_slug
+                    or old_lektion != validated.lektion_number
+                )
+
+                # Keep the prior atomic checkpoint in place until both the
+                # database transaction and the replacement save succeed.
+                runtime_changed = True
+                self._reset_active_session(clear_checkpoint=False)
+                if context_changed:
+                    self.study_answered = 0
+                    self.study_next_milestone = 30
+                self.state.level = validated.level
+                self.state.objective = validated.objective
+                self.state.book_slug = validated.book_slug
+                self.state.lektion_number = validated.lektion_number
+                self._active_deck_id = int(target_deck_id)
+                self._session_kind = "review"
+                self._queue = list(reversed(validated.item_ids))
+                self._session_position = 0
+                self._session_total = len(self._queue)
+
+            # Save only after transaction exit succeeds. SessionResumeStore
+            # replaces its file atomically, so a failed save leaves the old
+            # checkpoint available while memory is rolled back below.
+            self._checkpoint_session(strict=True)
+            return bool(self._queue)
+        except Exception:
+            if runtime_changed:
+                self._restore_runtime_state(runtime_before)
+            logging.exception("Could not atomically start the planned review set")
+            return False
 
     def pick_vocab_practice_ids(
         self,
@@ -1922,8 +2076,8 @@ class SessionService:
         # skips out of every "reviewed" count, the activity heatmap, mastery and
         # accuracy — they all read the reviews table. The card is still
         # rescheduled below (Again) so it comes back.
-        now = int(time.time())
         with _repo_transaction(self.repo):
+            now = int(time.time())
             review_id = None
             prior_state = self.repo.get_state(item.id)
             state_was_missing = prior_state is None
@@ -2048,8 +2202,8 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        now = int(time.time())
         with _repo_transaction(self.repo):
+            now = int(time.time())
             review_id = None
             prior_state = self.repo.get_grammar_state(item.id)
             state_was_missing = prior_state is None
@@ -2212,8 +2366,8 @@ class SessionService:
         typed = (typed_text or "").strip() or None
         got_toks = _tokenize(typed_text)
 
-        now = int(time.time())
         with _repo_transaction(self.repo):
+            now = int(time.time())
             review_id = None
             prior_state = self.repo.get_sentence_state(item.id)
             state_was_missing = prior_state is None
@@ -2355,8 +2509,8 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
-        now = int(time.time())
         with _repo_transaction(self.repo):
+            now = int(time.time())
             review_id = None
             prior_state = self.repo.get_listening_state(item.id)
             state_was_missing = prior_state is None

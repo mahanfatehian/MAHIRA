@@ -251,8 +251,13 @@ class SettingsService:
         allowed = {f.name for f in fields(AppSettings)}
         current = asdict(self._settings)
         current.update({key: value for key, value in changes.items() if key in allowed})
-        self._settings = _normalize_settings(current, fallback=self._settings)
-        self.save()
+        previous = self._settings
+        self._settings = _normalize_settings(current, fallback=previous)
+        try:
+            self.save()
+        except Exception:
+            self._settings = previous
+            raise
         return self._settings
 
     def save(self) -> None:

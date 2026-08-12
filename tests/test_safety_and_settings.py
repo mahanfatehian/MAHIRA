@@ -360,3 +360,26 @@ def test_update_version_comparison():
     assert _version_tuple("0.4.0-beta.1") >= (0, 4, 0)
     assert _version_tuple("1.0.0") > _version_tuple("1.0.0-beta.2")
     assert _version_tuple("1.0.0") > _version_tuple("1.0.0rc1")
+
+
+def test_settings_update_rolls_back_memory_and_disk_when_save_fails(
+    tmp_path,
+    monkeypatch,
+):
+    from core.settings import SettingsService
+
+    path = tmp_path / "settings.json"
+    settings = SettingsService(path)
+    settings.update(daily_goal=25)
+    before_value = settings.value
+    before_disk = path.read_bytes()
+
+    def fail_save():
+        raise OSError("disk full")
+
+    monkeypatch.setattr(settings, "save", fail_save)
+    with pytest.raises(OSError, match="disk full"):
+        settings.update(daily_goal=80)
+
+    assert settings.value == before_value
+    assert path.read_bytes() == before_disk

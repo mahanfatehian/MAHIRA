@@ -328,6 +328,31 @@ def test_same_objective_multiple_decks_produce_homogeneous_segments():
     ]
 
 
+def test_all_due_decks_precede_new_cards_for_the_same_objective():
+    from core.planner import DailyPlannerService
+
+    snapshot = DailyPlannerService(
+        _Repo(
+            [
+                _item("vocab", 1, deck_id=10),
+                _item("vocab", 2, deck_id=11, lektion_number=2),
+                _item("vocab", 3, bucket="new", deck_id=10),
+                _item("vocab", 4, bucket="new", deck_id=10),
+            ]
+        ),
+        _settings(daily_goal=4, session_limit=3),
+    ).snapshot(now=1_700_000_000)
+
+    assert [
+        (segment.deck_id, segment.item_ids, segment.due_count, segment.new_count)
+        for segment in snapshot.segments
+    ] == [
+        (10, (1,), 1, 0),
+        (11, (2,), 1, 0),
+        (10, (3, 4), 0, 2),
+    ]
+
+
 def test_local_day_bounds_are_adjacent_local_midnights():
     from core.planner import _local_day_bounds
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 import pytest
 
 
@@ -216,6 +218,94 @@ def test_primary_submit_classifies_the_pre_review_state(
         1,
         0,
     )
+
+
+@pytest.mark.parametrize("objective", PRIMARY_OBJECTIVES)
+def test_primary_submit_captures_schedule_time_after_write_lock(
+    repo, monkeypatch, objective
+):
+    import core.session as session_module
+    from core.srs import schedule_next
+
+    before_lock = NOW
+    after_lock = NOW + 10
+    clock = {"now": before_lock}
+    monkeypatch.setattr(session_module.time, "time", lambda: clock["now"])
+
+    case = _case(repo, objective)
+    case["ensure_state"]()
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {case['state_table']} "
+            f"SET due_at=?, last_review_at=? WHERE {case['state_fk']}=?",
+            (before_lock + 1, before_lock - (24 * 60 * 60), case["item"].id),
+        )
+    prior_state = case["get_state"]()
+    assert prior_state is not None
+
+    original_transaction = repo.transaction
+
+    @contextmanager
+    def transaction_with_lock_wait():
+        with original_transaction() as conn:
+            assert conn.in_transaction
+            clock["now"] = after_lock
+            yield conn
+
+    monkeypatch.setattr(repo, "transaction", transaction_with_lock_wait)
+
+    case["submit"](_session_shell(repo))
+
+    persisted_state = case["get_state"]()
+    expected_state = schedule_next(prior_state, rating=2, now=after_lock)
+    stale_state = schedule_next(prior_state, rating=2, now=before_lock)
+    assert _stored_review(repo, case)[1] == "due"
+    assert persisted_state is not None
+    assert persisted_state.last_review_at == after_lock
+    assert persisted_state.due_at == expected_state.due_at
+    assert persisted_state.due_at != stale_state.due_at
+
+
+@pytest.mark.parametrize("objective", PRIMARY_OBJECTIVES)
+@pytest.mark.parametrize(
+    ("availability", "expected_bucket"),
+    (
+        ("suspended", "extra"),
+        ("future_burial", "extra"),
+        ("expired_burial", "due"),
+    ),
+)
+def test_primary_submit_excludes_currently_ineligible_states_from_plan_caps(
+    repo, monkeypatch, objective, availability, expected_bucket
+):
+    import core.session as session_module
+
+    monkeypatch.setattr(session_module.time, "time", lambda: NOW)
+    case = _case(repo, objective)
+    case["ensure_state"]()
+    suspended = 1 if availability == "suspended" else 0
+    buried_until = {
+        "suspended": None,
+        "future_burial": NOW + 1,
+        "expired_burial": NOW,
+    }[availability]
+    with repo._conn() as conn:
+        conn.execute(
+            f"UPDATE {case['state_table']} "
+            f"SET due_at=?, last_review_at=?, suspended=?, buried_until=? "
+            f"WHERE {case['state_fk']}=?",
+            (
+                NOW - 60,
+                NOW - (24 * 60 * 60),
+                suspended,
+                buried_until,
+                case["item"].id,
+            ),
+        )
+
+    case["submit"](_session_shell(repo))
+
+    assert _stored_review(repo, case)[1] == expected_bucket
 
 
 @pytest.mark.parametrize("practice_mode", ("production", "dictation"))

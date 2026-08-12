@@ -47,6 +47,7 @@ class PronunciationWorker(QObject):
 
 class SentenceReviewPage(QWidget):
     go_progress = Signal()
+    go_today = Signal()
 
     def __init__(self, session: SessionService, nav=None) -> None:
         super().__init__()
@@ -254,6 +255,19 @@ class SentenceReviewPage(QWidget):
         empty_layout.addStretch(1)
         empty_layout.addWidget(self.empty_title)
         empty_layout.addWidget(self.empty_desc)
+        self.today_btn = QPushButton("Return to Today")
+        self.today_btn.setObjectName("ReturnToTodayButton")
+        self.today_btn.setAccessibleName("Return to Today")
+        self.today_btn.setStyleSheet(
+            "QPushButton { background-color:#244B36; color:#F4FFF7; "
+            "border:1px solid #4CAF50; border-radius:10px; padding:9px 14px; "
+            "font-weight:900; }"
+        )
+        self.today_btn.clicked.connect(self.go_today.emit)
+        self.today_btn.hide()
+        empty_layout.addWidget(
+            self.today_btn, 0, Qt.AlignmentFlag.AlignHCenter
+        )
         empty_layout.addStretch(1)
 
         self.empty_card.hide()
@@ -419,12 +433,18 @@ class SentenceReviewPage(QWidget):
 
         if not self.current_item:
             self.main_shell.hide()
+            self.empty_title.setText("Session finished")
+            self.empty_desc.setText(
+                "Return to Today for the next planned set, or select New set."
+            )
+            self.today_btn.show()
             self.empty_card.show()
             self.card.lock_after_finish("Session finished")
             self._update_counter()
             return
 
         self.main_shell.show()
+        self.today_btn.hide()
         self.empty_card.hide()
 
         self.card_started_at = time.time()

@@ -33,86 +33,14 @@ from ui.theme import (
     card_style,
     set_feature_font,
 )
+from ui.widgets.number_stepper import NumberStepper
 
 
 def _set_font(widget: QWidget, size: int, weight: QFont.Weight) -> None:
     set_feature_font(widget, size, weight)
 
 
-class _Stepper(QWidget):
-    """Compact, non-editable number control with stable cross-platform layout."""
-
-    valueChanged = Signal(int)
-
-    def __init__(
-        self,
-        minimum: int,
-        maximum: int,
-        step: int,
-        accessible_name: str,
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._minimum = int(minimum)
-        self._maximum = int(maximum)
-        self._step = max(1, int(step))
-        self._value = self._minimum
-        self.setAccessibleName(accessible_name)
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-        self.minus = QPushButton("−")
-        self.minus.setAccessibleName(f"Decrease {accessible_name}")
-        self.minus.setMinimumSize(44, 36)
-        self.minus.setSizePolicy(
-            QSizePolicy.Policy.Minimum,
-            QSizePolicy.Policy.Fixed,
-        )
-        self.minus.setStyleSheet(BUTTON_STYLE)
-        self.minus.clicked.connect(lambda: self.setValue(self._value - self._step))
-        self.value_label = QLabel()
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.value_label.setMinimumWidth(64)
-        self.value_label.setSizePolicy(
-            QSizePolicy.Policy.Minimum,
-            QSizePolicy.Policy.Fixed,
-        )
-        self.value_label.setStyleSheet(
-            "QLabel { color:#FFFFFF; background:#101010; border:1px solid #2A2A2A; "
-            "border-radius:9px; padding:8px 10px; }"
-        )
-        _set_font(self.value_label, 10, QFont.Weight.Black)
-        self.plus = QPushButton("+")
-        self.plus.setAccessibleName(f"Increase {accessible_name}")
-        self.plus.setMinimumSize(44, 36)
-        self.plus.setSizePolicy(
-            QSizePolicy.Policy.Minimum,
-            QSizePolicy.Policy.Fixed,
-        )
-        self.plus.setStyleSheet(BUTTON_STYLE)
-        self.plus.clicked.connect(lambda: self.setValue(self._value + self._step))
-        layout.addWidget(self.minus)
-        layout.addWidget(self.value_label)
-        layout.addWidget(self.plus)
-        self._sync()
-
-    def value(self) -> int:
-        return self._value
-
-    def setValue(self, value: int) -> None:
-        bounded = max(self._minimum, min(self._maximum, int(value)))
-        if bounded == self._value:
-            self._sync()
-            return
-        self._value = bounded
-        self._sync()
-        self.valueChanged.emit(self._value)
-
-    def _sync(self) -> None:
-        self.value_label.setText(str(self._value))
-        self.minus.setEnabled(self._value > self._minimum)
-        self.plus.setEnabled(self._value < self._maximum)
+_Stepper = NumberStepper
 
 
 class _UpdateWorker(QObject):
@@ -180,9 +108,9 @@ class SettingsPage(QWidget):
             "Study",
             "Shape a session without changing the learning material.",
         )
-        self.daily_goal = _Stepper(5, 200, 5, "daily review goal")
-        self.session_limit = _Stepper(5, 100, 5, "session size")
-        self.new_limit = _Stepper(0, 30, 1, "new cards per session")
+        self.daily_goal = NumberStepper(5, 200, 5, "daily review goal")
+        self.session_limit = NumberStepper(5, 100, 5, "session size")
+        self.new_limit = NumberStepper(0, 30, 1, "new cards per session")
         self.strict = QCheckBox("Strict answer matching")
         self.strict.setAccessibleDescription(
             "Require exact stored answers instead of semantic meaning matching where supported"

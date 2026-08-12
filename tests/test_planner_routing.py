@@ -36,17 +36,20 @@ class _SessionFake:
         self.events.append(("has_unfinished_session",))
         return self.unfinished
 
-    def discard_pending_resume(self) -> None:
-        self.events.append(("discard_pending_resume",))
-        self.unfinished = False
-
-    def set_context(self, level, objective, book_slug, lektion_number) -> None:
+    def start_planned_segment_for_context(
+        self,
+        segment,
+        *,
+        replace_unfinished=False,
+        now=None,
+    ) -> bool:
         self.events.append(
-            ("set_context", level, objective, book_slug, lektion_number)
+            (
+                "start_planned_segment_for_context",
+                segment,
+                replace_unfinished,
+            )
         )
-
-    def start_planned_segment(self, segment, now=None) -> bool:
-        self.events.append(("start_planned_segment", segment))
         return self.start_result
 
     def start(self, *args, **kwargs):
@@ -147,7 +150,7 @@ def _segment(objective: str = "vocab"):
         ("listening", "listening_review"),
     ],
 )
-def test_planned_set_routes_each_objective_after_both_preflights(
+def test_planned_set_routes_each_objective_after_atomic_final_preflight(
     objective,
     destination,
 ):
@@ -171,9 +174,7 @@ def test_planned_set_routes_each_objective_after_both_preflights(
         ("preview_planned_segment", requested),
         ("has_unfinished_session",),
         ("confirm_if_needed",),
-        ("discard_pending_resume",),
-        ("set_context", "A2", objective, "menschen", 7),
-        ("start_planned_segment", previewed),
+        ("start_planned_segment_for_context", previewed, True),
         ("invalidate_review_pages",),
         ("show_objective_page", destination),
     ]
@@ -229,8 +230,7 @@ def test_ready_plan_skips_confirmation_and_starts_directly():
     assert events == [
         ("preview_planned_segment", requested),
         ("has_unfinished_session",),
-        ("set_context", "A2", "sentences", "menschen", 7),
-        ("start_planned_segment", requested),
+        ("start_planned_segment_for_context", requested, False),
         ("invalidate_review_pages",),
         ("show_objective_page", "sentence_review"),
     ]
@@ -250,8 +250,7 @@ def test_failed_second_start_reports_error_without_opening_a_normal_queue():
     assert events == [
         ("preview_planned_segment", requested),
         ("has_unfinished_session",),
-        ("set_context", "A2", "listening", "menschen", 7),
-        ("start_planned_segment", requested),
+        ("start_planned_segment_for_context", requested, False),
     ]
     assert window.today.messages
     assert window.resume_banner.hidden == 0
