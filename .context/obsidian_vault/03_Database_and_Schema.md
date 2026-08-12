@@ -14,6 +14,19 @@ MAHIRA persistence is centered in `src/db/`, with SQLite as the single source of
 - normalized tables for vocab/items, sessions, scheduling state, deck metadata, and user settings
 - explicit indexes where query paths are frequent (e.g., due queue lookups, deck selectors)
 
+## Schema v4 planner accounting
+- Each primary review table stores `selection_bucket`: `new`, `due`, `extra`,
+  or `legacy`.
+- `new` and `due` are classified from the persisted pre-review scheduler state;
+  ineligible, cooldown, or off-plan attempts are `extra`. Older/Lab events remain
+  `legacy` and never consume planner caps.
+- The review event, bucket, and FSRS state update commit in one immediate
+  transaction. Undo deletes that exact event and restores only an unchanged
+  post-review state.
+- `daily_plan_usage()` counts checked, non-skipped, exact primary lanes inside
+  one half-open local calendar day. See [[02_Core_Engine_and_ML]] and
+  [[07_Development_Safety_Invariants]].
+
 ## Backup-first migration pattern
 Before applying schema changes:
 1. copy DB to backup location (timestamped in `.mahira/`)
@@ -37,5 +50,6 @@ Relevant code paths are consumed by:
 - [[02_Core_Engine_and_ML]]
 - [[04_UI_and_Frontend]]
 - [[05_Folder_Driven_Seed_System]]
+- [[07_Development_Safety_Invariants]]
 
 See also: migration discipline and backup workflow details in [[06_CI_CD_and_Packaging]].

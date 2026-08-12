@@ -105,8 +105,12 @@ additional books and levels automatically.
 - Clear, focused review flow with a global session tracker and milestones.
 
 ### Daily study workspace
-- **Today** combines due, unseen, and recurring-error pressure across vocabulary,
-  grammar, sentences, and listening, then recommends the lesson needing work.
+- **Today** builds one capped plan across vocabulary, grammar, sentences, and
+  listening. It applies per-skill due/new limits, shows overflow honestly, and
+  starts sequential deck-safe focused sets no larger than the session limit.
+- **Adjust plan** changes persistent caps and optional skill weights without
+  moving due dates or rewriting course content. **Progress** reads the same
+  planner snapshot, so completed, planned, ready, and local-day totals agree.
 - **Mistake notebook** identifies repeated lapses and lets learners suspend or
   resume troublesome cards without deleting history.
 - **Practice Lab** adds German production (meaning → German) and offline audio
@@ -114,6 +118,8 @@ additional books and levels automatically.
 
 ### Learner-owned and offline-safe
 - Versioned, backup-first database migrations preserve FSRS state and reviews.
+  Schema v4 records each genuine primary review as new, due, extra, or legacy
+  before the scheduler update, enabling exact daily caps and undo-safe totals.
 - Verified backup, export, managed restore, and rotating diagnostic logs.
 - Persistent study/audio/accessibility preferences and independent learner profiles.
 - Resizable keyboard-friendly UI, high contrast, text scaling, and reduced motion.

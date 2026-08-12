@@ -20,10 +20,14 @@ MAHIRA is intentionally split into five layers:
 1. App entrypoint builds application state and dependency graph.
 2. Session/user context loads profile and deck metadata from `src/db`.
 3. Seed/content manifests resolve available decks from filesystem.
-4. Today/Practice/Mistake flows request candidate items.
-5. Candidate list is ranked using FSRS + ML and rendered by UI.
-6. User interactions write back performance metrics to local DB.
-7. Audio, cache, and generated artifacts remain local and reusable.
+4. `core/planner.py` recomputes a read-only local-day snapshot for Today and
+   Progress, then divides bounded work into objective/deck-homogeneous segments.
+5. Today preflights one segment through `SessionService`; manual Practice and
+   Mistakes retain their separate selection routes.
+6. Candidate lists are ranked using deterministic FSRS priority plus ML where
+   available and rendered by the objective-specific UI.
+7. User interactions atomically write the review bucket and FSRS state.
+8. Audio, cache, and generated artifacts remain local and reusable.
 
 ## State management
 - MAHIRA keeps mutable state outside app bundle:
@@ -31,6 +35,8 @@ MAHIRA is intentionally split into five layers:
   - named profiles keep their checkpoint beside their database under `.mahira/profiles/<slug>/`.
 - `src/core/session_resume.py` owns the versioned, atomic checkpoint format; `SessionService` owns validation and queue restoration.
 - A checkpoint stores the remaining LIFO queue and displayed card separately. Continue validates the objective, deck, seed revision, item ownership, and pre-review state before restoring it.
+- Planned sets reuse this ordinary primary-review checkpoint; no second itinerary
+  or heterogeneous cross-objective queue is persisted.
 - This enables safe upgrade behavior, repair/recovery, and deterministic migration testing.
 - Backups are produced before disruptive changes to avoid silent data loss.
 

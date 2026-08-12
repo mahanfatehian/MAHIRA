@@ -27,11 +27,34 @@ Primary coverage: `tests/test_undo_reviews.py` and `tests/test_atomic_review_tra
 
 - A raw due item has scheduler state with `due_at <= now` and is neither suspended nor actively buried.
 - Unseen items are reported separately; they are not silently counted as due reviews.
-- `InsightsService.lanes()` reports global raw due state for Today.
-- Progress reports deck-local, cooldown-aware due counts that match repository `pick_session_*` due-only selection.
+- Today and Progress use `DailyPlannerService`, whose Ready now policy also
+  excludes cards reviewed within the 12-hour cooldown.
+- Current lesson counts are explicitly subsets and never presented as global
+  planner totals.
 - Vocabulary review totals, mastery, and 24-hour counts describe recognition unless a UI explicitly labels another lane.
 
 Primary coverage: `tests/test_bury_actions.py` and `tests/test_practice_lane_isolation.py`. See [[04_UI_and_Frontend]].
+
+## Phase 6 daily-planner guardrails
+
+- Schema v4 stores `selection_bucket` (`new`, `due`, `extra`, or `legacy`)
+  in the same transaction as each genuine primary review and scheduler update.
+- Only exact checked/non-skipped primary modes consume the local-day global goal
+  and per-objective caps. Incorrect answers count; skips and Lab lanes do not.
+- Planner snapshots are read-only and recomputed from current DB/settings state.
+  They never bury cards, change due dates, or persist a second itinerary.
+- Every segment contains one objective and one seeded deck and is capped by
+  `session_limit`; heterogeneous queues are forbidden.
+- Segment preflight happens before unfinished-session replacement. Stale work
+  fails closed, Cancel mutates nothing, and accepted work uses the ordinary
+  crash-safe review checkpoint.
+- Today and Progress must display the same snapshot semantics and local calendar
+  day. Current lesson Reviewed today uses half-open day bounds and exact lanes.
+
+Primary coverage: `tests/test_daily_planner.py`,
+`tests/test_review_selection_buckets.py`, `tests/test_planned_sessions.py`,
+`tests/test_today_planner_ui.py`, and
+`tests/test_progress_planner_consistency.py`.
 
 ### 4. The review cooldown does not rewrite memory
 

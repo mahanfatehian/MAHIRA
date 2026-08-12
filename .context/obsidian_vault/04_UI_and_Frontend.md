@@ -14,14 +14,20 @@ The UI layer should treat pages as state consumers, not owners of storage policy
 ## View flow
 1. A valid cold-start checkpoint opens Today with a global Continue/Discard banner; no review page may auto-create a queue before that choice.
 2. Continue validates/restores context and routes to the saved objective; Discard removes only the unfinished queue, not completed reviews.
-3. Today view selects due items via core/db.
-4. Practice transitions to review widgets (prompt, options, feedback).
-5. On answer submission:
+3. Today and Progress each render the same immutable
+   `DailyPlannerService.snapshot()` contract: completed/planned totals, ready
+   due/new work, backlog, and homogeneous focused segments.
+4. A Today action emits the original `PlanSegment`; MainWindow revalidates it
+   before replacement confirmation, context mutation, or review-page routing.
+5. Practice transitions to review widgets (prompt, options, feedback).
+6. On answer submission:
    - session updates scheduled state in DB
    - immediate ranking or next-card selection refreshes
-6. Mistake notebook reads persisted failure history, applies lane-safe filters, and routes selected seeded IDs into a one-off targeted drill.
-7. Verb Conjugation view reads expanded paradigms from DB and enforces locale-safe input and hints.
-8. Progress page renders aggregate metrics using repository queries.
+7. A finished planned set offers an explicit Return to Today action; it never
+   auto-switches objectives.
+8. Mistake notebook reads persisted failure history, applies lane-safe filters, and routes selected seeded IDs into a one-off targeted drill.
+9. Verb Conjugation view reads expanded paradigms from DB and enforces locale-safe input and hints.
+10. Progress separates global Today's plan metrics from Current lesson stats.
 
 ## `src/ui/widgets/`
 Custom widgets are reused across pages to keep behavior consistent:
@@ -29,6 +35,7 @@ Custom widgets are reused across pages to keep behavior consistent:
 - flow layout containers for adaptive token chips/challenge rows
 - sentence builders with segment controls and input validation
 - reusable status chips, feedback badges, and deck selectors
+- `NumberStepper` and `DailyPlanDialog` for bounded, accessible planner defaults
 
 ## Mistake Notebook workflow
 - `Recent failures` and `Recurring & flagged` are explicit views; state-only trouble rows are never mixed into a Show-N failure result.
