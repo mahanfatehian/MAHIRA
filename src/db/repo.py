@@ -128,6 +128,9 @@ class VocabState:
     last_review_at: Optional[int]
     stability: Optional[float] = None
     difficulty: Optional[float] = None
+    id: Optional[int] = None
+    suspended: bool = False
+    buried_until: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -173,6 +176,9 @@ class GrammarState:
     last_review_at: Optional[int]
     stability: Optional[float] = None
     difficulty: Optional[float] = None
+    id: Optional[int] = None
+    suspended: bool = False
+    buried_until: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -197,6 +203,9 @@ class SentenceState:
     last_review_at: Optional[int]
     stability: Optional[float] = None
     difficulty: Optional[float] = None
+    id: Optional[int] = None
+    suspended: bool = False
+    buried_until: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -222,6 +231,9 @@ class ListeningState:
     last_review_at: Optional[int]
     stability: Optional[float] = None
     difficulty: Optional[float] = None
+    id: Optional[int] = None
+    suspended: bool = False
+    buried_until: Optional[int] = None
 
 
 class Repo:
@@ -992,9 +1004,9 @@ class Repo:
         response_ms: int | None,
         practice_mode: str = "recognition",
         error_tags: str | None = None,
-    ) -> None:
+    ) -> int:
         with self._conn() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT INTO reviews(
                     vocab_id,
@@ -1015,6 +1027,7 @@ class Repo:
                     rating, response_ms, practice_mode, error_tags,
                 ),
             )
+            return int(cursor.lastrowid)
 
     # ======================
     # Grammar
@@ -1239,9 +1252,9 @@ class Repo:
         response_ms: int | None,
         practice_mode: str = "production",
         error_tags: str | None = None,
-    ) -> None:
+    ) -> int:
         with self._conn() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT INTO grammar_reviews(
                     grammar_id,
@@ -1257,6 +1270,7 @@ class Repo:
                  int(was_checked), int(was_skipped), rating, response_ms,
                  practice_mode, error_tags),
             )
+            return int(cursor.lastrowid)
 
     # ======================
     # Sentences
@@ -1525,9 +1539,9 @@ class Repo:
             punct_errors: int | None = None,
             practice_mode: str = "builder",
             error_tags: str | None = None,
-    ) -> None:
+    ) -> int:
         with self._conn() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT INTO sentence_reviews(sentence_id, typed_text, correct,
                     tip_used, translation_used, was_checked, was_skipped,
@@ -1539,6 +1553,7 @@ class Repo:
                  int(was_checked), int(was_skipped), rating, response_ms, bank_size,
                  tokens_used, mismatch_count, cap_errors, punct_errors, practice_mode, error_tags),
             )
+            return int(cursor.lastrowid)
 
     # ======================
     # Listening
@@ -1789,9 +1804,9 @@ class Repo:
         response_ms: int | None = None,
         practice_mode: str = "comprehension",
         error_tags: str | None = None,
-    ) -> None:
+    ) -> int:
         with self._conn() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT INTO listening_reviews(
                     listening_id, chosen, correct, replay_count,
@@ -1813,6 +1828,7 @@ class Repo:
                     error_tags,
                 ),
             )
+            return int(cursor.lastrowid)
 
     def listening_due_count(
         self,
@@ -1949,46 +1965,59 @@ class Repo:
             ).fetchone()
             return int(row["c"]) if row else 0
 
-    def daily_review_counts(self, since_ts: int) -> dict[str, int]:
-        """Total reviews per LOCAL calendar day across every objective
-        (vocab + grammar + sentences + listening), for created_at >= since_ts.
+    def daily_review_counts(
+        self,
+        since_ts: int,
+        until_ts: int | None = None,
+    ) -> dict[str, int]:
+        """Return genuine primary reviews grouped by local calendar day.
 
-        Returns {'YYYY-MM-DD': count}. Powers the activity heatmap, so it is
-        global (not scoped to a deck) and tracks primary review lanes. Vocabulary
-        production/dictation Lab events stay out of recognition activity totals.
-        A missing review table (very old DB) is skipped rather than fatal.
+        The optional upper bound is exclusive. One strict query keeps activity
+        atomic: a damaged or missing table cannot yield plausible partial data.
         """
-        tables = ("reviews", "grammar_reviews", "sentence_reviews", "listening_reviews")
-        out: dict[str, int] = {}
+        end = None if until_ts is None else int(until_ts)
         with self._conn() as conn:
-            for table in tables:  # table names are fixed constants, not user input
-                lane_filter = (
-                    'AND practice_mode = ?' if table == 'reviews' else ''
+            rows = conn.execute(
+                """
+                WITH bounds(start_ts, end_ts) AS (VALUES(?, ?)),
+                primary_events(created_at) AS (
+                    SELECT r.created_at FROM reviews r, bounds b
+                     WHERE r.created_at>=b.start_ts
+                       AND (b.end_ts IS NULL OR r.created_at<b.end_ts)
+                       AND r.practice_mode='recognition'
+                       AND r.was_checked=1 AND r.was_skipped=0
+                    UNION ALL
+                    SELECT r.created_at FROM grammar_reviews r, bounds b
+                     WHERE r.created_at>=b.start_ts
+                       AND (b.end_ts IS NULL OR r.created_at<b.end_ts)
+                       AND r.practice_mode='production'
+                       AND r.was_checked=1 AND r.was_skipped=0
+                    UNION ALL
+                    SELECT r.created_at FROM sentence_reviews r, bounds b
+                     WHERE r.created_at>=b.start_ts
+                       AND (b.end_ts IS NULL OR r.created_at<b.end_ts)
+                       AND r.practice_mode='builder'
+                       AND r.was_checked=1 AND r.was_skipped=0
+                    UNION ALL
+                    SELECT r.created_at FROM listening_reviews r, bounds b
+                     WHERE r.created_at>=b.start_ts
+                       AND (b.end_ts IS NULL OR r.created_at<b.end_ts)
+                       AND r.practice_mode='comprehension'
+                       AND r.was_checked=1 AND r.was_skipped=0
                 )
-                params = (
-                    (int(since_ts), 'recognition')
-                    if lane_filter
-                    else (int(since_ts),)
-                )
-                try:
-                    rows = conn.execute(
-                        f"""
-                        SELECT date(created_at, 'unixepoch', 'localtime') AS day,
-                               COUNT(*) AS c
-                         FROM {table}
-                         WHERE created_at >= ?
-                           {lane_filter}
-                         GROUP BY day
-                        """,
-                        params,
-                    ).fetchall()
-                except Exception:
-                    continue
-                for r in rows:
-                    day = r["day"]
-                    if day:
-                        out[day] = out.get(day, 0) + int(r["c"])
-        return out
+                SELECT date(created_at, 'unixepoch', 'localtime') AS day,
+                       COUNT(*) AS c
+                  FROM primary_events
+                 GROUP BY day
+                 ORDER BY day
+                """,
+                (int(since_ts), end),
+            ).fetchall()
+        return {
+            str(row["day"]): int(row["c"])
+            for row in rows
+            if row["day"] is not None
+        }
 
     def upcoming_due_counts(self, within_seconds: int = 86400) -> dict[str, int]:
         """Global (all decks + objectives) schedule pressure for the launch strip:
@@ -2056,6 +2085,39 @@ class Repo:
 
     def delete_last_listening_review(self, listening_id: int) -> None:
         self._delete_last("listening_reviews", "listening_id", listening_id)
+
+    def delete_review_event(
+        self,
+        objective: str,
+        review_id: int,
+        item_id: int,
+        practice_mode: str,
+    ) -> None:
+        mapping = {
+            "vocab": ("reviews", "vocab_id", "recognition"),
+            "grammar": ("grammar_reviews", "grammar_id", "production"),
+            "sentence": ("sentence_reviews", "sentence_id", "builder"),
+            "listening": (
+                "listening_reviews",
+                "listening_id",
+                "comprehension",
+            ),
+        }
+        try:
+            table, fk, primary_mode = mapping[objective]
+        except KeyError as exc:
+            raise ValueError(f"unsupported review objective: {objective!r}") from exc
+        if practice_mode != primary_mode:
+            raise ValueError(
+                f"practice mode {practice_mode!r} is not primary for {objective!r}"
+            )
+        with self._conn() as conn:
+            cursor = conn.execute(
+                f"DELETE FROM {table} WHERE id=? AND {fk}=? AND practice_mode=?",
+                (int(review_id), int(item_id), practice_mode),
+            )
+            if cursor.rowcount != 1:
+                raise RuntimeError("exact primary review is missing or mismatched")
 
     def _delete_state(self, table: str, fk: str, item_id: int) -> None:
         with self._conn() as conn:  # table/fk are fixed constants, not user input
@@ -2225,6 +2287,13 @@ class Repo:
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
             stability=Repo._opt_float(r, "stability"),
             difficulty=Repo._opt_float(r, "difficulty"),
+            id=int(r["id"]),
+            suspended=bool(r["suspended"]),
+            buried_until=(
+                int(r["buried_until"])
+                if r["buried_until"] is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -2269,6 +2338,13 @@ class Repo:
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
             stability=Repo._opt_float(r, "stability"),
             difficulty=Repo._opt_float(r, "difficulty"),
+            id=int(r["id"]),
+            suspended=bool(r["suspended"]),
+            buried_until=(
+                int(r["buried_until"])
+                if r["buried_until"] is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -2337,6 +2413,13 @@ class Repo:
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
             stability=Repo._opt_float(r, "stability"),
             difficulty=Repo._opt_float(r, "difficulty"),
+            id=int(r["id"]),
+            suspended=bool(r["suspended"]),
+            buried_until=(
+                int(r["buried_until"])
+                if r["buried_until"] is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -2380,4 +2463,11 @@ class Repo:
             last_review_at=int(r["last_review_at"]) if r["last_review_at"] is not None else None,
             stability=Repo._opt_float(r, "stability"),
             difficulty=Repo._opt_float(r, "difficulty"),
+            id=int(r["id"]),
+            suspended=bool(r["suspended"]),
+            buried_until=(
+                int(r["buried_until"])
+                if r["buried_until"] is not None
+                else None
+            ),
         )

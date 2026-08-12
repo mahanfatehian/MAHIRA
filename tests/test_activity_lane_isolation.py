@@ -84,3 +84,91 @@ def test_lab_session_leaves_recognition_dashboard_unchanged(tmp_path):
     assert repo.reviewed_last_24h(deck_id) == before["reviews_24h"] + 1
     assert sum(repo.daily_review_counts(0).values()) == before["activity"] + 1
     assert InsightsService(repo).reviewed_today() == before["today"] + 1
+
+
+def test_daily_activity_excludes_unchecked_vocab_review(tmp_path):
+    from db.init_db import init_db
+    from db.repo import Repo
+
+    db_path = tmp_path / "unchecked-activity.db"
+    init_db(db_path)
+    repo = Repo(db_path)
+    deck_id, _changed = repo.upsert_deck("A1", "vocab", "activity.csv", "sha")
+    item_id = repo.insert_vocab(
+        deck_id, "noun", "Haus", "das", "n", "Häuser", "house"
+    )
+    item = repo.get_vocab_by_id(item_id)
+    assert item is not None
+
+    _session(repo).submit_vocab(
+        item,
+        typed_meaning="house",
+        typed_gender="n",
+        typed_plural="Häuser",
+        rating=2,
+        tip_used=False,
+        gender_tip_used=False,
+        was_checked=False,
+        was_skipped=False,
+        response_ms=900,
+    )
+
+    assert sum(repo.daily_review_counts(0).values()) == 0
+
+
+def test_daily_activity_filters_all_lanes_and_honors_until(tmp_path):
+    from db.init_db import init_db
+    from db.repo import Repo
+
+    db_path = tmp_path / "primary-activity.db"
+    init_db(db_path)
+    repo = Repo(db_path)
+
+    vocab_deck, _ = repo.upsert_deck("A1", "vocab", "v.csv", "v")
+    grammar_deck, _ = repo.upsert_deck("A1", "grammar", "g.csv", "g")
+    sentence_deck, _ = repo.upsert_deck("A1", "sentences", "s.csv", "s")
+    listening_deck, _ = repo.upsert_deck("A1", "listening", "l.csv", "l")
+    vocab_id = repo.insert_vocab(
+        vocab_deck, "noun", "Haus", "das", "n", "Haeuser", "house"
+    )
+    grammar_id = repo.insert_grammar(
+        grammar_deck, "Ich ___ Deutsch.", "lerne", None, None, None, None
+    )
+    sentence_id = repo.insert_sentence(
+        sentence_deck, "Ich lerne Deutsch.", None, None, None
+    )
+    listening_id = repo.insert_listening(
+        listening_deck, "Ich lerne.", "Was?", "Deutsch", None, None, None
+    )
+
+    specs = (
+        ("reviews", "vocab_id", vocab_id, "recognition", "production"),
+        ("grammar_reviews", "grammar_id", grammar_id, "production", "future"),
+        ("sentence_reviews", "sentence_id", sentence_id, "builder", "future"),
+        (
+            "listening_reviews",
+            "listening_id",
+            listening_id,
+            "comprehension",
+            "future",
+        ),
+    )
+    with repo._conn() as conn:
+        for table, foreign_key, item_id, primary_mode, other_mode in specs:
+            conn.executemany(
+                f"""
+                INSERT INTO {table}(
+                    {foreign_key}, created_at, was_checked, was_skipped,
+                    rating, practice_mode
+                ) VALUES(?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    (item_id, 120, 1, 0, 2, primary_mode),
+                    (item_id, 130, 1, 0, 2, other_mode),
+                    (item_id, 140, 0, 0, 2, primary_mode),
+                    (item_id, 150, 1, 1, 2, primary_mode),
+                    (item_id, 200, 1, 0, 2, primary_mode),
+                ),
+            )
+
+    assert sum(repo.daily_review_counts(100, 200).values()) == 4

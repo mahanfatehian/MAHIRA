@@ -460,15 +460,28 @@ class SessionService:
             state = getter(int(item_id))
         except Exception:
             return "unavailable"
+        return self._state_value_token(state)
+
+    @staticmethod
+    def _state_value_token(state) -> str:
         if state is None:
             return "missing"
         fields = (
+            getattr(state, "id", None),
+            getattr(state, "vocab_id", None),
+            getattr(state, "grammar_id", None),
+            getattr(state, "sentence_id", None),
+            getattr(state, "listening_id", None),
+            getattr(state, "ease", None),
+            getattr(state, "interval_days", None),
             getattr(state, "reps", None),
             getattr(state, "lapses", None),
             getattr(state, "due_at", None),
             getattr(state, "last_review_at", None),
             getattr(state, "stability", None),
             getattr(state, "difficulty", None),
+            getattr(state, "suspended", None),
+            getattr(state, "buried_until", None),
         )
         return "|".join("" if value is None else repr(value) for value in fields)
 
@@ -1683,33 +1696,54 @@ class SessionService:
         prev = snap.get("prev_state")
         iid = snap.get("item_id")
         logged = bool(snap.get("logged"))
+        review_id = snap.get("review_id")
+        post_state_token = snap.get("post_state_token")
         state_was_missing = bool(snap.get("state_was_missing"))
+        primary_mode = {
+            "vocab": "recognition",
+            "grammar": "production",
+            "sentence": "builder",
+            "listening": "comprehension",
+        }.get(obj)
+        if primary_mode is None:
+            return None
+        if not isinstance(post_state_token, str) or not post_state_token:
+            return None
+        if logged and (
+            isinstance(review_id, bool)
+            or not isinstance(review_id, int)
+            or review_id <= 0
+        ):
+            return None
         try:
-            with _repo_transaction(self.repo):
+            with _repo_transaction(self.repo) as conn:
+                if conn is not None and not conn.in_transaction:
+                    conn.execute("BEGIN IMMEDIATE")
+                if self._state_token(obj, iid) != post_state_token:
+                    raise RuntimeError("review state changed after this submission")
+                if logged:
+                    self.repo.delete_review_event(
+                        obj,
+                        review_id,
+                        iid,
+                        primary_mode,
+                    )
                 if obj == "vocab":
-                    if logged:
-                        self.repo.delete_last_review(iid)
                     if state_was_missing:
                         self.repo.delete_state(iid)
                     else:
                         self.repo.update_state(prev)
                 elif obj == "grammar":
-                    if logged:
-                        self.repo.delete_last_grammar_review(iid)
                     if state_was_missing:
                         self.repo.delete_grammar_state(iid)
                     else:
                         self.repo.update_grammar_state(prev)
                 elif obj == "sentence":
-                    if logged:
-                        self.repo.delete_last_sentence_review(iid)
                     if state_was_missing:
                         self.repo.delete_sentence_state(iid)
                     else:
                         self.repo.update_sentence_state(prev)
                 elif obj == "listening":
-                    if logged:
-                        self.repo.delete_last_listening_review(iid)
                     if state_was_missing:
                         self.repo.delete_listening_state(iid)
                     else:
@@ -1798,13 +1832,14 @@ class SessionService:
         # accuracy — they all read the reviews table. The card is still
         # rescheduled below (Again) so it comes back.
         with _repo_transaction(self.repo):
+            review_id = None
             st = self.repo.get_state(item.id)
             state_was_missing = st is None
             if st is None:
                 st = self.repo.ensure_state(item.id)
             st2 = schedule_next(st, effective_rating)
             if not was_skipped:
-                self.repo.insert_review(
+                review_id = self.repo.insert_review(
                     vocab_id=item.id,
                     typed_meaning=typed_meaning or None,
                     typed_gender=typed_gender or None,
@@ -1822,8 +1857,14 @@ class SessionService:
                     error_tags=",".join(error_tags) or None,
                 )
             self.repo.update_state(st2)
+            persisted_state = self.repo.get_state(item.id)
+            if persisted_state is None:
+                raise RuntimeError("vocab state missing after review update")
+            post_state_token = self._state_value_token(persisted_state)
         self._complete_current_item("vocab", item.id)
         self._undo = {
+            "review_id": review_id,
+            "post_state_token": post_state_token,
             "objective": "vocab",
             "item": item,
             "item_id": item.id,
@@ -1913,6 +1954,7 @@ class SessionService:
         correct = 1 if bool(res["ok"]) else 0
 
         with _repo_transaction(self.repo):
+            review_id = None
             st = self.repo.get_grammar_state(item.id)
             state_was_missing = st is None
             if st is None:
@@ -1920,7 +1962,7 @@ class SessionService:
             st2 = schedule_next(st, effective_rating)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
-                self.repo.insert_grammar_review(
+                review_id = self.repo.insert_grammar_review(
                     grammar_id=item.id,
                     typed_blank=(typed_blank or None),
                     correct=correct,
@@ -1935,8 +1977,14 @@ class SessionService:
                     error_tags=",".join(error_tags) or None,
                 )
             self.repo.update_grammar_state(st2)
+            persisted_state = self.repo.get_grammar_state(item.id)
+            if persisted_state is None:
+                raise RuntimeError("grammar state missing after review update")
+            post_state_token = self._state_value_token(persisted_state)
         self._complete_current_item("grammar", item.id)
         self._undo = {
+            "review_id": review_id,
+            "post_state_token": post_state_token,
             "objective": "grammar",
             "item": item,
             "item_id": item.id,
@@ -2066,6 +2114,7 @@ class SessionService:
         got_toks = _tokenize(typed_text)
 
         with _repo_transaction(self.repo):
+            review_id = None
             st = self.repo.get_sentence_state(item.id)
             state_was_missing = st is None
             if st is None:
@@ -2073,7 +2122,7 @@ class SessionService:
             st2 = schedule_next(st, effective_rating)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
-                self.repo.insert_sentence_review(
+                review_id = self.repo.insert_sentence_review(
                     sentence_id=item.id,
                     typed_text=typed,
                     correct=correct,
@@ -2092,8 +2141,14 @@ class SessionService:
                     error_tags=",".join(res.get("error_tags") or []) or None,
                 )
             self.repo.update_sentence_state(st2)
+            persisted_state = self.repo.get_sentence_state(item.id)
+            if persisted_state is None:
+                raise RuntimeError("sentence state missing after review update")
+            post_state_token = self._state_value_token(persisted_state)
         self._complete_current_item("sentences", item.id)
         self._undo = {
+            "review_id": review_id,
+            "post_state_token": post_state_token,
             "objective": "sentence",
             "item": item,
             "item_id": item.id,
@@ -2198,6 +2253,7 @@ class SessionService:
         correct = 1 if bool(res["ok"]) else 0
 
         with _repo_transaction(self.repo):
+            review_id = None
             st = self.repo.get_listening_state(item.id)
             state_was_missing = st is None
             if st is None:
@@ -2205,7 +2261,7 @@ class SessionService:
             st2 = schedule_next(st, effective_rating)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
-                self.repo.insert_listening_review(
+                review_id = self.repo.insert_listening_review(
                     listening_id=item.id,
                     chosen=(chosen or None),
                     correct=correct,
@@ -2218,8 +2274,14 @@ class SessionService:
                     error_tags=",".join(error_tags) or None,
                 )
             self.repo.update_listening_state(st2)
+            persisted_state = self.repo.get_listening_state(item.id)
+            if persisted_state is None:
+                raise RuntimeError("listening state missing after review update")
+            post_state_token = self._state_value_token(persisted_state)
         self._complete_current_item("listening", item.id)
         self._undo = {
+            "review_id": review_id,
+            "post_state_token": post_state_token,
             "objective": "listening",
             "item": item,
             "item_id": item.id,
