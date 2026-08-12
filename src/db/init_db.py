@@ -11,7 +11,7 @@ from db.connection import connect
 from db.backup import BackupService
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def _has_column(conn, table: str, col: str) -> bool:
@@ -301,12 +301,19 @@ def init_db(db_path: str | Path, schema_path: str | Path | None = None) -> None:
         ):
             _ensure_column(conn, _tbl, "practice_mode", f"TEXT NOT NULL DEFAULT '{default_mode}'")
             _ensure_column(conn, _tbl, "error_tags", "TEXT")
+            _ensure_column(
+                conn,
+                _tbl,
+                "selection_bucket",
+                "TEXT NOT NULL DEFAULT 'legacy' "
+                "CHECK(selection_bucket IN ('new', 'due', 'extra', 'legacy'))",
+            )
 
         _repair_sentences(conn)
 
         conn.execute(
             "INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)",
-            (SCHEMA_VERSION, "isolated vocabulary production and dictation scheduling lanes"),
+            (SCHEMA_VERSION, "classified primary reviews for the daily planner"),
         )
         conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 

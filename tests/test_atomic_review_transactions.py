@@ -21,6 +21,8 @@ def _session_shell(repo):
     session.state = AppState()
     session.ml = None
     session._undo = None
+    session.study_answered = 0
+    session.study_next_milestone = 30
     return session
 
 
@@ -38,6 +40,7 @@ def _case(repo, objective: str):
         return {
             "item": item,
             "state_before": state_before,
+            "get_name": "get_state",
             "state_reader": lambda: repo.ensure_state(item_id),
             "update_name": "update_state",
             "review_table": "reviews",
@@ -64,6 +67,7 @@ def _case(repo, objective: str):
         return {
             "item": item,
             "state_before": state_before,
+            "get_name": "get_grammar_state",
             "state_reader": lambda: repo.ensure_grammar_state(item_id),
             "update_name": "update_grammar_state",
             "review_table": "grammar_reviews",
@@ -93,6 +97,7 @@ def _case(repo, objective: str):
         return {
             "item": item,
             "state_before": state_before,
+            "get_name": "get_sentence_state",
             "state_reader": lambda: repo.ensure_sentence_state(item_id),
             "update_name": "update_sentence_state",
             "review_table": "sentence_reviews",
@@ -123,6 +128,7 @@ def _case(repo, objective: str):
         return {
             "item": item,
             "state_before": state_before,
+            "get_name": "get_listening_state",
             "state_reader": lambda: repo.ensure_listening_state(item_id),
             "update_name": "update_listening_state",
             "review_table": "listening_reviews",
@@ -163,3 +169,27 @@ def test_review_and_fsrs_update_roll_back_together(repo, monkeypatch, objective)
             f"SELECT COUNT(*) FROM {case['review_table']}"
         ).fetchone()[0] == 0
     assert session._undo is None
+
+
+@pytest.mark.parametrize(
+    "objective", ("vocab", "grammar", "sentences", "listening")
+)
+def test_primary_review_locks_before_reading_pre_review_state(
+    repo, monkeypatch, objective
+):
+    case = _case(repo, objective)
+    session = _session_shell(repo)
+    original_get = getattr(repo, case["get_name"])
+    observed = []
+
+    def guarded_get(item_id):
+        connection = repo._active_conn
+        observed.append(bool(connection is not None and connection.in_transaction))
+        return original_get(item_id)
+
+    monkeypatch.setattr(repo, case["get_name"], guarded_get)
+
+    case["submit"](session)
+
+    assert observed
+    assert all(observed)

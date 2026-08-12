@@ -152,6 +152,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   response_ms INTEGER,
   practice_mode TEXT NOT NULL DEFAULT 'recognition',
   error_tags TEXT,
+  selection_bucket TEXT NOT NULL DEFAULT 'legacy'
+    CHECK(selection_bucket IN ('new', 'due', 'extra', 'legacy')),
   FOREIGN KEY(vocab_id) REFERENCES vocab(id) ON DELETE CASCADE
 );
 
@@ -213,6 +215,8 @@ CREATE TABLE IF NOT EXISTS grammar_reviews (
   response_ms INTEGER,
   practice_mode TEXT NOT NULL DEFAULT 'production',
   error_tags TEXT,
+  selection_bucket TEXT NOT NULL DEFAULT 'legacy'
+    CHECK(selection_bucket IN ('new', 'due', 'extra', 'legacy')),
   FOREIGN KEY(grammar_id) REFERENCES grammar(id) ON DELETE CASCADE
 );
 
@@ -276,6 +280,8 @@ CREATE TABLE IF NOT EXISTS sentence_reviews (
   punct_errors INTEGER,
   practice_mode TEXT NOT NULL DEFAULT 'builder',
   error_tags TEXT,
+  selection_bucket TEXT NOT NULL DEFAULT 'legacy'
+    CHECK(selection_bucket IN ('new', 'due', 'extra', 'legacy')),
   FOREIGN KEY(sentence_id) REFERENCES sentences(id) ON DELETE CASCADE
 );
 
@@ -339,6 +345,8 @@ CREATE TABLE IF NOT EXISTS listening_reviews (
   response_ms INTEGER,
   practice_mode TEXT NOT NULL DEFAULT 'comprehension',
   error_tags TEXT,
+  selection_bucket TEXT NOT NULL DEFAULT 'legacy'
+    CHECK(selection_bucket IN ('new', 'due', 'extra', 'legacy')),
   FOREIGN KEY(listening_id) REFERENCES listening(id) ON DELETE CASCADE
 );
 

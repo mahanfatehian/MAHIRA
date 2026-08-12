@@ -3,9 +3,16 @@ from __future__ import annotations
 import json
 import math
 import re
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
+
+
+PLANNER_OBJECTIVES = ("vocab", "grammar", "sentences", "listening")
+
+
+def _objective_defaults(value: int) -> dict[str, int]:
+    return {objective: value for objective in PLANNER_OBJECTIVES}
 
 
 @dataclass
@@ -17,6 +24,16 @@ class AppSettings:
     daily_goal: int = 30
     session_limit: int = 30
     new_card_limit: int = 8
+    planner_due_caps: dict[str, int] = field(
+        default_factory=lambda: _objective_defaults(30)
+    )
+    planner_new_caps: dict[str, int] = field(
+        default_factory=lambda: _objective_defaults(8)
+    )
+    planner_weights: dict[str, int] = field(
+        default_factory=lambda: _objective_defaults(1)
+    )
+    planner_weighted_mix: bool = False
     audio_speed: float = 1.0
     audio_autoplay: bool = False
     theme: str = "graphite"
@@ -44,6 +61,7 @@ _BOOL_FIELDS = {
     "reduced_motion",
     "strict_answers",
     "update_checks",
+    "planner_weighted_mix",
 }
 _ENUM_FIELDS: dict[str, set[str]] = {
     "level": {"A1", "A2", "B1", "B2", "C1", "C2"},
@@ -102,6 +120,46 @@ def _normalized_bool(value: Any, default: bool) -> bool:
     return default
 
 
+def _normalized_objective_map(
+    value: Any,
+    fallback: Any,
+    *,
+    default: int,
+    lower: int,
+    upper: int,
+) -> dict[str, int]:
+    fallback_map = fallback if isinstance(fallback, dict) else {}
+    normalized = {
+        objective: _normalized_int(
+            fallback_map.get(objective),
+            default,
+            lower,
+            upper,
+        )
+        for objective in PLANNER_OBJECTIVES
+    }
+    if not isinstance(value, dict):
+        return normalized
+    aliases: dict[str, Any] = {}
+    for raw_key, raw_value in value.items():
+        if not isinstance(raw_key, str):
+            continue
+        key = raw_key.strip().casefold()
+        canonical = _OBJECTIVE_ALIASES.get(key, key)
+        if canonical in PLANNER_OBJECTIVES and canonical not in value:
+            aliases[canonical] = raw_value
+    for objective in PLANNER_OBJECTIVES:
+        candidate = value.get(objective, aliases.get(objective))
+        if objective in value or objective in aliases:
+            normalized[objective] = _normalized_int(
+                candidate,
+                normalized[objective],
+                lower,
+                upper,
+            )
+    return normalized
+
+
 def _normalize_settings(raw: Any, fallback: AppSettings | None = None) -> AppSettings:
     """Return a complete, safe settings value from untrusted JSON data."""
     defaults = fallback or AppSettings()
@@ -116,6 +174,23 @@ def _normalize_settings(raw: Any, fallback: AppSettings | None = None) -> AppSet
     for name in _BOOL_FIELDS:
         if name in raw:
             data[name] = _normalized_bool(raw[name], data[name])
+
+    planner_specs = (
+        ("planner_due_caps", 30, 0, 200),
+        ("planner_new_caps", 8, 0, 30),
+        ("planner_weights", 1, 1, 100),
+    )
+    for name, default, lower, upper in planner_specs:
+        incoming = raw.get(name, data[name])
+        if name == "planner_new_caps" and name not in raw and "new_card_limit" in raw:
+            incoming = _objective_defaults(data["new_card_limit"])
+        data[name] = _normalized_objective_map(
+            incoming,
+            data[name],
+            default=default,
+            lower=lower,
+            upper=upper,
+        )
 
     if "audio_speed" in raw:
         if isinstance(raw["audio_speed"], bool):

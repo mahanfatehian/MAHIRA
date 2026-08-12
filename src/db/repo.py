@@ -236,6 +236,26 @@ class ListeningState:
     buried_until: Optional[int] = None
 
 
+@dataclass(frozen=True)
+class PlannerInventoryItem:
+    objective: str
+    item_id: int
+    deck_id: int
+    level: str
+    book_slug: str
+    lektion_number: int
+    bucket: str
+    due_at: Optional[int]
+
+
+@dataclass(frozen=True)
+class DailyPlanUsage:
+    objective: str
+    completed: int
+    due: int
+    new: int
+
+
 class Repo:
     def __init__(self, db_path: Path):
         self.db_path = db_path
@@ -243,19 +263,41 @@ class Repo:
 
     @contextmanager
     def transaction(self):
-        """Reuse one connection for bulk work such as first-run seed import."""
+        """Reuse one immediate write transaction for an atomic operation.
+
+        Acquiring the writer reservation before the first read prevents two
+        app processes from classifying and scheduling the same stale state.
+        """
         if self._active_conn is not None:
             yield self._active_conn
             return
         conn = connect(self.db_path)
         self._active_conn = conn
         try:
+            conn.execute("BEGIN IMMEDIATE")
             yield conn
             conn.commit()
         except Exception:
             conn.rollback()
             raise
         finally:
+            self._active_conn = None
+            conn.close()
+
+    @contextmanager
+    def read_transaction(self):
+        """Pin related planner reads to one coherent SQLite snapshot."""
+        if self._active_conn is not None:
+            yield self._active_conn
+            return
+        conn = connect(self.db_path)
+        self._active_conn = conn
+        try:
+            conn.execute("BEGIN")
+            yield conn
+        finally:
+            if conn.in_transaction:
+                conn.rollback()
             self._active_conn = None
             conn.close()
 
@@ -1004,6 +1046,7 @@ class Repo:
         response_ms: int | None,
         practice_mode: str = "recognition",
         error_tags: str | None = None,
+        selection_bucket: str = "legacy",
     ) -> int:
         with self._conn() as conn:
             cursor = conn.execute(
@@ -1014,9 +1057,10 @@ class Repo:
                     meaning_correct, gender_correct, plural_correct,
                     tip_used, gender_tip_used,
                     was_checked, was_skipped,
-                    rating, response_ms, practice_mode, error_tags
+                    rating, response_ms, practice_mode, error_tags,
+                    selection_bucket
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     vocab_id,
@@ -1025,6 +1069,7 @@ class Repo:
                     int(tip_used), int(gender_tip_used),
                     int(was_checked), int(was_skipped),
                     rating, response_ms, practice_mode, error_tags,
+                    selection_bucket,
                 ),
             )
             return int(cursor.lastrowid)
@@ -1252,6 +1297,7 @@ class Repo:
         response_ms: int | None,
         practice_mode: str = "production",
         error_tags: str | None = None,
+        selection_bucket: str = "legacy",
     ) -> int:
         with self._conn() as conn:
             cursor = conn.execute(
@@ -1261,14 +1307,15 @@ class Repo:
                     typed_blank, correct,
                     meaning_tip_used, hint_used, grammar_tip_used,
                     was_checked, was_skipped,
-                    rating, response_ms, practice_mode, error_tags
+                    rating, response_ms, practice_mode, error_tags,
+                    selection_bucket
                 )
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (grammar_id, typed_blank, correct,
                  int(meaning_tip_used), int(hint_used), int(grammar_tip_used),
                  int(was_checked), int(was_skipped), rating, response_ms,
-                 practice_mode, error_tags),
+                 practice_mode, error_tags, selection_bucket),
             )
             return int(cursor.lastrowid)
 
@@ -1539,6 +1586,7 @@ class Repo:
             punct_errors: int | None = None,
             practice_mode: str = "builder",
             error_tags: str | None = None,
+            selection_bucket: str = "legacy",
     ) -> int:
         with self._conn() as conn:
             cursor = conn.execute(
@@ -1546,12 +1594,14 @@ class Repo:
                 INSERT INTO sentence_reviews(sentence_id, typed_text, correct,
                     tip_used, translation_used, was_checked, was_skipped,
                     rating, response_ms, bank_size, tokens_used, mismatch_count,
-                    cap_errors, punct_errors, practice_mode, error_tags)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    cap_errors, punct_errors, practice_mode, error_tags,
+                    selection_bucket)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (sentence_id, typed_text, correct, int(tip_used), int(translation_used),
                  int(was_checked), int(was_skipped), rating, response_ms, bank_size,
-                 tokens_used, mismatch_count, cap_errors, punct_errors, practice_mode, error_tags),
+                 tokens_used, mismatch_count, cap_errors, punct_errors,
+                 practice_mode, error_tags, selection_bucket),
             )
             return int(cursor.lastrowid)
 
@@ -1804,6 +1854,7 @@ class Repo:
         response_ms: int | None = None,
         practice_mode: str = "comprehension",
         error_tags: str | None = None,
+        selection_bucket: str = "legacy",
     ) -> int:
         with self._conn() as conn:
             cursor = conn.execute(
@@ -1811,9 +1862,9 @@ class Repo:
                 INSERT INTO listening_reviews(
                     listening_id, chosen, correct, replay_count,
                     was_checked, was_skipped, rating, response_ms,
-                    practice_mode, error_tags
+                    practice_mode, error_tags, selection_bucket
                 )
-                VALUES(?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     listening_id,
@@ -1826,6 +1877,7 @@ class Repo:
                     response_ms,
                     practice_mode,
                     error_tags,
+                    selection_bucket,
                 ),
             )
             return int(cursor.lastrowid)
@@ -2018,6 +2070,180 @@ class Repo:
             for row in rows
             if row["day"] is not None
         }
+
+    def planner_inventory(
+        self,
+        now: int,
+        cooldown_hours: float = 12.0,
+    ) -> list[PlannerInventoryItem]:
+        """Return every card ready for the primary daily-planner lanes.
+
+        New cards have no scheduler state. Seen cards are ready only when due
+        and outside the same cooldown used by ordinary session selection.
+        This read never creates state rows or changes seeded content.
+        """
+        now_ts = int(now)
+        cooldown_seconds = int(max(0.0, float(cooldown_hours)) * 3600)
+        cutoff_ts = now_ts - cooldown_seconds
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                WITH bounds(now_ts, cutoff_ts) AS (VALUES(?, ?)),
+                ready(
+                    objective, item_id, deck_id, level, book_slug,
+                    lektion_number, bucket, due_at
+                ) AS (
+                    SELECT 'vocab', v.id, d.id, d.level,
+                           COALESCE(b.slug, ''), COALESCE(l.number, 0),
+                           CASE WHEN s.id IS NULL THEN 'new' ELSE 'due' END,
+                           s.due_at
+                      FROM vocab v
+                      JOIN decks d ON d.id=v.deck_id AND d.objective='vocab'
+                      LEFT JOIN lektions l ON l.id=d.lektion_id
+                      LEFT JOIN books b ON b.id=l.book_id
+                      LEFT JOIN vocab_states s ON s.vocab_id=v.id
+                      CROSS JOIN bounds x
+                     WHERE (s.id IS NULL OR (
+                               s.due_at<=x.now_ts
+                               AND (s.last_review_at IS NULL OR s.last_review_at<=x.cutoff_ts)
+                           ))
+                       AND COALESCE(s.suspended, 0)=0
+                       AND (s.buried_until IS NULL OR s.buried_until<=x.now_ts)
+                    UNION ALL
+                    SELECT 'grammar', i.id, d.id, d.level,
+                           COALESCE(b.slug, ''), COALESCE(l.number, 0),
+                           CASE WHEN s.id IS NULL THEN 'new' ELSE 'due' END,
+                           s.due_at
+                      FROM grammar i
+                      JOIN decks d ON d.id=i.deck_id AND d.objective='grammar'
+                      LEFT JOIN lektions l ON l.id=d.lektion_id
+                      LEFT JOIN books b ON b.id=l.book_id
+                      LEFT JOIN grammar_states s ON s.grammar_id=i.id
+                      CROSS JOIN bounds x
+                     WHERE (s.id IS NULL OR (
+                               s.due_at<=x.now_ts
+                               AND (s.last_review_at IS NULL OR s.last_review_at<=x.cutoff_ts)
+                           ))
+                       AND COALESCE(s.suspended, 0)=0
+                       AND (s.buried_until IS NULL OR s.buried_until<=x.now_ts)
+                    UNION ALL
+                    SELECT 'sentences', i.id, d.id, d.level,
+                           COALESCE(b.slug, ''), COALESCE(l.number, 0),
+                           CASE WHEN s.id IS NULL THEN 'new' ELSE 'due' END,
+                           s.due_at
+                      FROM sentences i
+                      JOIN decks d ON d.id=i.deck_id AND d.objective='sentences'
+                      LEFT JOIN lektions l ON l.id=d.lektion_id
+                      LEFT JOIN books b ON b.id=l.book_id
+                      LEFT JOIN sentence_states s ON s.sentence_id=i.id
+                      CROSS JOIN bounds x
+                     WHERE (s.id IS NULL OR (
+                               s.due_at<=x.now_ts
+                               AND (s.last_review_at IS NULL OR s.last_review_at<=x.cutoff_ts)
+                           ))
+                       AND COALESCE(s.suspended, 0)=0
+                       AND (s.buried_until IS NULL OR s.buried_until<=x.now_ts)
+                    UNION ALL
+                    SELECT 'listening', i.id, d.id, d.level,
+                           COALESCE(b.slug, ''), COALESCE(l.number, 0),
+                           CASE WHEN s.id IS NULL THEN 'new' ELSE 'due' END,
+                           s.due_at
+                      FROM listening i
+                      JOIN decks d ON d.id=i.deck_id AND d.objective='listening'
+                      LEFT JOIN lektions l ON l.id=d.lektion_id
+                      LEFT JOIN books b ON b.id=l.book_id
+                      LEFT JOIN listening_states s ON s.listening_id=i.id
+                      CROSS JOIN bounds x
+                     WHERE (s.id IS NULL OR (
+                               s.due_at<=x.now_ts
+                               AND (s.last_review_at IS NULL OR s.last_review_at<=x.cutoff_ts)
+                           ))
+                       AND COALESCE(s.suspended, 0)=0
+                       AND (s.buried_until IS NULL OR s.buried_until<=x.now_ts)
+                )
+                SELECT * FROM ready
+                 ORDER BY CASE objective
+                            WHEN 'vocab' THEN 0 WHEN 'grammar' THEN 1
+                            WHEN 'sentences' THEN 2 ELSE 3 END,
+                          CASE bucket WHEN 'due' THEN 0 ELSE 1 END,
+                          COALESCE(due_at, 0), deck_id, item_id
+                """,
+                (now_ts, cutoff_ts),
+            ).fetchall()
+        return [
+            PlannerInventoryItem(
+                objective=str(row["objective"]),
+                item_id=int(row["item_id"]),
+                deck_id=int(row["deck_id"]),
+                level=str(row["level"]),
+                book_slug=str(row["book_slug"]),
+                lektion_number=int(row["lektion_number"]),
+                bucket=str(row["bucket"]),
+                due_at=None if row["due_at"] is None else int(row["due_at"]),
+            )
+            for row in rows
+        ]
+
+    def daily_plan_usage(
+        self,
+        day_start: int,
+        day_end: int,
+    ) -> list[DailyPlanUsage]:
+        """Return completed and classified primary work in one local day."""
+        start_ts = int(day_start)
+        end_ts = int(day_end)
+        if end_ts <= start_ts:
+            raise ValueError("day_end must be later than day_start")
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                WITH events(objective, selection_bucket) AS (
+                    SELECT 'vocab', selection_bucket FROM reviews
+                     WHERE created_at>=? AND created_at<?
+                       AND practice_mode='recognition'
+                       AND was_checked=1 AND was_skipped=0
+                    UNION ALL
+                    SELECT 'grammar', selection_bucket FROM grammar_reviews
+                     WHERE created_at>=? AND created_at<?
+                       AND practice_mode='production'
+                       AND was_checked=1 AND was_skipped=0
+                    UNION ALL
+                    SELECT 'sentences', selection_bucket FROM sentence_reviews
+                     WHERE created_at>=? AND created_at<?
+                       AND practice_mode='builder'
+                       AND was_checked=1 AND was_skipped=0
+                    UNION ALL
+                    SELECT 'listening', selection_bucket FROM listening_reviews
+                     WHERE created_at>=? AND created_at<?
+                       AND practice_mode='comprehension'
+                       AND was_checked=1 AND was_skipped=0
+                )
+                SELECT objective,
+                       COUNT(*) AS completed,
+                       SUM(CASE WHEN selection_bucket='due' THEN 1 ELSE 0 END) AS due_count,
+                       SUM(CASE WHEN selection_bucket='new' THEN 1 ELSE 0 END) AS new_count
+                  FROM events
+                 GROUP BY objective
+                 ORDER BY CASE objective
+                            WHEN 'vocab' THEN 0 WHEN 'grammar' THEN 1
+                            WHEN 'sentences' THEN 2 ELSE 3 END
+                """,
+                (
+                    start_ts, end_ts,
+                    start_ts, end_ts,
+                    start_ts, end_ts,
+                    start_ts, end_ts,
+                ),
+            ).fetchall()
+        return [
+            DailyPlanUsage(
+                objective=str(row["objective"]),
+                completed=int(row["completed"]),
+                due=int(row["due_count"] or 0),
+                new=int(row["new_count"] or 0),
+            )
+            for row in rows
+        ]
 
     def upcoming_due_counts(self, within_seconds: int = 86400) -> dict[str, int]:
         """Global (all decks + objectives) schedule pressure for the launch strip:

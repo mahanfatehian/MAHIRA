@@ -265,6 +265,25 @@ def _effective_binary_rating(
     return raw
 
 
+def classify_selection_bucket(
+    state,
+    *,
+    now: int,
+    cooldown_seconds: int = 43_200,
+) -> str:
+    """Classify one primary review from its pre-mutation scheduler state."""
+    if state is None:
+        return "new"
+    due_at = int(getattr(state, "due_at", int(now) + 1))
+    last_review_at = getattr(state, "last_review_at", None)
+    if due_at <= int(now) and (
+        last_review_at is None
+        or int(last_review_at) <= int(now) - max(0, int(cooldown_seconds))
+    ):
+        return "due"
+    return "extra"
+
+
 # ---------------------------------------------------------------------
 # Sentence helpers
 # ---------------------------------------------------------------------
@@ -1831,13 +1850,16 @@ class SessionService:
         # skips out of every "reviewed" count, the activity heatmap, mastery and
         # accuracy — they all read the reviews table. The card is still
         # rescheduled below (Again) so it comes back.
+        now = int(time.time())
         with _repo_transaction(self.repo):
             review_id = None
-            st = self.repo.get_state(item.id)
-            state_was_missing = st is None
+            prior_state = self.repo.get_state(item.id)
+            state_was_missing = prior_state is None
+            selection_bucket = classify_selection_bucket(prior_state, now=now)
+            st = prior_state
             if st is None:
                 st = self.repo.ensure_state(item.id)
-            st2 = schedule_next(st, effective_rating)
+            st2 = schedule_next(st, effective_rating, now=now)
             if not was_skipped:
                 review_id = self.repo.insert_review(
                     vocab_id=item.id,
@@ -1855,6 +1877,7 @@ class SessionService:
                     response_ms=response_ms,
                     practice_mode="recognition",
                     error_tags=",".join(error_tags) or None,
+                    selection_bucket=selection_bucket,
                 )
             self.repo.update_state(st2)
             persisted_state = self.repo.get_state(item.id)
@@ -1953,13 +1976,16 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
+        now = int(time.time())
         with _repo_transaction(self.repo):
             review_id = None
-            st = self.repo.get_grammar_state(item.id)
-            state_was_missing = st is None
+            prior_state = self.repo.get_grammar_state(item.id)
+            state_was_missing = prior_state is None
+            selection_bucket = classify_selection_bucket(prior_state, now=now)
+            st = prior_state
             if st is None:
                 st = self.repo.ensure_grammar_state(item.id)
-            st2 = schedule_next(st, effective_rating)
+            st2 = schedule_next(st, effective_rating, now=now)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 review_id = self.repo.insert_grammar_review(
@@ -1975,6 +2001,7 @@ class SessionService:
                     response_ms=response_ms,
                     practice_mode="production",
                     error_tags=",".join(error_tags) or None,
+                    selection_bucket=selection_bucket,
                 )
             self.repo.update_grammar_state(st2)
             persisted_state = self.repo.get_grammar_state(item.id)
@@ -2113,13 +2140,16 @@ class SessionService:
         typed = (typed_text or "").strip() or None
         got_toks = _tokenize(typed_text)
 
+        now = int(time.time())
         with _repo_transaction(self.repo):
             review_id = None
-            st = self.repo.get_sentence_state(item.id)
-            state_was_missing = st is None
+            prior_state = self.repo.get_sentence_state(item.id)
+            state_was_missing = prior_state is None
+            selection_bucket = classify_selection_bucket(prior_state, now=now)
+            st = prior_state
             if st is None:
                 st = self.repo.ensure_sentence_state(item.id)
-            st2 = schedule_next(st, effective_rating)
+            st2 = schedule_next(st, effective_rating, now=now)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 review_id = self.repo.insert_sentence_review(
@@ -2139,6 +2169,7 @@ class SessionService:
                     punct_errors=int(res.get("punct_errors") or 0),
                     practice_mode="builder",
                     error_tags=",".join(res.get("error_tags") or []) or None,
+                    selection_bucket=selection_bucket,
                 )
             self.repo.update_sentence_state(st2)
             persisted_state = self.repo.get_sentence_state(item.id)
@@ -2252,13 +2283,16 @@ class SessionService:
 
         correct = 1 if bool(res["ok"]) else 0
 
+        now = int(time.time())
         with _repo_transaction(self.repo):
             review_id = None
-            st = self.repo.get_listening_state(item.id)
-            state_was_missing = st is None
+            prior_state = self.repo.get_listening_state(item.id)
+            state_was_missing = prior_state is None
+            selection_bucket = classify_selection_bucket(prior_state, now=now)
+            st = prior_state
             if st is None:
                 st = self.repo.ensure_listening_state(item.id)
-            st2 = schedule_next(st, effective_rating)
+            st2 = schedule_next(st, effective_rating, now=now)
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 review_id = self.repo.insert_listening_review(
@@ -2272,6 +2306,7 @@ class SessionService:
                     response_ms=response_ms,
                     practice_mode="comprehension",
                     error_tags=",".join(error_tags) or None,
+                    selection_bucket=selection_bucket,
                 )
             self.repo.update_listening_state(st2)
             persisted_state = self.repo.get_listening_state(item.id)
