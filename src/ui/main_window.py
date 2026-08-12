@@ -21,6 +21,7 @@ from core.session import SessionService
 from ui.navigation import NavBar
 from PySide6.QtGui import QIcon, QShortcut, QKeySequence
 from PySide6.QtWidgets import QApplication
+from core.planner import PlanSegment
 from ui.pages.setup import SetupPage
 from ui.pages.vocab_review import VocabReviewPage
 from ui.pages.grammar_review import GrammarReviewPage
@@ -472,6 +473,83 @@ class MainWindow(QMainWindow):
         if settings is not None and app is not None:
             apply_application_theme(app, settings.value.font_scale, settings.value.theme)
             apply_typography_scale(self, settings.value.font_scale)
+
+    def _plan_segment_error(self, message: str) -> None:
+        page = self.pages.get("today")
+        show_error = getattr(page, "show_plan_error", None)
+        if callable(show_error):
+            show_error(message)
+
+    def _confirm_discard_for_plan_segment(self) -> bool:
+        choice = QMessageBox.question(
+            self,
+            "Unfinished session",
+            "Discard unfinished session and start today's set?\n\n"
+            "Completed ratings stay saved.",
+            QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return choice == QMessageBox.StandardButton.Discard
+
+    def _open_plan_segment(self, segment: PlanSegment) -> None:
+        if not isinstance(segment, PlanSegment):
+            self._plan_segment_error("This planned set is no longer valid.")
+            return
+
+        try:
+            previewed = self.session.preview_planned_segment(segment)
+        except Exception:
+            logging.exception("Could not preflight the planned review set")
+            previewed = None
+        if previewed is None:
+            self._plan_segment_error(
+                "Today's plan changed. Refresh it before starting this set."
+            )
+            return
+
+        try:
+            has_unfinished = self.session.has_unfinished_session()
+        except Exception:
+            logging.exception("Could not inspect the current review session")
+            self._plan_segment_error("The current session could not be checked safely.")
+            return
+        if has_unfinished:
+            if not self._confirm_discard_for_plan_segment():
+                return
+            try:
+                self.session.discard_pending_resume()
+            except Exception:
+                logging.exception("Could not discard the unfinished session")
+                self._plan_segment_error("The unfinished session could not be discarded.")
+                return
+
+        try:
+            self.session.set_context(
+                previewed.level,
+                previewed.objective,
+                previewed.book_slug,
+                previewed.lektion_number,
+            )
+        except Exception:
+            logging.exception("Could not activate the planned review context")
+            self._plan_segment_error("That planned lesson is no longer available.")
+            return
+
+        try:
+            started = self.session.start_planned_segment(previewed)
+        except Exception:
+            logging.exception("Could not start the planned review set")
+            started = False
+        if not started:
+            self._plan_segment_error(
+                "Today's plan changed before it could start. Refresh and try again."
+            )
+            return
+
+        self._invalidate_review_pages()
+        self.resume_banner.hide()
+        self._last_nav_context = None
+        self._show(self._OBJ_TO_PAGE[previewed.objective])
 
     def _mistake_drill_error(self, message: str) -> None:
         page = self.pages.get('mistakes')

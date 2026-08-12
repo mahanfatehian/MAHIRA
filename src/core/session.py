@@ -982,6 +982,78 @@ class SessionService:
         self._checkpoint_session()
         return True
 
+    def preview_planned_segment(self, segment, now=None):
+        """Revalidate a planned set without changing context or session state."""
+        from core.planner import DailyPlannerService, OBJECTIVES, PlanSegment
+
+        if not isinstance(segment, PlanSegment):
+            return None
+        if segment.objective not in OBJECTIVES:
+            return None
+        if not isinstance(segment.level, str) or not segment.level.strip():
+            return None
+        if not isinstance(segment.book_slug, str):
+            return None
+        scalar_values = (segment.deck_id, segment.lektion_number)
+        if any(isinstance(value, bool) or not isinstance(value, int) for value in scalar_values):
+            return None
+        if segment.deck_id <= 0 or segment.lektion_number < 0:
+            return None
+        book_slug = segment.book_slug.strip()
+        if bool(book_slug) != bool(segment.lektion_number):
+            return None
+        if not isinstance(segment.item_ids, tuple) or not segment.item_ids or any(
+            isinstance(item_id, bool)
+            or not isinstance(item_id, int)
+            or item_id <= 0
+            for item_id in segment.item_ids
+        ):
+            return None
+        settings_service = getattr(self, "settings", None)
+        settings_value = getattr(settings_service, "value", None)
+        if settings_value is None:
+            return None
+        try:
+            return DailyPlannerService(
+                self.repo,
+                settings_value,
+                ranker=getattr(self, "ml", None),
+            ).revalidate_segment(segment, now=now)
+        except Exception:
+            logging.exception("Could not revalidate the planned review segment")
+            return None
+
+    def start_planned_segment(self, segment, now=None) -> bool:
+        """Start one ordinary checkpointed review from a validated segment."""
+        if self.has_unfinished_session():
+            return False
+        validated = self.preview_planned_segment(segment, now=now)
+        if validated is None:
+            return False
+        if (
+            _norm_level(getattr(self.state, "level", "")) != validated.level
+            or _norm_objective(getattr(self.state, "objective", ""))
+            != validated.objective
+            or str(getattr(self.state, "book_slug", "") or "").strip()
+            != validated.book_slug
+            or int(getattr(self.state, "lektion_number", 0) or 0)
+            != validated.lektion_number
+        ):
+            return False
+        try:
+            if self.active_deck_id() != validated.deck_id:
+                return False
+        except Exception:
+            return False
+
+        self._reset_active_session(clear_checkpoint=True)
+        self._session_kind = "review"
+        self._queue = list(reversed(validated.item_ids))
+        self._session_position = 0
+        self._session_total = len(self._queue)
+        self._checkpoint_session()
+        return bool(self._queue)
+
     def pick_vocab_practice_ids(
         self,
         practice_mode: str,
