@@ -757,46 +757,46 @@ def test_settings_use_step_controls_and_save_inline(tmp_path):
         page.deleteLater()
 
 
-def test_setup_due_reminder_waits_until_page_is_visible():
+def test_setup_has_no_due_reminder_or_due_count_query(tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QApplication, QFrame
+
+    from db.init_db import init_db
+    from db.repo import Repo
     from ui.pages.setup import SetupPage
 
-    class Strip:
-        def __init__(self):
-            self.show_calls = 0
-            self.hide_calls = 0
+    db_path = tmp_path / "setup-no-due-reminder.db"
+    init_db(db_path)
+    repo = Repo(db_path)
+    due_count_calls: list[int] = []
 
-        def show(self):
-            self.show_calls += 1
+    def record_due_count_query(horizon: int):
+        due_count_calls.append(horizon)
+        return {"due_now": 2, "due_soon": 1}
 
-        def hide(self):
-            self.hide_calls += 1
-
-    calls: list[int] = []
-    repo = SimpleNamespace(
-        upcoming_due_counts=lambda horizon: (
-            calls.append(horizon) or {"due_now": 2, "due_soon": 1}
-        )
+    monkeypatch.setattr(repo, "upcoming_due_counts", record_due_count_query)
+    session = SimpleNamespace(
+        repo=repo,
+        state=SimpleNamespace(
+            level="A1", book_slug="", lektion_number=0, objective=""
+        ),
     )
-    strip = Strip()
-    page = SimpleNamespace(
-        due_strip=strip,
-        due_icon=SimpleNamespace(setText=lambda _text: None),
-        due_lbl=SimpleNamespace(setText=lambda _text: None),
-        session=SimpleNamespace(repo=repo),
-        _due_strip_seen=False,
-        isVisible=lambda: False,
-    )
+    _qapp()
+    page = SetupPage(session)
 
-    SetupPage._refresh_due_strip(page)
-    assert calls == []
-    assert page._due_strip_seen is False
-    assert strip.show_calls == 0
+    try:
+        QApplication.processEvents()
+        page.show()
+        QApplication.processEvents()
+        page.on_show()
 
-    page.isVisible = lambda: True
-    SetupPage._refresh_due_strip(page)
-    assert calls == [86400]
-    assert page._due_strip_seen is True
-    assert strip.show_calls == 1
+        assert not page.findChildren(QFrame, "DueStrip")
+        assert due_count_calls == []
+        assert page.stack.count() == 4
+        assert page.stack.currentIndex() == 0
+        assert page.level_buttons["A1"].isEnabled() is False
+    finally:
+        page.close()
+        page.deleteLater()
 
 
 def test_setup_immediate_first_show_and_deferred_refresh_do_not_rebuild_structure(
