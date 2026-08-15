@@ -322,19 +322,20 @@ class TodayPage(QWidget):
         self.goal_bar.setRange(0, max(1, goal))
         self.goal_bar.setValue(min(completed, goal))
         self.plan_totals.setText(f"{completed} completed · {planned} planned")
-        self.plan_ready.setText(
-            f"{snapshot.ready_due} due · {snapshot.ready_new} new ready now"
-        )
 
-        backlog_parts = []
-        if snapshot.backlog_due:
-            backlog_parts.append(f"{snapshot.backlog_due} more due")
-        if snapshot.backlog_new:
-            backlog_parts.append(f"{snapshot.backlog_new} more new")
+        planned_due = sum(
+            max(0, int(row.planned_due)) for row in snapshot.objectives
+        )
+        planned_new = sum(
+            max(0, int(row.planned_new)) for row in snapshot.objectives
+        )
+        self.plan_ready.setText(
+            f'{planned_due} due - {planned_new} new in plan'
+        )
         self.plan_backlog.setText(
-            f"{' · '.join(backlog_parts)} stay ready for later."
-            if backlog_parts
-            else "No work is waiting beyond today's plan."
+            'More practice remains available after the plan.'
+            if snapshot.backlog_due or snapshot.backlog_new
+            else 'No additional practice is available right now.'
         )
         count = len(snapshot.segments)
         self.plan_segments.setText(
@@ -363,16 +364,13 @@ class TodayPage(QWidget):
             )
 
         if snapshot.segments:
-            self.summary.setText(
-                f"{snapshot.ready_due} due and {snapshot.ready_new} new are ready "
-                "across your library."
-            )
+            self.summary.setText('Your focused plan is ready to study.')
         elif snapshot.backlog_due or snapshot.backlog_new:
             self.summary.setText(
-                "Today's limits are reached; remaining work stays ready for later."
+                'More practice remains available after the plan.'
             )
         else:
-            self.summary.setText("You are caught up. Today's plan is complete.")
+            self.summary.setText('You are caught up. The plan is complete.')
 
     def _start_recommended(self) -> None:
         if self._recommended_context is None:

@@ -19,7 +19,6 @@ _PRACTICE_COOLDOWN_HOURS = 12
 _ACCENT_FIRE = "#FF7A2E"   # warm — a live streak / goal reached (fire)
 _ACCENT_COLD = "#6E7E8C"   # cold slate — broken streak / frozen
 
-
 class ProgressCard(QGroupBox):
     def __init__(self, title: str, parent=None):
         super().__init__(title, parent)
@@ -71,7 +70,6 @@ class ProgressCard(QGroupBox):
     def set_value(self, value, description: str = ""):
         self.value_label.setText(str(value))
         self.description_label.setText(description)
-
 
 class ProgressPage(QWidget):
     go_learn = Signal()
@@ -139,8 +137,8 @@ class ProgressPage(QWidget):
         plan_layout.setSpacing(8)
         self.plan_completed_label = self._plan_metric("0 completed")
         self.plan_planned_label = self._plan_metric("0 planned")
-        self.plan_due_label = self._plan_metric("0 due")
-        self.plan_new_label = self._plan_metric("0 new")
+        self.plan_due_label = self._plan_metric("0 due in plan")
+        self.plan_new_label = self._plan_metric("0 new in plan")
         for label in (
             self.plan_completed_label,
             self.plan_planned_label,
@@ -849,8 +847,14 @@ class ProgressPage(QWidget):
         self._snapshot = snapshot
         self.plan_completed_label.setText(f"{snapshot.completed_total} completed")
         self.plan_planned_label.setText(f"{snapshot.planned_total} planned")
-        self.plan_due_label.setText(f"{snapshot.ready_due} due")
-        self.plan_new_label.setText(f"{snapshot.ready_new} new")
+        planned_due = sum(
+            max(0, int(row.planned_due)) for row in snapshot.objectives
+        )
+        planned_new = sum(
+            max(0, int(row.planned_new)) for row in snapshot.objectives
+        )
+        self.plan_due_label.setText(f'{planned_due} due in plan')
+        self.plan_new_label.setText(f'{planned_new} new in plan')
         return snapshot
 
     def _show_refresh_unavailable(self) -> None:
@@ -858,8 +862,9 @@ class ProgressPage(QWidget):
         self._snapshot = None
         self.plan_completed_label.setText("Plan unavailable")
         self.plan_planned_label.setText("-- planned")
-        self.plan_due_label.setText("-- due")
-        self.plan_new_label.setText("-- new")
+
+        self.plan_due_label.setText('-- due in plan')
+        self.plan_new_label.setText('-- new in plan')
 
         self.heatmap.set_data({}, DAILY_GOAL, _dt.date.today())
         self.streak_value.setText("--")

@@ -70,10 +70,10 @@ def test_progress_shows_the_canonical_global_plan_without_an_active_lesson(
         goal=10,
         completed_total=3,
         planned_total=7,
-        ready_due=12,
-        ready_new=3,
-        backlog_due=6,
-        backlog_new=2,
+        ready_due=91_913,
+        ready_new=82_824,
+        backlog_due=73_735,
+        backlog_new=64_646,
         objectives=(
             ObjectivePlan("vocab", 2, 1, 1, 8, 2, 4, 1, 4, 1),
             ObjectivePlan("grammar", 1, 1, 0, 4, 1, 2, 0, 2, 1),
@@ -115,10 +115,16 @@ def test_progress_shows_the_canonical_global_plan_without_an_active_lesson(
         copy = {
             label.text().casefold() for label in page.findChildren(QLabel)
         }
+        rendered_copy = ' '.join(copy)
+        assert page.plan_due_label.text() == '6 due in plan'
+        assert page.plan_new_label.text() == '1 new in plan'
+        for library_total in ('91913', '82824', '73735', '64646'):
+            assert library_total not in rendered_copy
+        assert 'across your library' not in rendered_copy
         titles = {
             group.title().casefold() for group in page.findChildren(QGroupBox)
         }
-        assert {"3 completed", "7 planned", "12 due", "3 new"} <= copy
+        assert {"3 completed", "7 planned", "6 due in plan", "1 new in plan"} <= copy
         assert "today's plan" in titles
         assert "current lesson" in titles
         assert "ready now" in titles

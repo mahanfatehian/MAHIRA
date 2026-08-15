@@ -66,7 +66,7 @@ def _copy(widget) -> str:
     return " ".join(parts).casefold()
 
 
-def test_today_and_progress_render_identical_global_plan_totals_and_clear_scopes(
+def test_today_and_progress_render_identical_daily_plan_totals_and_clear_scopes(
     monkeypatch,
 ):
     from PySide6.QtWidgets import QApplication, QGroupBox
@@ -126,7 +126,7 @@ def test_today_and_progress_render_identical_global_plan_totals_and_clear_scopes
 
         today_text = _copy(today)
         progress_text = _copy(progress)
-        for expected in ("3 completed", "7 planned", "12 due", "3 new"):
+        for expected in ("3 completed", "7 planned", "6 due", "1 new"):
             assert expected in today_text
             assert expected in progress_text
 

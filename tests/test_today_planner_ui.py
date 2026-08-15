@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -179,12 +180,43 @@ def test_today_renders_completed_plan_ready_backlog_and_split_truthfully(monkeyp
         assert "today's plan" in text
         assert "3 completed" in text
         assert "7 planned" in text
-        assert "12 due" in text
-        assert "3 new" in text
-        assert "6 more due" in text
+        assert "6 due" in text
+        assert "1 new" in text
         assert "3 focused sets" in text
         for heading in ("wortschatz", "grammatik", "sätze", "hören"):
             assert heading in text
+    finally:
+        page.close()
+        page.deleteLater()
+
+
+
+def test_today_hides_library_totals_and_shows_only_bounded_plan_metrics(monkeypatch):
+    from PySide6.QtWidgets import QApplication
+
+    _qapp()
+    snapshot = replace(
+        _snapshot(),
+        ready_due=91_913,
+        ready_new=82_824,
+        backlog_due=73_735,
+        backlog_new=64_646,
+    )
+    page = _page(monkeypatch, _Snapshots(snapshot))
+    page.show()
+    try:
+        page.on_show()
+        QApplication.processEvents()
+        text = _copy(page)
+
+        assert '6 due' in text
+        assert '1 new' in text
+        assert '4 due + 1 new' in text
+        assert '2 due + 0 new' in text
+        assert '3 focused sets' in text
+        for library_total in ('91913', '82824', '73735', '64646'):
+            assert library_total not in text
+        assert 'across your library' not in text
     finally:
         page.close()
         page.deleteLater()
@@ -224,7 +256,7 @@ def test_today_actions_emit_the_exact_next_and_objective_segments(monkeypatch):
     ("snapshot", "message"),
     [
         (_snapshot(empty=True), "caught up"),
-        (_snapshot(capped=True), "5 more due"),
+        (_snapshot(capped=True), "more practice remains available"),
     ],
 )
 def test_today_zero_work_states_do_not_start_an_unplanned_queue(
