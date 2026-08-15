@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from contextlib import nullcontext
 import datetime as _dt
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -893,6 +894,17 @@ class ProgressPage(QWidget):
         self.performance_label.setText(msg)
 
     def on_show(self):
+        read_transaction = getattr(self.session.repo, "read_transaction", None)
+        read_scope = (
+            read_transaction() if callable(read_transaction) else nullcontext()
+        )
+        try:
+            with read_scope:
+                self._refresh_from_repository()
+        except Exception:
+            self._show_refresh_unavailable()
+
+    def _refresh_from_repository(self):
         try:
             plan_snapshot = self._refresh_daily_plan()
         except Exception:

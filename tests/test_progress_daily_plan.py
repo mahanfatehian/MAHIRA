@@ -16,6 +16,45 @@ def _qapp():
     return QApplication.instance() or QApplication([])
 
 
+def test_progress_refresh_reuses_one_repository_connection(tmp_path, monkeypatch):
+    import db.repo as repo_module
+    from types import SimpleNamespace
+    from db.init_db import init_db
+    from db.repo import Repo
+    from ui.pages.progress import ProgressPage
+
+    db_path = tmp_path / "progress-refresh.db"
+    init_db(db_path)
+    repo = Repo(db_path)
+    session = SimpleNamespace(
+        repo=repo,
+        settings=SimpleNamespace(value=SimpleNamespace(daily_goal=10)),
+        state=SimpleNamespace(
+            level='A1', objective='vocab', book_slug='', lektion_number=0
+        ),
+        active_deck_id=lambda: None,
+        ml=None,
+        enable_ml_ranking=False,
+    )
+    real_connect = repo_module.connect
+    opens = 0
+
+    def counted_connect(path):
+        nonlocal opens
+        opens += 1
+        return real_connect(path)
+
+    monkeypatch.setattr(repo_module, "connect", counted_connect)
+    _qapp()
+    page = ProgressPage(session)
+    try:
+        page.on_show()
+        assert opens == 1
+    finally:
+        page.close()
+        page.deleteLater()
+
+
 def test_progress_shows_the_canonical_global_plan_without_an_active_lesson(
     monkeypatch,
 ):
