@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -125,3 +126,103 @@ def test_bundled_cover_lookup_uses_real_jpegs(slug: str, level: str, name: str):
 
     assert cover is not None
     assert Path(cover).name == name
+
+
+def test_rounded_cover_cache_reuses_identical_transform_and_splits_geometry(tmp_path):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QPixmap
+    from PySide6.QtWidgets import QApplication
+    from ui.widgets import images
+
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+    source = tmp_path / "cover.png"
+    pixmap = QPixmap(40, 60)
+    pixmap.fill(Qt.GlobalColor.red)
+    assert pixmap.save(str(source), "PNG")
+    images._cached_rounded_cover_pixmap.cache_clear()
+
+    assert images.rounded_cover_pixmap(str(source), 80, 104, 14) is not None
+    assert images.rounded_cover_pixmap(str(source), 80, 104, 14) is not None
+    reused = images._cached_rounded_cover_pixmap.cache_info()
+    assert (reused.hits, reused.misses) == (1, 1)
+
+    assert images.rounded_cover_pixmap(str(source), 81, 104, 14) is not None
+    assert images.rounded_cover_pixmap(str(source), 80, 104, 15) is not None
+    split = images._cached_rounded_cover_pixmap.cache_info()
+    assert split.misses == 3
+    assert split.maxsize == 128
+
+    first = images.rounded_cover_pixmap(str(source), 80, 104, 14)
+    assert first is not None
+    first.fill(Qt.GlobalColor.blue)
+    second = images.rounded_cover_pixmap(str(source), 80, 104, 14)
+    assert second is not None
+    assert second.toImage().pixelColor(40, 52) == Qt.GlobalColor.red
+
+
+def test_rounded_cover_cache_splits_device_pixel_ratios(tmp_path, monkeypatch):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QPixmap
+    from PySide6.QtWidgets import QApplication
+    from ui.widgets import images
+
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+    source = tmp_path / "cover.png"
+    pixmap = QPixmap(40, 60)
+    pixmap.fill(Qt.GlobalColor.blue)
+    assert pixmap.save(str(source), "PNG")
+    images._cached_rounded_cover_pixmap.cache_clear()
+
+    monkeypatch.setattr(images, "_device_pixel_ratio", lambda: 1.0)
+    first = images.rounded_cover_pixmap(str(source), 80, 104, 14)
+    monkeypatch.setattr(images, "_device_pixel_ratio", lambda: 2.0)
+    second = images.rounded_cover_pixmap(str(source), 80, 104, 14)
+
+    assert first is not None
+    assert second is not None
+    info = images._cached_rounded_cover_pixmap.cache_info()
+    assert (info.hits, info.misses) == (0, 2)
+    assert first.devicePixelRatio() == 1.0
+    assert second.devicePixelRatio() == 2.0
+
+
+def test_rounded_cover_cache_invalidates_changed_source_stat(tmp_path):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QPixmap
+    from PySide6.QtWidgets import QApplication
+    from ui.widgets import images
+
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+    source = tmp_path / "cover.png"
+    original = QPixmap(40, 60)
+    original.fill(Qt.GlobalColor.red)
+    assert original.save(str(source), "PNG")
+    images._cached_rounded_cover_pixmap.cache_clear()
+
+    first = images.rounded_cover_pixmap(str(source), 80, 104, 14)
+    replacement = QPixmap(40, 60)
+    replacement.fill(Qt.GlobalColor.blue)
+    assert replacement.save(str(source), "PNG")
+    stat = source.stat()
+    os.utime(source, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000))
+    second = images.rounded_cover_pixmap(str(source), 80, 104, 14)
+
+    assert first is not None
+    assert second is not None
+    assert first.toImage().pixelColor(40, 52) == Qt.GlobalColor.red
+    assert second.toImage().pixelColor(40, 52) == Qt.GlobalColor.blue
+    info = images._cached_rounded_cover_pixmap.cache_info()
+    assert (info.hits, info.misses) == (0, 2)
+
+
+def test_rounded_cover_cache_keeps_malformed_path_fallback(monkeypatch):
+    from ui.widgets import images
+
+    def raise_value_error(*_args, **_kwargs):
+        raise ValueError
+
+    monkeypatch.setattr(images.Path, "resolve", raise_value_error)
+    assert images.rounded_cover_pixmap("bad\0cover.png", 80, 104, 14) is None

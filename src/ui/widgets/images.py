@@ -15,6 +15,8 @@ like crisp, intentional thumbnails.
 
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import QRectF, Qt
@@ -32,20 +34,21 @@ def _device_pixel_ratio() -> float:
     return 1.0
 
 
-def rounded_cover_pixmap(
-    path: str, width: int, height: int, radius: int = 14
+@lru_cache(maxsize=128)
+def _cached_rounded_cover_pixmap(
+    resolved_path: str,
+    mtime_ns: int,
+    file_size: int,
+    width: int,
+    height: int,
+    radius: int,
+    dpr: float,
 ) -> Optional[QPixmap]:
-    """Return a HiDPI-aware pixmap that FILLS a width x height tile (cover-fit,
-    center-cropped) with rounded corners. Returns None if the image can't be
-    loaded so callers can fall back to a placeholder.
-    """
-    if not path:
-        return None
-    src = QPixmap(path)
+    del mtime_ns, file_size
+    src = QPixmap(resolved_path)
     if src.isNull():
         return None
 
-    dpr = _device_pixel_ratio()
     tw = max(1, int(round(width * dpr)))
     th = max(1, int(round(height * dpr)))
 
@@ -73,3 +76,30 @@ def rounded_cover_pixmap(
 
     out.setDevicePixelRatio(dpr)
     return out
+
+
+def rounded_cover_pixmap(
+    path: str, width: int, height: int, radius: int = 14
+) -> Optional[QPixmap]:
+    """Return a HiDPI-aware pixmap that FILLS a width x height tile (cover-fit,
+    center-cropped) with rounded corners. Returns None if the image can't be
+    loaded so callers can fall back to a placeholder.
+    """
+    if not path:
+        return None
+    try:
+        resolved = Path(path).resolve(strict=True)
+        stat = resolved.stat()
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+    cached = _cached_rounded_cover_pixmap(
+        str(resolved),
+        stat.st_mtime_ns,
+        stat.st_size,
+        max(1, int(width)),
+        max(1, int(height)),
+        max(0, int(radius)),
+        round(_device_pixel_ratio(), 4),
+    )
+    return QPixmap(cached) if cached is not None else None
