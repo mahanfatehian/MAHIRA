@@ -684,6 +684,7 @@ class SetupPage(QWidget):
         self._refresh_objectives()
 
     def _post_init_refresh(self):
+        self._skip_unchanged_initial_show = False
         self._sync_from_state()
         self._coerce_step_to_state()
         self._update_breadcrumb()

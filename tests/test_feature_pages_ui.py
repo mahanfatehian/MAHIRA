@@ -799,7 +799,7 @@ def test_setup_due_reminder_waits_until_page_is_visible():
     assert strip.show_calls == 1
 
 
-def test_setup_deferred_and_first_show_do_not_rebuild_unchanged_structure(
+def test_setup_immediate_first_show_and_deferred_refresh_do_not_rebuild_structure(
     tmp_path, monkeypatch
 ):
     from PySide6.QtWidgets import QApplication
@@ -841,8 +841,8 @@ def test_setup_deferred_and_first_show_do_not_rebuild_unchanged_structure(
     )
 
     try:
-        QApplication.processEvents()
         page.on_show()
+        QApplication.processEvents()
 
         assert calls == {"levels": 0, "books": 0, "lektions": 0, "objectives": 0}
     finally:
@@ -895,6 +895,43 @@ def test_setup_context_change_rebuilds_structure_on_show(tmp_path, monkeypatch):
         page.on_show()
 
         assert calls == {"levels": 1, "books": 1, "lektions": 1, "objectives": 1}
+    finally:
+        page.close()
+        page.deleteLater()
+
+
+def test_setup_delayed_first_show_rebuilds_after_repository_content_changes(tmp_path):
+    from PySide6.QtWidgets import QApplication
+
+    from db.init_db import init_db
+    from db.repo import Repo
+    from ui.pages.setup import SetupPage
+
+    db_path = tmp_path / 'setup-delayed-content-change.db'
+    init_db(db_path)
+    repo = Repo(db_path)
+    session = SimpleNamespace(
+        repo=repo,
+        state=SimpleNamespace(
+            level='A1', book_slug='', lektion_number=0, objective=''
+        ),
+    )
+    _qapp()
+    page = SetupPage(session)
+
+    try:
+        assert page.level_buttons['A1'].isEnabled() is False
+        assert page.book_count_lbl.text() == '0 books'
+
+        QApplication.processEvents()
+        book_id = repo.ensure_book('fresh-book', 'Fresh Book')
+        lektion_id = repo.ensure_lektion(book_id, 'A1', 1, 'Fresh Lektion')
+        repo.upsert_deck('A1', 'vocab', 'fresh.csv', 'fresh-sha', lektion_id)
+
+        page.on_show()
+
+        assert page.level_buttons['A1'].isEnabled() is True
+        assert page.book_count_lbl.text() == '1 book'
     finally:
         page.close()
         page.deleteLater()

@@ -197,10 +197,12 @@ def test_daily_plan_ranking_is_converted_to_first_served_order():
 def test_daily_plan_keeps_new_cards_in_curriculum_order_without_ranking_them():
     from core.planner import DailyPlannerService
 
+    class _RankerCalled(BaseException):
+        pass
+
     class _Ranker:
         def rank_vocab_ids(self, ids, *, level=None, **_):
-            assert ids == [11, 12, 13]
-            return [11, 12, 13]
+            raise _RankerCalled(f'new cards must not be ranked: {ids!r}')
 
     inventory = [
         _item('vocab', item_id, bucket='new')
