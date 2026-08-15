@@ -799,6 +799,107 @@ def test_setup_due_reminder_waits_until_page_is_visible():
     assert strip.show_calls == 1
 
 
+def test_setup_deferred_and_first_show_do_not_rebuild_unchanged_structure(
+    tmp_path, monkeypatch
+):
+    from PySide6.QtWidgets import QApplication
+
+    from db.init_db import init_db
+    from db.repo import Repo
+    from ui.pages.setup import SetupPage
+
+    db_path = tmp_path / "setup-refresh.db"
+    init_db(db_path)
+    session = SimpleNamespace(
+        repo=Repo(db_path),
+        state=SimpleNamespace(
+            level="A1", book_slug="", lektion_number=0, objective=""
+        ),
+    )
+    _qapp()
+    page = SetupPage(session)
+    calls = {name: 0 for name in ("levels", "books", "lektions", "objectives")}
+    monkeypatch.setattr(
+        page,
+        "_refresh_levels_enabled",
+        lambda: calls.__setitem__("levels", calls["levels"] + 1),
+    )
+    monkeypatch.setattr(
+        page,
+        "_refresh_books",
+        lambda: calls.__setitem__("books", calls["books"] + 1),
+    )
+    monkeypatch.setattr(
+        page,
+        "_refresh_lektions",
+        lambda: calls.__setitem__("lektions", calls["lektions"] + 1),
+    )
+    monkeypatch.setattr(
+        page,
+        "_refresh_objectives",
+        lambda: calls.__setitem__("objectives", calls["objectives"] + 1),
+    )
+
+    try:
+        QApplication.processEvents()
+        page.on_show()
+
+        assert calls == {"levels": 0, "books": 0, "lektions": 0, "objectives": 0}
+    finally:
+        page.close()
+        page.deleteLater()
+
+
+def test_setup_context_change_rebuilds_structure_on_show(tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QApplication
+
+    from db.init_db import init_db
+    from db.repo import Repo
+    from ui.pages.setup import SetupPage
+
+    db_path = tmp_path / "setup-context-change.db"
+    init_db(db_path)
+    session = SimpleNamespace(
+        repo=Repo(db_path),
+        state=SimpleNamespace(
+            level="A1", book_slug="", lektion_number=0, objective=""
+        ),
+    )
+    _qapp()
+    page = SetupPage(session)
+    calls = {name: 0 for name in ("levels", "books", "lektions", "objectives")}
+    monkeypatch.setattr(
+        page,
+        "_refresh_levels_enabled",
+        lambda: calls.__setitem__("levels", calls["levels"] + 1),
+    )
+    monkeypatch.setattr(
+        page,
+        "_refresh_books",
+        lambda: calls.__setitem__("books", calls["books"] + 1),
+    )
+    monkeypatch.setattr(
+        page,
+        "_refresh_lektions",
+        lambda: calls.__setitem__("lektions", calls["lektions"] + 1),
+    )
+    monkeypatch.setattr(
+        page,
+        "_refresh_objectives",
+        lambda: calls.__setitem__("objectives", calls["objectives"] + 1),
+    )
+
+    try:
+        QApplication.processEvents()
+        session.state.level = "A2"
+        page.on_show()
+
+        assert calls == {"levels": 1, "books": 1, "lektions": 1, "objectives": 1}
+    finally:
+        page.close()
+        page.deleteLater()
+
+
 def test_book_card_treats_manifest_title_as_plain_text():
     from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QLabel

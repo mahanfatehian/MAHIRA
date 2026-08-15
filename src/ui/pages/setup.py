@@ -662,19 +662,29 @@ class SetupPage(QWidget):
 
         self._sync_from_state()
         self._goto(self.stack.currentIndex() or 0)
-        self._refresh_levels_enabled()
-        self._refresh_books()
-        self._refresh_lektions()
-        self._refresh_objectives()
+        self._refresh_structure()
+        self._last_structure_signature = self._state_signature()
+        self._skip_unchanged_initial_show = True
 
         QTimer.singleShot(0, self._post_init_refresh)
 
-    def _post_init_refresh(self):
-        self._sync_from_state()
+    def _state_signature(self) -> tuple[str, str, int, str]:
+        state = self.session.state
+        return (
+            _norm_level(getattr(state, "level", None) or ""),
+            (getattr(state, "book_slug", None) or "").strip().lower(),
+            int(getattr(state, "lektion_number", None) or 0),
+            _norm_objective(getattr(state, "objective", None) or ""),
+        )
+
+    def _refresh_structure(self) -> None:
         self._refresh_levels_enabled()
         self._refresh_books()
         self._refresh_lektions()
         self._refresh_objectives()
+
+    def _post_init_refresh(self):
+        self._sync_from_state()
         self._coerce_step_to_state()
         self._update_breadcrumb()
         self._refresh_due_strip()
@@ -682,10 +692,14 @@ class SetupPage(QWidget):
     def on_show(self):
         self._book_catalog = _load_book_catalog()
         self._sync_from_state()
-        self._refresh_levels_enabled()
-        self._refresh_books()
-        self._refresh_lektions()
-        self._refresh_objectives()
+        signature = self._state_signature()
+        if (
+            signature != self._last_structure_signature
+            or not self._skip_unchanged_initial_show
+        ):
+            self._refresh_structure()
+            self._last_structure_signature = signature
+        self._skip_unchanged_initial_show = False
         self._coerce_step_to_state()
         self._update_breadcrumb()
         self._refresh_due_strip()
