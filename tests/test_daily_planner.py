@@ -194,6 +194,27 @@ def test_daily_plan_ranking_is_converted_to_first_served_order():
     assert snapshot.segments[0].item_ids == (2, 3, 1)
 
 
+def test_daily_plan_keeps_new_cards_in_curriculum_order_without_ranking_them():
+    from core.planner import DailyPlannerService
+
+    class _Ranker:
+        def rank_vocab_ids(self, ids, *, level=None, **_):
+            assert ids == [11, 12, 13]
+            return [11, 12, 13]
+
+    inventory = [
+        _item('vocab', item_id, bucket='new')
+        for item_id in (11, 12, 13)
+    ]
+    snapshot = DailyPlannerService(
+        _Repo(inventory),
+        _settings(daily_goal=3),
+        ranker=_Ranker(),
+    ).snapshot(now=1_700_000_000)
+
+    assert snapshot.segments[0].item_ids == (11, 12, 13)
+
+
 def test_revalidate_segment_is_read_only_and_keeps_only_current_same_cohort_ids():
     from core.planner import DailyPlannerService
 

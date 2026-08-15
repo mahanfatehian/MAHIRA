@@ -282,9 +282,7 @@ class DailyPlannerService:
             due_items = self._rank(objective, ready[objective]["due"])[
                 : due_allocation[objective]
             ]
-            new_items = self._rank(objective, ready[objective]["new"])[
-                : new_allocation[objective]
-            ]
+            new_items = ready[objective]["new"][: new_allocation[objective]]
             selected[objective] = [*due_items, *new_items]
             objective_rows.append(
                 ObjectivePlan(
