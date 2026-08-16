@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
+from core.vocab_fields import noun_declension_values
+from db.repo import Repo
 from ui.theme import (
     COLORS,
     INPUT_STYLE,
@@ -472,7 +474,14 @@ class PracticeLabPage(QWidget):
     def _play(self) -> None:
         if self.current is None or self._audio_thread is not None:
             return
-        article = (self.current.article or "").strip()
+        article, gender, _plural = noun_declension_values(
+            self.current.pos,
+            self.current.article,
+            self.current.gender,
+            self.current.plural,
+        )
+        if article is None:
+            article = Repo._article_from_gender(gender)
         text = f"{article} {self.current.word}".strip()
         try:
             if self._audio_service is None:

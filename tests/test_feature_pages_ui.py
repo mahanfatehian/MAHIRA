@@ -688,6 +688,42 @@ def test_practice_lab_can_preselect_mode_without_double_loading():
         page.deleteLater()
 
 
+def test_practice_lab_audio_uses_semantic_noun_article(tmp_path, monkeypatch):
+    from db.repo import VocabItem
+    from ui.pages.practice_lab import PracticeLabPage
+
+    _qapp()
+    cached = tmp_path / "cached.wav"
+    cached.write_bytes(b"RIFF")
+
+    class CachedAudio:
+        def __init__(self):
+            self.texts: list[str] = []
+
+        def get_cached_path(self, text, _length_scale):
+            self.texts.append(text)
+            return cached
+
+    page = PracticeLabPage(_PracticeSession())
+    audio = CachedAudio()
+    page._audio_service = audio
+    monkeypatch.setattr(page._playback, "play_file", lambda _path: None)
+    try:
+        for item in (
+            VocabItem(3, 7, "verb", "hei\u00dfen", "to be called", "-", "-", "-", "-"),
+            VocabItem(4, 7, "noun", "Buch", "book", "-", "-", "-", "-"),
+            VocabItem(5, 7, "noun", "Haus", "house", None, "n", None, "H\u00e4user"),
+        ):
+            page.current = item
+            page._play()
+
+        assert audio.texts == ["hei\u00dfen", "Buch", "das Haus"]
+    finally:
+        page._stop_audio()
+        page.close()
+        page.deleteLater()
+
+
 def test_practice_lab_stops_audio_when_hidden(monkeypatch):
     from PySide6.QtWidgets import QApplication
 

@@ -10,6 +10,8 @@ the model, while the word-cell delegate paints a compact pronunciation action.
 
 from typing import Any, Optional
 
+from core.vocab_fields import noun_declension_values
+
 from PySide6.QtCore import (
     QAbstractTableModel,
     QModelIndex,
@@ -188,7 +190,13 @@ class _VocabTableModel(QAbstractTableModel):
         return {}
 
     def raw_value(self, row: int, key: str) -> str:
-        return self.row_data(row).get(key, "")
+        data = self.row_data(row)
+        if key in {"article", "plural"}:
+            article, _gender, plural = noun_declension_values(
+                data.get("pos"), data.get("article"), None, data.get("plural")
+            )
+            return article or "" if key == "article" else plural or ""
+        return data.get(key, "")
 
     def column_masked(self, key: str) -> bool:
         return bool(self._masked.get(key, False)) if key in _QUIZ_KEYS else False

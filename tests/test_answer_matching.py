@@ -81,3 +81,20 @@ def test_check_vocab_fields_examples():
     assert res2["meaning_ok"] is True
     assert res2["gender_ok"] is True
     assert res2["plural_ok"] is True
+
+
+def test_check_vocab_fields_ignores_noun_placeholder_plural():
+    from core.session import SessionService
+    from db.repo import VocabItem
+
+    svc = object.__new__(SessionService)
+    musik = VocabItem(
+        id=3, deck_id=1, pos="noun", word="Musik", meaning="music",
+        article="die", gender="f", gender_tip=None, plural="-",
+    )
+
+    result = svc.check_vocab_fields(musik, "music", "f", "")
+
+    assert result["gender_ok"] is True
+    assert result["plural_ok"] is None
+    assert result["expected_plural"] is None

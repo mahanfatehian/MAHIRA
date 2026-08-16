@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from db.connection import connect
+from core.vocab_fields import noun_declension_values, noun_vocab_value, usable_vocab_value
 
 
 def _seed_key(row, fields: tuple[str, ...]) -> tuple[str, ...]:
@@ -560,16 +561,19 @@ class Repo:
 
         out: list[dict] = []
         for r in rows:
-            article = (r["article"] or "").strip()
+            pos = (r["pos"] or "").strip()
+            article, gender, plural = noun_declension_values(
+                pos, r["article"], r["gender"], r["plural"]
+            )
             if not article:
-                article = self._article_from_gender(r["gender"])
+                article = self._article_from_gender(gender)
             out.append(
                 {
                     "word": (r["word"] or "").strip(),
-                    "article": article,
-                    "plural": (r["plural"] or "").strip(),
+                    "article": article or "",
+                    "plural": plural or "",
                     "meaning": (r["meaning"] or "").strip(),
-                    "pos": (r["pos"] or "").strip(),
+                    "pos": pos,
                 }
             )
         return out
@@ -578,7 +582,7 @@ class Repo:
     def _article_from_gender(gender: str | None) -> str:
         """der/die/das implied by a gender value (accepts 'm/f/n' or the
         article itself); empty string when the gender is unknown."""
-        g = (gender or "").strip().lower()
+        g = (usable_vocab_value(gender) or "").lower()
         return {
             "m": "der", "masculine": "der", "der": "der",
             "f": "die", "feminine": "die", "die": "die",
@@ -2546,16 +2550,24 @@ class Repo:
     @staticmethod
     def _row_to_vocab(r: sqlite3.Row) -> VocabItem:
         keys = set(r.keys())
+        pos = str(r["pos"] or "")
+        article, gender, plural = noun_declension_values(
+            pos, r["article"], r["gender"], r["plural"]
+        )
+        if article is None:
+            article = Repo._article_from_gender(gender) or None
         return VocabItem(
             id=int(r["id"]),
             deck_id=int(r["deck_id"]),
-            pos=str(r["pos"]),
+            pos=pos,
             word=str(r["word"]),
             meaning=str(r["meaning"] or ""),
-            article=str(r["article"]) if r["article"] is not None else None,
-            gender=str(r["gender"]) if r["gender"] is not None else None,
-            gender_tip=str(r["gender_tip"]) if ("gender_tip" in keys and r["gender_tip"] is not None) else None,
-            plural=str(r["plural"]) if r["plural"] is not None else None,
+            article=article,
+            gender=gender,
+            gender_tip=noun_vocab_value(
+                pos, r["gender_tip"] if "gender_tip" in keys else None
+            ),
+            plural=plural,
         )
 
     @staticmethod

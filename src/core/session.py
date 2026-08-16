@@ -25,6 +25,7 @@ from core.ml.sklearn_ranker import SklearnRanker
 from core.semantic_match import get_matcher
 from core.german_feedback import classify_german_answer
 from core.session_resume import SessionResumeStore, SessionSnapshot
+from core.vocab_fields import noun_declension_values
 
 
 # ---------------------------------------------------------------------
@@ -1830,8 +1831,12 @@ class SessionService:
         pos = (getattr(item, "pos", "") or "").strip().lower()
 
         if pos == "noun":
-            item_gender = getattr(item, "gender", None)
-            item_plural = getattr(item, "plural", None)
+            _article, item_gender, item_plural = noun_declension_values(
+                pos,
+                getattr(item, "article", None),
+                getattr(item, "gender", None),
+                getattr(item, "plural", None),
+            )
 
             if item_gender:
                 gender_ok = _norm_gender(typed_gender) == _norm_gender(item_gender)
@@ -2586,9 +2591,11 @@ class SessionService:
         production, and dictation therefore cannot inflate one another's FSRS
         stability or due dates.
         """
-        article = (item.article or "").strip()
-        if not article and (item.pos or "").strip().lower() == "noun":
-            article = Repo._article_from_gender(item.gender)
+        article, gender, _plural = noun_declension_values(
+            item.pos, item.article, item.gender, item.plural
+        )
+        if article is None:
+            article = Repo._article_from_gender(gender)
         expected = f"{article} {item.word}".strip() if article else item.word
         self.clear_undo()
         response_ms = _bounded_response_ms(response_ms)

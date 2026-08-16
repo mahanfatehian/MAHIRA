@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
+from core.vocab_fields import noun_declension_values, noun_vocab_value
 from ui.widgets.card_widget import CardWidget, VocabCheckPayload
 from ui.widgets.special_char_keyboard import SpecialCharKeyboard
 from ui.widgets.review_save_error import ReviewSaveError
@@ -548,11 +549,17 @@ class VocabReviewPage(QWidget):
         if pos != "noun":
             return None
 
-        custom_tip = getattr(item, "gender_tip", None)
-        if custom_tip and str(custom_tip).strip():
-            return str(custom_tip).strip()
+        article, gender, _plural = noun_declension_values(
+            pos,
+            getattr(item, "article", None),
+            getattr(item, "gender", None),
+            getattr(item, "plural", None),
+        )
+        custom_tip = noun_vocab_value(pos, getattr(item, "gender_tip", None))
+        if custom_tip:
+            return custom_tip
 
-        article = _gender_to_article(getattr(item, "gender", None))
+        article = _gender_to_article(gender) or article
         word = self._extract_word_for_audio(item)
 
         if article and word:
@@ -561,7 +568,7 @@ class VocabReviewPage(QWidget):
         if article:
             return f"This noun uses the article: {article}."
 
-        return "This is a noun, so pay attention to its article: der / die / das."
+        return None
 
     def _clear_current_audio_cache(self) -> None:
         self.playback_service.stop()
@@ -663,10 +670,15 @@ class VocabReviewPage(QWidget):
         self.card.set_audio_playing(False)
         self.card.set_speed(self._speed)
 
-        pos = (getattr(item, "pos", "") or "").lower()
-
-        ask_gender = pos == "noun" and bool(getattr(item, "gender", None))
-        ask_plural = pos == "noun" and bool(getattr(item, "plural", None))
+        pos = (getattr(item, "pos", "") or "").strip().lower()
+        _article, gender, plural = noun_declension_values(
+            pos,
+            getattr(item, "article", None),
+            getattr(item, "gender", None),
+            getattr(item, "plural", None),
+        )
+        ask_gender = bool(gender)
+        ask_plural = bool(plural)
         self.card.configure_fields(ask_gender=ask_gender, ask_plural=ask_plural)
 
         self.card.set_meaning_blurred(getattr(item, "meaning", None))
@@ -697,11 +709,17 @@ class VocabReviewPage(QWidget):
             _norm(typed_meaning) == _norm(expected_meaning)
         ) if expected_meaning else None
 
-        expected_gender = _gender_norm(getattr(item, "gender", "") or "")
+        _article, gender, plural = noun_declension_values(
+            getattr(item, "pos", ""),
+            getattr(item, "article", None),
+            getattr(item, "gender", None),
+            getattr(item, "plural", None),
+        )
+        expected_gender = _gender_norm(gender or "")
         typed_g = _gender_norm(typed_gender or "")
         gender_ok = (typed_g == expected_gender) if expected_gender else None
 
-        expected_plural = _norm(getattr(item, "plural", "") or "")
+        expected_plural = _norm(plural or "")
         typed_p = _norm(typed_plural or "")
         plural_ok = (typed_p == expected_plural) if expected_plural else None
 

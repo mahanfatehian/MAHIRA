@@ -78,6 +78,84 @@ def test_vocab_table_rows_empty_without_deck(repo):
     assert s.vocab_table_rows() == []
 
 
+def test_menschen_seed_rows_hide_placeholder_declension_metadata(repo):
+    from core.session import AppState, SessionService
+
+    session = SessionService(repo, AppState())
+    session.set_context("A1", "vocab", book_slug="menschen", lektion_number=1)
+    rows = {row["word"]: row for row in session.vocab_table_rows()}
+
+    # Menschen encodes unavailable non-noun metadata as literal dashes.  The
+    # table boundary must expose that as unavailable, while retaining real noun
+    # declension data from the same seed file.
+    assert rows["hei\u00dfen"]["article"] == ""
+    assert rows["hei\u00dfen"]["plural"] == ""
+    assert rows["Name"]["article"] == "der"
+    assert rows["Name"]["plural"] == "Namen"
+
+
+def test_vocab_mapper_hides_placeholder_gender_tips_from_review(repo):
+    from ui.pages.vocab_review import VocabReviewPage
+
+    review = type("Review", (), {"_extract_word_for_audio": lambda _self, item: item.word})()
+
+    deck_id = _session(repo).vocab_deck_id()
+    with repo._conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM vocab WHERE deck_id=? AND word='Musik'", (deck_id,)
+        ).fetchone()
+        assert row is not None
+        vocab_id = int(row["id"])
+        conn.execute(
+            "UPDATE vocab SET article='-', gender='-', gender_tip='-', plural='-' WHERE id=?",
+            (vocab_id,),
+        )
+
+    no_metadata = repo.get_vocab_by_id(vocab_id)
+    assert no_metadata is not None
+    assert no_metadata.gender_tip is None
+    assert VocabReviewPage._build_gender_tip(review, no_metadata) is None
+
+    with repo._conn() as conn:
+        conn.execute(
+            "UPDATE vocab SET gender_tip='Remember this noun.' WHERE id=?", (vocab_id,)
+        )
+    custom_tip = repo.get_vocab_by_id(vocab_id)
+    assert custom_tip is not None
+    assert custom_tip.gender_tip == "Remember this noun."
+    assert (
+        VocabReviewPage._build_gender_tip(review, custom_tip)
+        == "Remember this noun."
+    )
+
+
+def test_table_model_never_masks_placeholder_non_noun_declension():
+    _qapp()
+    from PySide6.QtCore import Qt
+    from ui.pages.vocab_table import _COLUMN_INDEX, _VocabTableModel
+
+    model = _VocabTableModel({"article": True, "plural": True})
+    model.set_rows([
+        {"word": "hei\u00dfen", "article": "-", "plural": "-", "meaning": "to be called", "pos": "verb"},
+        {"word": "nett", "article": "\u2014", "plural": "\u2013", "meaning": "nice", "pos": "adjective"},
+        {"word": "Name", "article": "der", "plural": "Namen", "meaning": "name", "pos": "noun"},
+    ])
+
+    for row in (0, 1):
+        for key in ("article", "plural"):
+            index = model.index(row, _COLUMN_INDEX[key])
+            assert model.raw_value(row, key) == ""
+            assert model.is_hidden(row, key) is False
+            assert model.toggle_reveal(row, key) is False
+            assert index.data(Qt.ItemDataRole.DisplayRole) == "\N{EM DASH}"
+
+    for key, value in (("article", "der"), ("plural", "Namen")):
+        index = model.index(2, _COLUMN_INDEX[key])
+        assert model.is_hidden(2, key) is True
+        assert model.toggle_reveal(2, key) is True
+        assert index.data(Qt.ItemDataRole.DisplayRole) == value
+
+
 # --------------------------------------------------------------------- page
 def _qapp():
     pytest.importorskip("PySide6")
