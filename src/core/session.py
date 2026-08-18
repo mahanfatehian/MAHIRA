@@ -106,6 +106,22 @@ def _grammar_correct(item: GrammarItem, typed: str) -> bool:
     return _answer_matches(typed, accepted)
 
 
+def _is_relearning_step(state, *, was_skipped: bool) -> bool:
+    """True when this review put the card into the FSRS relearning step.
+
+    interval_days == 0 is how the scheduler marks a lapse: due in minutes
+    rather than days. A skip is excluded - the learner said "not now", and
+    answering that by showing the same card again three cards later would
+    ignore them.
+    """
+    if was_skipped:
+        return False
+    try:
+        return float(getattr(state, "interval_days", 1.0)) <= 0.0
+    except (TypeError, ValueError):
+        return False
+
+
 def _norm_objective(obj: str) -> str:
     obj = (obj or "").strip().lower()
 
@@ -361,6 +377,9 @@ class SessionService:
         self._active_deck_id: int | None = None
         self.plan = SessionPlan()
         self._queue: list[int] = []
+        # How many times each item has been re-queued for relearning in this
+        # session, keyed by (objective, item_id).
+        self._relearn_counts: dict[tuple[str, int], int] = {}
         self._undo = None
         self._current_item_id: int | None = None
         self._current_objective: str | None = None
@@ -431,6 +450,7 @@ class SessionService:
 
     def _reset_active_session(self, *, clear_checkpoint: bool) -> None:
         self._queue = []
+        self._relearn_counts = {}
         self._undo = None
         self._current_item_id = None
         self._current_objective = None
@@ -611,6 +631,37 @@ class SessionService:
         self.study_answered = snapshot["study_answered"]
         self.study_next_milestone = snapshot["study_next_milestone"]
 
+    # A failed card comes back after this many other cards, when the queue
+    # still holds that many. Long enough to be a real recall attempt rather
+    # than an echo, short enough to still be the same study session.
+    RELEARN_QUEUE_GAP = 3
+
+    # Ceiling on how often one card may return within a single session, so a
+    # card the learner keeps failing cannot make the session unfinishable.
+    MAX_RELEARN_REQUEUES = 4
+
+    def _requeue_for_relearning(self, objective: str, item_id: int) -> None:
+        """Put a just-failed card back into this session's queue.
+
+        FSRS schedules a lapse ten minutes out rather than a day out precisely
+        so the learner meets it again before leaving. Persisting that due_at is
+        not enough on its own: the queue is built once when the session starts
+        and only ever shrinks, so without this the card is gone until the next
+        session and the relearning step never actually happens.
+        """
+        key = (_norm_objective(objective), int(item_id))
+        seen = self._relearn_counts.get(key, 0)
+        if seen >= self.MAX_RELEARN_REQUEUES:
+            return
+        self._relearn_counts[key] = seen + 1
+        # The queue is popped from the END, so a lower index is further away.
+        position = max(0, len(self._queue) - self.RELEARN_QUEUE_GAP)
+        self._queue.insert(position, int(item_id))
+        self._session_total = max(
+            int(getattr(self, "_session_total", 0)),
+            self._session_position + len(self._queue),
+        )
+
     def _serve_next(self, objective: str):
         objective = _norm_objective(objective)
         self._current_item_id = None
@@ -633,7 +684,13 @@ class SessionService:
         self._checkpoint_session()
         return None
 
-    def _complete_current_item(self, objective: str, item_id: int) -> None:
+    def _complete_current_item(
+        self,
+        objective: str,
+        item_id: int,
+        *,
+        relearn: bool = False,
+    ) -> None:
         objective = _norm_objective(objective)
         if (
             getattr(self, "_current_item_id", None) != int(item_id)
@@ -647,6 +704,8 @@ class SessionService:
             self._session_total,
             self._session_position + 1,
         )
+        if relearn:
+            self._requeue_for_relearning(objective, item_id)
         self._checkpoint_session()
 
     def is_current_item(self, objective: str, item_id: int | None) -> bool:
@@ -2130,7 +2189,11 @@ class SessionService:
             if persisted_state is None:
                 raise RuntimeError("vocab state missing after review update")
             post_state_token = self._state_value_token(persisted_state)
-        self._complete_current_item("vocab", item.id)
+        self._complete_current_item(
+            "vocab",
+            item.id,
+            relearn=_is_relearning_step(st2, was_skipped=was_skipped),
+        )
         self._undo = {
             "review_id": review_id,
             "post_state_token": post_state_token,
@@ -2254,7 +2317,11 @@ class SessionService:
             if persisted_state is None:
                 raise RuntimeError("grammar state missing after review update")
             post_state_token = self._state_value_token(persisted_state)
-        self._complete_current_item("grammar", item.id)
+        self._complete_current_item(
+            "grammar",
+            item.id,
+            relearn=_is_relearning_step(st2, was_skipped=was_skipped),
+        )
         self._undo = {
             "review_id": review_id,
             "post_state_token": post_state_token,
@@ -2422,7 +2489,11 @@ class SessionService:
             if persisted_state is None:
                 raise RuntimeError("sentence state missing after review update")
             post_state_token = self._state_value_token(persisted_state)
-        self._complete_current_item("sentences", item.id)
+        self._complete_current_item(
+            "sentences",
+            item.id,
+            relearn=_is_relearning_step(st2, was_skipped=was_skipped),
+        )
         self._undo = {
             "review_id": review_id,
             "post_state_token": post_state_token,
@@ -2559,7 +2630,11 @@ class SessionService:
             if persisted_state is None:
                 raise RuntimeError("listening state missing after review update")
             post_state_token = self._state_value_token(persisted_state)
-        self._complete_current_item("listening", item.id)
+        self._complete_current_item(
+            "listening",
+            item.id,
+            relearn=_is_relearning_step(st2, was_skipped=was_skipped),
+        )
         self._undo = {
             "review_id": review_id,
             "post_state_token": post_state_token,
