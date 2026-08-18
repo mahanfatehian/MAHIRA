@@ -193,6 +193,7 @@ class DailyPlannerService:
             "vocab": "rank_vocab_ids",
             "grammar": "rank_grammar_ids",
             "sentences": "rank_sentence_ids",
+            "listening": "rank_listening_ids",
         }.get(objective)
         method = getattr(self.ranker, method_name, None) if method_name else None
         if method is None:
