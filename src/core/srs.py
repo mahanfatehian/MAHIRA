@@ -17,9 +17,30 @@ class SchedulerTuning:
     """
 
     target_retention: float = fsrs.DEFAULT_REQUEST_RETENTION
+    interval_fuzz: bool = True
 
 
 DEFAULT_TUNING = SchedulerTuning()
+
+# Fields the state classes use for their primary key. Vocab/grammar/sentence/
+# listening states each name theirs differently.
+_ID_FIELDS = ("vocab_id", "grammar_id", "sentence_id", "listening_id", "id")
+
+
+def _item_key(state: Any) -> int:
+    """A stable per-item number, so two cards never share the same fuzz."""
+    key = 0
+    for name in _ID_FIELDS:
+        value = getattr(state, name, None)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            key = value
+            break
+    mode = getattr(state, "practice_mode", None)
+    if isinstance(mode, str) and mode:
+        # Production and dictation share a vocab_id but schedule independently,
+        # so they must not receive identical fuzz.
+        key = key * 31 + (sum(ord(ch) for ch in mode) % 97)
+    return key
 
 
 def tuning_from_settings(value: Any) -> SchedulerTuning:
@@ -36,7 +57,11 @@ def tuning_from_settings(value: Any) -> SchedulerTuning:
         )
     except (TypeError, ValueError):
         retention = DEFAULT_TUNING.target_retention
-    return SchedulerTuning(target_retention=retention)
+    fuzz = getattr(value, "interval_fuzz", DEFAULT_TUNING.interval_fuzz)
+    return SchedulerTuning(
+        target_retention=retention,
+        interval_fuzz=bool(fuzz),
+    )
 
 
 def schedule_next(
@@ -92,13 +117,24 @@ def schedule_next(
     lapses = int(getattr(state, "lapses", 0) or 0) + (1 if is_again else 0)
     new_reps = reps + 1  # monotonic review counter; reps > 0 means "seen"
 
+    interval = float(result.interval_days)
+    due_in_seconds = int(result.due_in_seconds)
+    # interval_days == 0 is the relearning step, which must stay exact.
+    if interval > 0.0 and tuning.interval_fuzz:
+        interval = fsrs.apply_fuzz(
+            interval,
+            seed=_item_key(state) * 7919 + int(rating) * 31 + new_reps,
+        )
+        interval = max(1.0, interval)
+        due_in_seconds = int(round(interval * fsrs.SECONDS_PER_DAY))
+
     return replace(
         state,
         ease=fsrs.ease_from_difficulty(result.difficulty),
-        interval_days=float(result.interval_days),
+        interval_days=interval,
         reps=new_reps,
         lapses=lapses,
-        due_at=now + int(result.due_in_seconds),
+        due_at=now + due_in_seconds,
         last_review_at=now,
         stability=float(result.stability),
         difficulty=float(result.difficulty),

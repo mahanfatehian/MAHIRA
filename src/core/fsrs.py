@@ -110,6 +110,61 @@ def interval_for_retention(stability: float, request_retention: float = DEFAULT_
     return (stability / FACTOR) * (request_retention ** (1.0 / DECAY) - 1.0)
 
 
+# Interval fuzz. Cards introduced on the same day otherwise stay locked
+# together for the life of the deck, so every Lektion's reviews land as one
+# spike. These are the FSRS/Anki fuzz bands: a widening window around the
+# exact interval, expressed as (start_days, end_days, factor).
+_FUZZ_BANDS: tuple[tuple[float, float, float], ...] = (
+    (2.5, 7.0, 0.15),
+    (7.0, 20.0, 0.10),
+    (20.0, math.inf, 0.05),
+)
+
+# Intervals below this are left exact: nudging a 1-2 day interval is the
+# difference between "tomorrow" and "skipped a day".
+FUZZ_MIN_INTERVAL_DAYS: float = 2.5
+
+
+def fuzz_bounds(interval_days: float) -> tuple[float, float]:
+    """Inclusive day range `interval_days` may be nudged into."""
+    interval_days = max(0.0, float(interval_days))
+    if interval_days < FUZZ_MIN_INTERVAL_DAYS:
+        return (interval_days, interval_days)
+    delta = 1.0
+    for start, end, factor in _FUZZ_BANDS:
+        delta += factor * max(0.0, min(interval_days, end) - start)
+    lower = max(2.0, float(round(interval_days - delta)))
+    upper = max(lower, float(round(interval_days + delta)))
+    return (lower, upper)
+
+
+def _mix(value: int) -> int:
+    """Stable, well-distributed scramble of an integer.
+
+    Deliberately not `hash()`: Python salts string hashing per process, and a
+    fuzz that changed between runs would make the interval preview on a rating
+    button disagree with the interval that review actually schedules.
+    """
+    mask = 0xFFFFFFFFFFFFFFFF
+    x = (int(value) & mask) ^ 0x9E3779B97F4A7C15
+    x = ((x ^ (x >> 30)) * 0xBF58476D1CE4E5B9) & mask
+    x = ((x ^ (x >> 27)) * 0x94D049BB133111EB) & mask
+    return x ^ (x >> 31)
+
+
+def apply_fuzz(interval_days: float, *, seed: int) -> float:
+    """Spread an interval within its fuzz band, deterministically.
+
+    The same `seed` always yields the same interval, so this is safe to call
+    from a preview and from the real review that follows it.
+    """
+    lower, upper = fuzz_bounds(interval_days)
+    span = int(upper - lower) + 1
+    if span <= 1:
+        return float(lower)
+    return float(lower + (_mix(seed) % span))
+
+
 def _grade(rating: int) -> int:
     """Map MAHIRA rating 0..3 (Again/Hard/Good/Easy) to FSRS grade 1..4."""
     try:

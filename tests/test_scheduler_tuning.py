@@ -104,19 +104,26 @@ def test_untuned_scheduling_is_unchanged():
     )
 
 
+def _exact(retention: float) -> SchedulerTuning:
+    """Retention tuning with fuzz off.
+
+    Fuzz is deliberate noise layered on top of the interval, so it has to be
+    disabled to observe the retention -> interval relationship itself.
+    """
+    return SchedulerTuning(target_retention=retention, interval_fuzz=False)
+
+
 def test_higher_retention_shortens_the_interval():
     now = 2_000_000
-    low = schedule_next(_state(), 2, now=now, tuning=SchedulerTuning(0.80))
-    high = schedule_next(_state(), 2, now=now, tuning=SchedulerTuning(0.95))
+    low = schedule_next(_state(), 2, now=now, tuning=_exact(0.80))
+    high = schedule_next(_state(), 2, now=now, tuning=_exact(0.95))
     assert high.interval_days < low.interval_days
 
 
 def test_retention_is_monotonic_across_the_whole_band():
     now = 2_000_000
     intervals = [
-        schedule_next(
-            _state(), 2, now=now, tuning=SchedulerTuning(r / 100.0)
-        ).interval_days
+        schedule_next(_state(), 2, now=now, tuning=_exact(r / 100.0)).interval_days
         for r in range(70, 98)
     ]
     assert intervals == sorted(intervals, reverse=True)
@@ -125,18 +132,28 @@ def test_retention_is_monotonic_across_the_whole_band():
 def test_retention_does_not_change_the_memory_model():
     """Only the interval derived from stability moves, never stability itself."""
     now = 2_000_000
-    low = schedule_next(_state(), 2, now=now, tuning=SchedulerTuning(0.80))
-    high = schedule_next(_state(), 2, now=now, tuning=SchedulerTuning(0.95))
+    low = schedule_next(_state(), 2, now=now, tuning=_exact(0.80))
+    high = schedule_next(_state(), 2, now=now, tuning=_exact(0.95))
     assert low.stability == pytest.approx(high.stability)
     assert low.difficulty == pytest.approx(high.difficulty)
+
+
+def test_retention_holds_its_direction_even_with_fuzz_on():
+    """Fuzz adds noise but must not swamp the retention setting."""
+    now = 2_000_000
+    low = schedule_next(
+        _state(), 2, now=now, tuning=SchedulerTuning(0.75, interval_fuzz=True)
+    )
+    high = schedule_next(
+        _state(), 2, now=now, tuning=SchedulerTuning(0.95, interval_fuzz=True)
+    )
+    assert high.interval_days < low.interval_days
 
 
 def test_retention_never_shortens_a_lapse_below_the_relearning_step():
     now = 2_000_000
     for retention in (0.70, 0.90, 0.97):
-        result = schedule_next(
-            _state(), 0, now=now, tuning=SchedulerTuning(retention)
-        )
+        result = schedule_next(_state(), 0, now=now, tuning=_exact(retention))
         assert result.due_at == now + fsrs.RELEARN_STEP_SECONDS
 
 
@@ -146,6 +163,6 @@ def test_successful_reviews_stay_at_least_one_day_out():
         _state(stability=0.1, difficulty=10.0),
         1,
         now=now,
-        tuning=SchedulerTuning(0.97),
+        tuning=_exact(0.97),
     )
     assert result.interval_days >= 1.0

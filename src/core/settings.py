@@ -35,6 +35,7 @@ class AppSettings:
     )
     planner_weighted_mix: bool = False
     target_retention: float = 0.90
+    interval_fuzz: bool = True
     audio_speed: float = 1.0
     audio_autoplay: bool = False
     theme: str = "graphite"
@@ -64,6 +65,7 @@ _FLOAT_RANGES: dict[str, tuple[float, float]] = {
     "target_retention": (0.70, 0.97),
 }
 _BOOL_FIELDS = {
+    "interval_fuzz",
     "audio_autoplay",
     "reduced_motion",
     "strict_answers",
