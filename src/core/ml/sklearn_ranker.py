@@ -306,6 +306,43 @@ class SklearnRanker:
 
         self._fit("sentences", level, features, target)
 
+    def update_listening(
+        self,
+        *,
+        item: Any,
+        state_before: Any,
+        review_result: dict[str, Any],
+        effective_rating: int,
+        was_checked: bool,
+        was_skipped: bool,
+        response_ms: int | None,
+        level: str | None = None,
+    ) -> None:
+        """Train the listening lane from a just-submitted review.
+
+        session.submit_listening already calls this behind a hasattr guard; without
+        the method, listening never contributed training data and the ranker for
+        that lane stayed unfitted forever.
+        """
+        target = self._target_from_review(
+            effective_rating=effective_rating,
+            correct=bool(review_result.get("ok")),
+            tip_used=False,
+            was_checked=was_checked,
+            was_skipped=was_skipped,
+        )
+
+        features = self._training_vector(
+            item,
+            objective="listening",
+            vector_fn=self._vector_listening_row,
+            fetch_fn=self._fetch_listening_rows,
+        )
+        if features is None:
+            return
+
+        self._fit("listening", level, features, target)
+
     # ------------------------------------------------------------------
     # Public ranking
     # ------------------------------------------------------------------
