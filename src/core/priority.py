@@ -40,8 +40,29 @@ W_DIFFICULTY = 0.6  # FSRS difficulty
 W_SLOW = 0.25      # slow responses
 W_RECENT = 0.8     # damping: just reviewed -> don't show again immediately
 
-# Normaliser keeps the typical score range inside [0, 1].
-_NORM = 6.5
+# Callers may add one small objective-specific penalty on top of the shared
+# terms (sentence mismatch rate, listening replay count). Both cap here.
+W_EXTRA = 0.35
+
+# Highest raw score an item can reach. A seen item takes the recall/overdue/due
+# branch, which outweighs the unseen branch, so it sets the ceiling.
+_MAX_RECALL_SCORE = W_RECALL + W_OVERDUE + W_DUE_BONUS
+_MAX_WEAKNESS_SCORE = (
+    W_ACCURACY
+    + W_RATING
+    + W_SKIP
+    + W_TIP
+    + W_HELPER
+    + W_LAPSE
+    + W_DIFFICULTY
+    + W_SLOW
+)
+
+# Derived from the weights rather than hardcoded. It was pinned at 6.5 while
+# the weights above grew to sum to 11.25, so every raw score past 6.5 clipped
+# to exactly 1.0 -- and the worst items, the ones this whole module exists to
+# surface, became indistinguishable from each other and fell back to id order.
+_NORM = _MAX_RECALL_SCORE + _MAX_WEAKNESS_SCORE + W_EXTRA
 
 # An item reviewed within this window is damped to avoid back-to-back repeats.
 _RECENT_HOURS = 2.0
