@@ -331,6 +331,29 @@ class SklearnRanker:
         except Exception:
             return list(ids)
 
+    def rank_listening_ids(
+        self,
+        ids: list[int],
+        *,
+        level: str | None = None,
+        **_: Any,
+    ) -> list[int]:
+        if not ids:
+            return []
+
+        try:
+            rows = self._fetch_listening_rows(ids)
+            return self._rank_rows(
+                ids=ids,
+                rows=rows,
+                objective="listening",
+                level=level,
+                score_fn=self._score_listening_row,
+                vector_fn=self._vector_listening_row,
+            )
+        except Exception:
+            return list(ids)
+
     # ------------------------------------------------------------------
     # DB reads
     # ------------------------------------------------------------------
@@ -437,6 +460,41 @@ class SklearnRanker:
             LEFT JOIN sentence_reviews r ON r.sentence_id = se.id
             WHERE se.id IN ({placeholders})
             GROUP BY se.id
+        """
+        with self.repo._conn() as conn:
+            rows = conn.execute(q, tuple(ids)).fetchall()
+        return {int(r["id"]): r for r in rows}
+
+    def _fetch_listening_rows(self, ids: list[int]) -> dict[int, Any]:
+        placeholders = ",".join("?" for _ in ids)
+        # listening_reviews has no tip_used/translation_used columns; replay
+        # count is this lane's struggle signal instead.
+        q = f"""
+            SELECT
+                li.id,
+                li.question,
+                li.text,
+                li.translation,
+                li.tip,
+                st.ease,
+                st.interval_days,
+                st.reps,
+                st.lapses,
+                st.due_at,
+                st.last_review_at,
+                st.stability,
+                st.difficulty,
+                COUNT(r.id) AS total_reviews,
+                AVG(r.rating) AS avg_rating,
+                AVG(r.correct) AS accuracy,
+                AVG(r.was_skipped) AS skip_rate,
+                AVG(r.response_ms) AS avg_response_ms,
+                AVG(r.replay_count) AS avg_replay_count
+            FROM listening li
+            LEFT JOIN listening_states st ON st.listening_id = li.id
+            LEFT JOIN listening_reviews r ON r.listening_id = li.id
+            WHERE li.id IN ({placeholders})
+            GROUP BY li.id
         """
         with self.repo._conn() as conn:
             rows = conn.execute(q, tuple(ids)).fetchall()
@@ -636,6 +694,32 @@ class SklearnRanker:
             interval_days=_float(_row(row, "interval_days", 0.0), 0.0),
         )
 
+    def _score_listening_row(self, row: Any) -> float:
+        # Replaying the audio repeatedly is the listening equivalent of a
+        # near-miss: the learner could not parse it at speed.
+        replay_penalty = _clip(
+            _float(_row(row, "avg_replay_count", 0.0), 0.0) / 4.0, 0.0, 1.0
+        ) * 0.35
+
+        return self._base_score(
+            ease=_float(_row(row, "ease", 2.5), 2.5),
+            reps=_float(_row(row, "reps", 0), 0.0),
+            lapses=_float(_row(row, "lapses", 0), 0.0),
+            due_at=_float(_row(row, "due_at", time.time()), time.time()),
+            last_review_at=_row(row, "last_review_at", None),
+            total_reviews=_float(_row(row, "total_reviews", 0), 0.0),
+            avg_rating=_float(_row(row, "avg_rating", 2.0), 2.0),
+            accuracy=_float(_row(row, "accuracy", 0.55), 0.55),
+            tip_rate=0.0,
+            helper_rate=0.0,
+            skip_rate=_float(_row(row, "skip_rate", 0.0), 0.0),
+            response_ms=_float(_row(row, "avg_response_ms", 0.0), 0.0),
+            extra_penalty=replay_penalty,
+            stability=_row(row, "stability", None),
+            difficulty=_row(row, "difficulty", None),
+            interval_days=_float(_row(row, "interval_days", 0.0), 0.0),
+        )
+
     # ------------------------------------------------------------------
     # Feature vectors
     # ------------------------------------------------------------------
@@ -802,6 +886,36 @@ class SklearnRanker:
             response_ms=_float(_row(row, "avg_response_ms", 0.0), 0.0),
             text_len=float(len(str(_row(row, "target_text", "") or ""))),
             extra_len=float(len(str(_row(row, "translation", "") or ""))),
+            is_unseen=1.0 if reps <= 0 or total_reviews <= 0 else 0.0,
+            overdue_days=overdue_days,
+            stability=stability,
+            difficulty=difficulty,
+            recall=recall,
+        )
+
+    def _vector_listening_row(self, row: Any) -> list[float]:
+        now = time.time()
+        due_at = _float(_row(row, "due_at", now), now)
+        overdue_days = max(0.0, (now - due_at) / 86400.0)
+
+        reps = _float(_row(row, "reps", 0), 0.0)
+        total_reviews = _float(_row(row, "total_reviews", 0), 0.0)
+        stability, difficulty, recall = self._fsrs_features(row, now)
+
+        return self._vector(
+            ease=_float(_row(row, "ease", 2.5), 2.5),
+            interval_days=_float(_row(row, "interval_days", 0.0), 0.0),
+            reps=reps,
+            lapses=_float(_row(row, "lapses", 0.0), 0.0),
+            total_reviews=total_reviews,
+            avg_rating=_float(_row(row, "avg_rating", 2.0), 2.0),
+            accuracy=_float(_row(row, "accuracy", 0.55), 0.55),
+            tip_rate=0.0,
+            helper_rate=0.0,
+            skip_rate=_float(_row(row, "skip_rate", 0.0), 0.0),
+            response_ms=_float(_row(row, "avg_response_ms", 0.0), 0.0),
+            text_len=float(len(str(_row(row, "question", "") or ""))),
+            extra_len=float(len(str(_row(row, "text", "") or ""))),
             is_unseen=1.0 if reps <= 0 or total_reviews <= 0 else 0.0,
             overdue_days=overdue_days,
             stability=stability,
