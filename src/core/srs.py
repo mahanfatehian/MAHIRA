@@ -1,13 +1,51 @@
 from __future__ import annotations
 
 import time
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 from core import fsrs
 
 
-def schedule_next(state: Any, rating: int, *, now: int | None = None) -> Any:
+@dataclass(frozen=True)
+class SchedulerTuning:
+    """Learner-controlled knobs applied on top of the pure FSRS model.
+
+    The defaults reproduce MAHIRA's original behaviour exactly, so a caller
+    that passes no tuning (tests, previews, legacy paths) schedules the same
+    intervals it always did.
+    """
+
+    target_retention: float = fsrs.DEFAULT_REQUEST_RETENTION
+
+
+DEFAULT_TUNING = SchedulerTuning()
+
+
+def tuning_from_settings(value: Any) -> SchedulerTuning:
+    """Build tuning from an AppSettings-like object.
+
+    Tolerates None and partially-populated objects so the scheduler keeps
+    working when settings are unavailable (e.g. during migration or in tests).
+    """
+    if value is None:
+        return DEFAULT_TUNING
+    try:
+        retention = float(
+            getattr(value, "target_retention", DEFAULT_TUNING.target_retention)
+        )
+    except (TypeError, ValueError):
+        retention = DEFAULT_TUNING.target_retention
+    return SchedulerTuning(target_retention=retention)
+
+
+def schedule_next(
+    state: Any,
+    rating: int,
+    *,
+    now: int | None = None,
+    tuning: SchedulerTuning | None = None,
+) -> Any:
     """
     Advance an SRS state by one review using the FSRS-4.5 memory model.
 
@@ -24,6 +62,7 @@ def schedule_next(state: Any, rating: int, *, now: int | None = None) -> Any:
     working. On Again the item re-enters a 10-minute relearning step.
     """
     now = int(time.time()) if now is None else int(now)
+    tuning = DEFAULT_TUNING if tuning is None else tuning
 
     last_review_at = getattr(state, "last_review_at", None)
     elapsed_days = 0.0
@@ -46,6 +85,7 @@ def schedule_next(state: Any, rating: int, *, now: int | None = None) -> Any:
         stability=stability,
         difficulty=difficulty,
         elapsed_days=elapsed_days,
+        request_retention=tuning.target_retention,
     )
 
     is_again = int(rating) <= 0

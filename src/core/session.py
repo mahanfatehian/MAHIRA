@@ -20,7 +20,7 @@ from db.repo import (
     VocabItem,
     VocabState,
 )
-from core.srs import schedule_next
+from core.srs import schedule_next, tuning_from_settings
 from core.ml.sklearn_ranker import SklearnRanker
 from core.semantic_match import get_matcher
 from core.german_feedback import classify_german_answer
@@ -1856,6 +1856,20 @@ class SessionService:
         }
 
     # -----------------------------------------------------------------
+    # Scheduler tuning
+    # -----------------------------------------------------------------
+    def scheduler_tuning(self):
+        """Learner scheduling preferences for this session.
+
+        Read fresh on every review so a change saved in Settings applies to the
+        next card instead of waiting for a restart. Falls back to the FSRS
+        defaults whenever settings are unavailable.
+        """
+        return tuning_from_settings(
+            getattr(getattr(self, "settings", None), "value", None)
+        )
+
+    # -----------------------------------------------------------------
     # Rating-button interval preview + one-deep undo
     # -----------------------------------------------------------------
     def rating_interval_labels(self, state) -> dict:
@@ -1863,10 +1877,11 @@ class SessionService:
         (e.g. {2: '9d'}). schedule_next is pure (no persistence), so this is a
         safe forward-looking preview shown on the rating buttons."""
         now = int(time.time())
+        tuning = self.scheduler_tuning()
         out: dict = {}
         for r in (0, 1, 2, 3):
             try:
-                s2 = schedule_next(state, r, now=now)
+                s2 = schedule_next(state, r, now=now, tuning=tuning)
                 out[r] = _fmt_interval(int(getattr(s2, "due_at", now)) - now)
             except Exception:
                 out[r] = ""
@@ -2090,7 +2105,7 @@ class SessionService:
             st = prior_state
             if st is None:
                 st = self.repo.ensure_state(item.id)
-            st2 = schedule_next(st, effective_rating, now=now)
+            st2 = schedule_next(st, effective_rating, now=now, tuning=self.scheduler_tuning())
             if not was_skipped:
                 review_id = self.repo.insert_review(
                     vocab_id=item.id,
@@ -2216,7 +2231,7 @@ class SessionService:
             st = prior_state
             if st is None:
                 st = self.repo.ensure_grammar_state(item.id)
-            st2 = schedule_next(st, effective_rating, now=now)
+            st2 = schedule_next(st, effective_rating, now=now, tuning=self.scheduler_tuning())
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 review_id = self.repo.insert_grammar_review(
@@ -2380,7 +2395,7 @@ class SessionService:
             st = prior_state
             if st is None:
                 st = self.repo.ensure_sentence_state(item.id)
-            st2 = schedule_next(st, effective_rating, now=now)
+            st2 = schedule_next(st, effective_rating, now=now, tuning=self.scheduler_tuning())
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 review_id = self.repo.insert_sentence_review(
@@ -2523,7 +2538,7 @@ class SessionService:
             st = prior_state
             if st is None:
                 st = self.repo.ensure_listening_state(item.id)
-            st2 = schedule_next(st, effective_rating, now=now)
+            st2 = schedule_next(st, effective_rating, now=now, tuning=self.scheduler_tuning())
             # Skips are not logged (see submit_vocab) so they never count as reviews.
             if not was_skipped:
                 review_id = self.repo.insert_listening_review(
@@ -2623,7 +2638,9 @@ class SessionService:
                 practice_mode=lane,
                 error_tags=",".join(feedback.tags) or None,
             )
-            self.repo.update_vocab_practice_state(schedule_next(state, rating))
+            self.repo.update_vocab_practice_state(
+                schedule_next(state, rating, tuning=self.scheduler_tuning())
+            )
         # Lab lanes do not own the recognition undo stack; drop any stale snap
         # so Ctrl+Z cannot restore recognition state while deleting a Lab row.
         return {

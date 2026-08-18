@@ -111,6 +111,7 @@ class SettingsPage(QWidget):
         self.daily_goal = NumberStepper(5, 200, 5, "daily review goal")
         self.session_limit = NumberStepper(5, 100, 5, "session size")
         self.new_limit = NumberStepper(0, 30, 1, "new cards per session")
+        self.retention = NumberStepper(70, 97, 1, "target retention")
         self.strict = QCheckBox("Strict answer matching")
         self.strict.setAccessibleDescription(
             "Require exact stored answers instead of semantic meaning matching where supported"
@@ -139,6 +140,16 @@ class SettingsPage(QWidget):
                 "Keep new material from crowding out due reviews.",
                 self.new_limit,
                 "new/session",
+            )
+        )
+        study_layout.addWidget(self._divider())
+        study_layout.addWidget(
+            self._setting_row(
+                "Target retention",
+                "How much you aim to remember when a card comes back. Higher "
+                "means shorter intervals and more reviews.",
+                self.retention,
+                "% recalled",
             )
         )
         study_layout.addWidget(self._divider())
@@ -386,7 +397,12 @@ class SettingsPage(QWidget):
         return row
 
     def _connect_dirty_signals(self) -> None:
-        for stepper in (self.daily_goal, self.session_limit, self.new_limit):
+        for stepper in (
+            self.daily_goal,
+            self.session_limit,
+            self.new_limit,
+            self.retention,
+        ):
             stepper.valueChanged.connect(self._mark_dirty)
         for checkbox in (
             self.strict,
@@ -412,6 +428,9 @@ class SettingsPage(QWidget):
             self.daily_goal.setValue(int(getattr(value, "daily_goal", 30)))
             self.session_limit.setValue(int(getattr(value, "session_limit", 30)))
             self.new_limit.setValue(int(getattr(value, "new_card_limit", 8)))
+            self.retention.setValue(
+                int(round(float(getattr(value, "target_retention", 0.90)) * 100))
+            )
             self.strict.setChecked(bool(getattr(value, "strict_answers", False)))
 
             speed_index = self.audio_speed.findData(
@@ -476,6 +495,7 @@ class SettingsPage(QWidget):
             daily_goal=self.daily_goal.value(),
             session_limit=self.session_limit.value(),
             new_card_limit=self.new_limit.value(),
+            target_retention=self.retention.value() / 100.0,
             strict_answers=self.strict.isChecked(),
             audio_speed=float(self.audio_speed.currentData()),
             audio_autoplay=self.audio_autoplay.isChecked(),

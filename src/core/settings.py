@@ -34,6 +34,7 @@ class AppSettings:
         default_factory=lambda: _objective_defaults(1)
     )
     planner_weighted_mix: bool = False
+    target_retention: float = 0.90
     audio_speed: float = 1.0
     audio_autoplay: bool = False
     theme: str = "graphite"
@@ -55,6 +56,12 @@ _INT_RANGES: dict[str, tuple[int, int]] = {
     "font_scale": (90, 130),
     "window_width": (860, 7680),
     "window_height": (680, 4320),
+}
+# Target probability of recall when a card next comes due. Raising it shortens
+# every interval (more reviews, less forgetting); lowering it does the reverse.
+# The band stops learners from choosing a value that makes FSRS degenerate.
+_FLOAT_RANGES: dict[str, tuple[float, float]] = {
+    "target_retention": (0.70, 0.97),
 }
 _BOOL_FIELDS = {
     "audio_autoplay",
@@ -104,6 +111,18 @@ def _normalized_int(value: Any, default: int, lower: int, upper: int) -> int:
     if not math.isfinite(number) or not number.is_integer():
         return default
     return max(lower, min(upper, int(number)))
+
+
+def _normalized_float(value: Any, default: float, lower: float, upper: float) -> float:
+    if isinstance(value, bool):
+        return default
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if not math.isfinite(number):
+        return default
+    return max(lower, min(upper, number))
 
 
 def _normalized_bool(value: Any, default: bool) -> bool:
@@ -170,6 +189,10 @@ def _normalize_settings(raw: Any, fallback: AppSettings | None = None) -> AppSet
     for name, (lower, upper) in _INT_RANGES.items():
         if name in raw:
             data[name] = _normalized_int(raw[name], data[name], lower, upper)
+
+    for name, (low, high) in _FLOAT_RANGES.items():
+        if name in raw:
+            data[name] = _normalized_float(raw[name], data[name], low, high)
 
     for name in _BOOL_FIELDS:
         if name in raw:
