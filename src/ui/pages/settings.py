@@ -112,6 +112,17 @@ class SettingsPage(QWidget):
         self.session_limit = NumberStepper(5, 100, 5, "session size")
         self.new_limit = NumberStepper(0, 30, 1, "new cards per session")
         self.retention = NumberStepper(70, 97, 1, "target retention")
+        self.max_interval = QComboBox()
+        for label, days in (
+            ("6 months", 180),
+            ("1 year", 365),
+            ("2 years", 730),
+            ("5 years", 1825),
+            ("10 years", 3650),
+            ("No limit", 36500),
+        ):
+            self.max_interval.addItem(label, days)
+        self.max_interval.setMinimumWidth(150)
         self.interval_fuzz = QCheckBox("Spread reviews across nearby days")
         self.interval_fuzz.setAccessibleDescription(
             "Vary each interval slightly so cards learned together do not all "
@@ -155,6 +166,15 @@ class SettingsPage(QWidget):
                 "means shorter intervals and more reviews.",
                 self.retention,
                 "% recalled",
+            )
+        )
+        study_layout.addWidget(self._divider())
+        study_layout.addWidget(
+            self._setting_row(
+                "Longest interval",
+                "Caps how far ahead a well-known card can be pushed, so it "
+                "stays in rotation instead of disappearing for years.",
+                self.max_interval,
             )
         )
         study_layout.addWidget(self._divider())
@@ -426,7 +446,12 @@ class SettingsPage(QWidget):
             self.update_checks,
         ):
             checkbox.toggled.connect(self._mark_dirty)
-        for combo in (self.audio_speed, self.font_scale, self.theme):
+        for combo in (
+            self.max_interval,
+            self.audio_speed,
+            self.font_scale,
+            self.theme,
+        ):
             combo.currentIndexChanged.connect(self._mark_dirty)
 
     def _mark_dirty(self, *_args) -> None:
@@ -446,6 +471,12 @@ class SettingsPage(QWidget):
             self.retention.setValue(
                 int(round(float(getattr(value, "target_retention", 0.90)) * 100))
             )
+            max_interval = int(getattr(value, "max_interval_days", 36500))
+            max_index = self.max_interval.findData(max_interval)
+            if max_index < 0:
+                self.max_interval.addItem(f"{max_interval} days", max_interval)
+                max_index = self.max_interval.count() - 1
+            self.max_interval.setCurrentIndex(max_index)
             self.interval_fuzz.setChecked(
                 bool(getattr(value, "interval_fuzz", True))
             )
@@ -514,6 +545,7 @@ class SettingsPage(QWidget):
             session_limit=self.session_limit.value(),
             new_card_limit=self.new_limit.value(),
             target_retention=self.retention.value() / 100.0,
+            max_interval_days=int(self.max_interval.currentData()),
             interval_fuzz=self.interval_fuzz.isChecked(),
             strict_answers=self.strict.isChecked(),
             audio_speed=float(self.audio_speed.currentData()),

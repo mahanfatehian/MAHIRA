@@ -18,6 +18,7 @@ class SchedulerTuning:
 
     target_retention: float = fsrs.DEFAULT_REQUEST_RETENTION
     interval_fuzz: bool = True
+    max_interval_days: int = 36500
 
 
 DEFAULT_TUNING = SchedulerTuning()
@@ -58,9 +59,16 @@ def tuning_from_settings(value: Any) -> SchedulerTuning:
     except (TypeError, ValueError):
         retention = DEFAULT_TUNING.target_retention
     fuzz = getattr(value, "interval_fuzz", DEFAULT_TUNING.interval_fuzz)
+    try:
+        max_interval = int(
+            getattr(value, "max_interval_days", DEFAULT_TUNING.max_interval_days)
+        )
+    except (TypeError, ValueError):
+        max_interval = DEFAULT_TUNING.max_interval_days
     return SchedulerTuning(
         target_retention=retention,
         interval_fuzz=bool(fuzz),
+        max_interval_days=max(1, max_interval),
     )
 
 
@@ -120,11 +128,15 @@ def schedule_next(
     interval = float(result.interval_days)
     due_in_seconds = int(result.due_in_seconds)
     # interval_days == 0 is the relearning step, which must stay exact.
-    if interval > 0.0 and tuning.interval_fuzz:
-        interval = fsrs.apply_fuzz(
-            interval,
-            seed=_item_key(state) * 7919 + int(rating) * 31 + new_reps,
-        )
+    if interval > 0.0:
+        if tuning.interval_fuzz:
+            interval = fsrs.apply_fuzz(
+                interval,
+                seed=_item_key(state) * 7919 + int(rating) * 31 + new_reps,
+            )
+        # Clamp last so the ceiling is a hard guarantee that fuzz cannot
+        # push an interval back over.
+        interval = min(interval, float(tuning.max_interval_days))
         interval = max(1.0, interval)
         due_in_seconds = int(round(interval * fsrs.SECONDS_PER_DAY))
 

@@ -36,6 +36,7 @@ class AppSettings:
     planner_weighted_mix: bool = False
     target_retention: float = 0.90
     interval_fuzz: bool = True
+    max_interval_days: int = 36500
     audio_speed: float = 1.0
     audio_autoplay: bool = False
     theme: str = "graphite"
@@ -54,6 +55,7 @@ _INT_RANGES: dict[str, tuple[int, int]] = {
     "daily_goal": (5, 200),
     "session_limit": (5, 100),
     "new_card_limit": (0, 30),
+    "max_interval_days": (30, 36500),
     "font_scale": (90, 130),
     "window_width": (860, 7680),
     "window_height": (680, 4320),
