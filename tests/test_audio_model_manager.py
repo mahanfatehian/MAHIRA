@@ -24,14 +24,18 @@ def _configure_fake_voice(monkeypatch, tmp_path, voice):
 
     load_calls = []
 
-    def fake_load(path, *, config_path):
-        load_calls.append((path, config_path))
-        # Release the GIL long enough for concurrent callers to contend on the
-        # manager's load lock. Without the lock, this loads more than once.
-        time.sleep(0.03)
-        return voice
+    class FakePiperVoice:
+        @staticmethod
+        def load(path, *, config_path):
+            load_calls.append((path, config_path))
+            # Release the GIL long enough for concurrent callers to contend on the
+            # manager's load lock. Without the lock, this loads more than once.
+            time.sleep(0.03)
+            return voice
 
-    monkeypatch.setattr(manager_module.PiperVoice, "load", fake_load)
+    monkeypatch.setattr(
+        manager_module, "_load_piper_voice_class", lambda: FakePiperVoice
+    )
     return manager_cls, load_calls
 
 

@@ -2,9 +2,33 @@ from __future__ import annotations
 
 from pathlib import Path
 from threading import RLock
-from typing import ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
-from piper import PiperVoice
+if TYPE_CHECKING:
+    from piper import PiperVoice
+
+
+class PiperUnavailableError(RuntimeError):
+    """Raised when the offline speech stack cannot be loaded or is missing."""
+
+
+def _load_piper_voice_class() -> type:
+    """Import piper only when a voice is first needed.
+
+    A top-level `from piper import PiperVoice` made every review page that
+    imports core.audio fail at construction time if piper/onnxruntime is
+    missing, even though the README calls TTS optional. Deferring the import
+    keeps study usable without audio.
+    """
+    try:
+        from piper import PiperVoice
+    except Exception as exc:  # noqa: BLE001 - surface as a clean domain error
+        raise PiperUnavailableError(
+            "Offline pronunciation is unavailable "
+            f"({type(exc).__name__}: {exc}). "
+            "Study continues without audio."
+        ) from exc
+    return PiperVoice
 
 
 class PiperModelManager:
@@ -17,10 +41,10 @@ class PiperModelManager:
 
     _voice_load_lock: ClassVar[RLock] = RLock()
     _synthesis_lock: ClassVar[RLock] = RLock()
-    _shared_voices: ClassVar[dict[tuple[str, str], PiperVoice]] = {}
+    _shared_voices: ClassVar[dict[tuple[str, str], Any]] = {}
 
     def __init__(self) -> None:
-        self._voice: PiperVoice | None = None
+        self._voice: Any | None = None
         self._voice_key: tuple[str, str] | None = None
         self._project_root = self._detect_project_root()
 
@@ -72,7 +96,18 @@ class PiperModelManager:
         """
         return self._synthesis_lock
 
+    def is_available(self) -> bool:
+        """True when the piper package and the bundled German model are present."""
+        try:
+            _load_piper_voice_class()
+            _ = self.german_model_path
+            _ = self.german_config_path
+            return True
+        except Exception:
+            return False
+
     def get_german_voice(self) -> PiperVoice:
+        PiperVoice = _load_piper_voice_class()
         model_path = self.german_model_path.resolve()
         config_path = self.german_config_path.resolve()
         key = (str(model_path), str(config_path))
