@@ -2174,11 +2174,16 @@ class Repo:
                        AND (s.buried_until IS NULL OR s.buried_until<=x.now_ts)
                 )
                 SELECT * FROM ready
+                 -- lektion_number has to come before deck_id. Every 'new' row
+                 -- has a NULL due_at and so ties at 0, which left deck_id as
+                 -- the real sort key -- and deck_id is seed-import order,
+                 -- which is the lexicographic filename glob: 10, 11, 12, 1, 2.
+                 -- A learner's first ever plan opened on Lektion 10.
                  ORDER BY CASE objective
                             WHEN 'vocab' THEN 0 WHEN 'grammar' THEN 1
                             WHEN 'sentences' THEN 2 ELSE 3 END,
                           CASE bucket WHEN 'due' THEN 0 ELSE 1 END,
-                          COALESCE(due_at, 0), deck_id, item_id
+                          COALESCE(due_at, 0), lektion_number, deck_id, item_id
                 """,
                 (now_ts, cutoff_ts),
             ).fetchall()
