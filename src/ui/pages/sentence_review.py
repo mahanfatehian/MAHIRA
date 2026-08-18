@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
+from core.settings import preferred_audio_speed
 from ui.widgets.sentence_builder_widget import SentenceBuilderWidget
 from ui.widgets.review_save_error import ReviewSaveError
 
@@ -31,15 +32,23 @@ class PronunciationWorker(QObject):
     finished = Signal(str, str)
     failed = Signal(str, str)
 
-    def __init__(self, service: PronunciationService, text: str) -> None:
+    def __init__(
+        self,
+        service: PronunciationService,
+        text: str,
+        length_scale: float | None = None,
+    ) -> None:
         super().__init__()
         self.service = service
         self.text = text
+        self.length_scale = length_scale
 
     @Slot()
     def run(self) -> None:
         try:
-            wav_path = self.service.generate_wav(self.text)
+            wav_path = self.service.generate_wav(
+                self.text, length_scale=self.length_scale
+            )
             self.finished.emit(self.text, str(wav_path))
         except Exception as e:  # noqa: BLE001 - surfaced to the UI
             self.failed.emit(self.text, str(e))
@@ -72,6 +81,8 @@ class SentenceReviewPage(QWidget):
         self._audio_worker: PronunciationWorker | None = None
         self._current_audio_text: str = ""
         self._current_audio_path: str = ""
+        self._current_audio_ls: float | None = None
+        self._speed: float = 1.0
 
         self.setObjectName("SentenceReviewPage")
         self.setStyleSheet("SentenceReviewPage { background-color: #0E0E0E; }")
@@ -279,6 +290,7 @@ class SentenceReviewPage(QWidget):
 
     def on_show(self) -> None:
         self.page_subtitle.setText(self.session.context_label() or "Interactive language construction")
+        self._speed = preferred_audio_speed(self.session)
         try:
             deck_id = self.session.active_deck_id()
         except Exception:
@@ -562,6 +574,11 @@ class SentenceReviewPage(QWidget):
             self._show_milestone_banner()
 
     # ----------------------------------------------------------------- audio
+    def _current_ls(self) -> float | None:
+        if abs(self._speed - 1.0) < 1e-6:
+            return None
+        return round(1.0 / self._speed, 3)
+
     def _play_target_audio(self) -> None:
         if not self.current_item:
             return
@@ -574,8 +591,11 @@ class SentenceReviewPage(QWidget):
         if self._audio_thread is not None and self._audio_thread.isRunning():
             return
 
-        # Reuse the exact cached clip if we already have it.
-        if (self._current_audio_text == text and self._current_audio_path
+        ls = self._current_ls()
+
+        # Reuse the exact cached clip if we already have it at this speed.
+        if (self._current_audio_text == text and self._current_audio_ls == ls
+                and self._current_audio_path
                 and Path(self._current_audio_path).exists()):
             self.playback_service.stop()
             self.card.audio_btn.set_busy(True)
@@ -583,13 +603,16 @@ class SentenceReviewPage(QWidget):
             return
 
         self._current_audio_text = text
+        self._current_audio_ls = ls
         self._current_audio_path = ""
         self.playback_service.stop()
         self.card.audio_btn.set_available(True)
         self.card.audio_btn.set_busy(True)
 
         self._audio_thread = QThread(self)
-        self._audio_worker = PronunciationWorker(self.pronunciation_service, text)
+        self._audio_worker = PronunciationWorker(
+            self.pronunciation_service, text, length_scale=ls
+        )
         self._audio_worker.moveToThread(self._audio_thread)
         self._audio_thread.started.connect(self._audio_worker.run)
         self._audio_worker.finished.connect(self._on_audio_ready)
@@ -660,6 +683,7 @@ class SentenceReviewPage(QWidget):
                     pass
             self._current_audio_text = ""
             self._current_audio_path = ""
+            self._current_audio_ls = None
         try:
             self.card.audio_btn.set_busy(False)
             self.card.audio_btn.set_playing(False)

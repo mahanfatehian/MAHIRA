@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
+from core.settings import preferred_audio_speed
+from ui.widgets.review_controls import harden_skip_button
 from ui.widgets.review_save_error import ReviewSaveError
 
 
@@ -494,6 +496,7 @@ class ListeningReviewPage(QWidget):
         self.skip_btn.setMinimumHeight(42)
         self.skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.skip_btn.setStyleSheet(STYLE_SKIP_BUTTON)
+        harden_skip_button(self.skip_btn)
         self.skip_btn.clicked.connect(self._on_skip)
 
         self.next_btn = QPushButton("Next  →")
@@ -582,6 +585,8 @@ class ListeningReviewPage(QWidget):
             pass
 
         self.page_subtitle.setText(self.session.context_label() or "Hear a passage, then answer")
+        self._speed = preferred_audio_speed(self.session)
+        self._update_speed_buttons()
 
         deck_id = self._active_deck_id()
         if not deck_id:

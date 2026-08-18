@@ -20,10 +20,11 @@ from PySide6.QtWidgets import (
 
 from core.audio import PiperModelManager, PlaybackService, PronunciationService
 from core.session import SessionService
+from core.settings import preferred_audio_speed
 from core.vocab_fields import noun_declension_values, noun_vocab_value
 from ui.widgets.card_widget import CardWidget, VocabCheckPayload
-from ui.widgets.special_char_keyboard import SpecialCharKeyboard
 from ui.widgets.review_save_error import ReviewSaveError
+from ui.widgets.special_char_keyboard import SpecialCharKeyboard
 
 
 def _norm(s: str) -> str:
@@ -382,6 +383,11 @@ class VocabReviewPage(QWidget):
     def on_show(self) -> None:
         self.special_kbd.set_language("de")
         self.page_subtitle.setText(self.session.context_label() or "Interactive vocabulary practice")
+        self._speed = preferred_audio_speed(self.session)
+        try:
+            self.card.set_speed(self._speed)
+        except Exception:
+            pass
 
         deck_id = self._active_deck_id()
 

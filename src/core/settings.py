@@ -9,10 +9,53 @@ from typing import Any
 
 
 PLANNER_OBJECTIVES = ("vocab", "grammar", "sentences", "listening")
+_AUDIO_SPEEDS = frozenset({0.75, 1.0, 1.25})
 
 
 def _objective_defaults(value: int) -> dict[str, int]:
     return {objective: value for objective in PLANNER_OBJECTIVES}
+
+
+def preferred_audio_speed(source: Any = None) -> float:
+    """Speaking speed from an AppSettings, SettingsService, or session.
+
+    Returns one of 0.75 / 1.0 / 1.25. Falls back to normal when the source is
+    missing or holds an out-of-band value, so review lanes can call this on
+    every show without special-casing a missing settings object.
+
+    Callables returned by permissive ``__getattr__`` stubs are ignored so a
+    duck-typed session cannot masquerade a missing preference as a function.
+    """
+    if source is None:
+        return 1.0
+
+    candidates: list[Any] = [source]
+    nested = getattr(source, "settings", None)
+    if nested is not None and nested is not source and not callable(nested):
+        candidates.append(nested)
+
+    expanded: list[Any] = []
+    for candidate in candidates:
+        expanded.append(candidate)
+        # SettingsService exposes the dataclass on a .value property.
+        try:
+            data = candidate.value  # type: ignore[attr-defined]
+        except Exception:
+            data = None
+        if data is not None and data is not candidate and not callable(data):
+            expanded.append(data)
+
+    for candidate in expanded:
+        raw = getattr(candidate, "audio_speed", None)
+        if raw is None or callable(raw):
+            continue
+        try:
+            speed = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if speed in _AUDIO_SPEEDS:
+            return speed
+    return 1.0
 
 
 @dataclass
@@ -227,7 +270,7 @@ def _normalize_settings(raw: Any, fallback: AppSettings | None = None) -> AppSet
                 speed = float(raw["audio_speed"])
             except (TypeError, ValueError, OverflowError):
                 speed = defaults.audio_speed
-        data["audio_speed"] = speed if speed in {0.75, 1.0, 1.25} else defaults.audio_speed
+        data["audio_speed"] = speed if speed in _AUDIO_SPEEDS else defaults.audio_speed
 
     for name, allowed in _ENUM_FIELDS.items():
         value = raw.get(name)
