@@ -70,6 +70,18 @@ def _clip(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
 
+# StandardScaler needs a real spread before its output is meaningful. Fitting
+# and transforming the same single sample gives a per-feature variance of ~0,
+# so the scaled values explode and the very first SGD updates blow the weights
+# past any recovery. Buffer this many samples, fit only the scaler on them,
+# then replay them into the model in one go.
+_SCALER_WARMUP_SAMPLES = 20
+
+# A healthy prediction lives in [0, 1]. Anything far outside means the weights
+# have diverged and the model is worthless.
+_DIVERGENCE_LIMIT = 10.0
+
+
 class _OnlineDifficultyModel:
     """
     Tiny online sklearn model.
@@ -86,6 +98,8 @@ class _OnlineDifficultyModel:
         self.scaler = None
         self.model = None
         self.is_fitted = False
+        self.samples_seen = 0
+        self._warmup: list[tuple[list[float], float]] = []
 
     def _initialize(self) -> bool:
         if self.scaler is not None and self.model is not None:
@@ -97,7 +111,11 @@ class _OnlineDifficultyModel:
             loss="squared_error",
             penalty="l2",
             alpha=0.0001,
-            learning_rate="optimal",
+            # "optimal" derives its step size from a classification-loss
+            # schedule and diverges badly here. A small constant step is stable
+            # for this feature scale.
+            learning_rate="constant",
+            eta0=0.01,
             max_iter=1,
             tol=None,
             random_state=42,
@@ -109,12 +127,34 @@ class _OnlineDifficultyModel:
             return
 
         X = np.asarray([x], dtype=float)
-        Y = np.asarray([float(_clip(y, 0.0, 1.0))], dtype=float)
+        target = float(_clip(y, 0.0, 1.0))
 
         self.scaler.partial_fit(X)
-        Xs = self.scaler.transform(X)
-        self.model.partial_fit(Xs, Y)
-        self.is_fitted = True
+        self.samples_seen = int(getattr(self, "samples_seen", 0)) + 1
+
+        warmup = getattr(self, "_warmup", None)
+        if warmup is None:
+            warmup = self._warmup = []
+
+        if not self.is_fitted and self.samples_seen < _SCALER_WARMUP_SAMPLES:
+            # Scaler only: the model must not see samples scaled against a
+            # near-zero variance estimate.
+            warmup.append((list(x), target))
+            return
+
+        if not self.is_fitted:
+            warmup.append((list(x), target))
+            buffered = np.asarray([row for row, _ in warmup], dtype=float)
+            targets = np.asarray([t for _, t in warmup], dtype=float)
+            self._warmup = []
+            self.model.partial_fit(self.scaler.transform(buffered), targets)
+            self.is_fitted = True
+            return
+
+        self.model.partial_fit(
+            self.scaler.transform(X),
+            np.asarray([target], dtype=float),
+        )
 
     def predict_many(self, vectors: list[list[float]]) -> list[float]:
         if not vectors:
@@ -129,6 +169,13 @@ class _OnlineDifficultyModel:
         X = np.asarray(vectors, dtype=float)
         Xs = self.scaler.transform(X)
         preds = self.model.predict(Xs)
+
+        # A diverged model clips to a sign bit and is worse than no model at
+        # all. Stand down to the neutral score so the deterministic priority
+        # carries the ranking on its own.
+        if not np.all(np.isfinite(preds)) or np.abs(preds).max() > _DIVERGENCE_LIMIT:
+            self.is_fitted = False
+            return [0.5] * len(vectors)
 
         return [_clip(float(v), 0.0, 1.0) for v in preds]
 
@@ -930,8 +977,9 @@ class SklearnRanker:
     # models are never applied to incompatible inputs. Vocabulary moved to v3
     # when its aggregates became recognition-only; the other objectives keep
     # their compatible v2 models.
-    _MODEL_VERSION = "v2"
-    _MODEL_VERSION_BY_OBJECTIVE = {"vocab": "v3"}
+    # v3/v4 retire every model trained by the diverging "optimal" schedule.
+    _MODEL_VERSION = "v3"
+    _MODEL_VERSION_BY_OBJECTIVE = {"vocab": "v4"}
 
     def _model_name(self, objective: str, level: str | None) -> str:
         objective_key = _safe_key(objective)
@@ -965,7 +1013,11 @@ class SklearnRanker:
         return model
 
     def _save_model(self, objective: str, level: str | None, model: _OnlineDifficultyModel) -> None:
-        if not getattr(model, "is_fitted", False):
+        # Also persist a model still in scaler warm-up, otherwise the buffer is
+        # discarded between sessions and training never starts.
+        if not getattr(model, "is_fitted", False) and not int(
+            getattr(model, "samples_seen", 0)
+        ):
             return
         if not _ensure_sklearn_backend() or joblib is None:
             return

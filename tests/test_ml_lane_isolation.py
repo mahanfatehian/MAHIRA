@@ -76,5 +76,20 @@ def test_vocab_model_version_ignores_pre_isolation_cache(tmp_path, monkeypatch):
 
     assert model is not None
     assert loaded == []
-    assert ranker._model_path("vocab", "A1").name == "vocab__a1__v3.joblib"
-    assert ranker._model_path("grammar", "A1").name == "grammar__a1__v2.joblib"
+    # Track the constants rather than literals: the versions are bumped
+    # whenever a training change invalidates existing models, and this test is
+    # about the stale file not being loaded, not about a specific number.
+    vocab_version = SklearnRanker._MODEL_VERSION_BY_OBJECTIVE["vocab"]
+    other_version = SklearnRanker._MODEL_VERSION
+    assert vocab_version != other_version
+    assert (
+        ranker._model_path("vocab", "A1").name == f"vocab__a1__{vocab_version}.joblib"
+    )
+    assert (
+        ranker._model_path("grammar", "A1").name
+        == f"grammar__a1__{other_version}.joblib"
+    )
+    assert old_path.name not in {
+        ranker._model_path("vocab", "A1").name,
+        ranker._model_path("grammar", "A1").name,
+    }
