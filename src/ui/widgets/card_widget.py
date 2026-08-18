@@ -948,7 +948,7 @@ class CardWidget(QWidget):
         self.check_btn.setEnabled(False)
         self.skip_btn.setEnabled(False)
 
-        for r, b in self._rating_buttons:
+        for _r, b in self._rating_buttons:
             b.setEnabled(True)
 
         if self._recommended_rating is not None:

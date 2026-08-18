@@ -925,7 +925,9 @@ class SetupPage(QWidget):
                     border: 1px solid #252525;
                 }
             """)
-            b.clicked.connect(lambda checked=False, l=lvl: self._choose_level(l))
+            b.clicked.connect(
+                lambda checked=False, level=lvl: self._choose_level(level)
+            )
             self.level_buttons[lvl] = b
             grid.addWidget(b, i // 3, i % 3)
 

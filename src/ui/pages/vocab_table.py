@@ -727,7 +727,7 @@ class VocabTablePage(QWidget):
         cc.addWidget(hint)
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
-        for key, title, _accent, _width in _COLUMNS:
+        for key, _title, _accent, _width in _COLUMNS:
             if key == "pos":
                 continue
             button = QPushButton()

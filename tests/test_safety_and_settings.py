@@ -245,7 +245,8 @@ def test_legacy_rebuild_preserves_content_state_and_reviews(tmp_path):
         INSERT INTO reviews VALUES (9, 11, 100, 'house', 2);
         """
     )
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
     init_db(db)
     migrated = sqlite3.connect(db)

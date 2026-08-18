@@ -107,7 +107,8 @@ def _page(monkeypatch, snapshots: _Snapshots):
     import core.planner as planner_module
     import ui.pages.today as today_module
 
-    factory = lambda *_args, **_kwargs: snapshots
+    def factory(*_args, **_kwargs):
+        return snapshots
     monkeypatch.setattr(planner_module, "DailyPlannerService", factory)
     monkeypatch.setattr(today_module, "DailyPlannerService", factory, raising=False)
 

@@ -78,7 +78,8 @@ def test_today_and_progress_render_identical_daily_plan_totals_and_clear_scopes(
     _qapp()
     snapshot = _snapshot()
     planner = _Planner(snapshot)
-    factory = lambda *_args, **_kwargs: planner
+    def factory(*_args, **_kwargs):
+        return planner
     monkeypatch.setattr(planner_module, "DailyPlannerService", factory)
     monkeypatch.setattr(today_module, "DailyPlannerService", factory, raising=False)
     monkeypatch.setattr(progress_module, "DailyPlannerService", factory, raising=False)

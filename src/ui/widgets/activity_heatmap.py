@@ -288,7 +288,7 @@ class ActivityHeatmap(QWidget):
                 self._glow(p, rect, tint, ((1.85, 56),))
 
         # pass 2 — the cached tiles
-        for rect, lvl, day in cells:
+        for rect, lvl, _day in cells:
             p.drawPixmap(QPointF(rect.x(), rect.y()), self._tile_cache[lvl])
 
         # pass 3 — today highlight + hover border

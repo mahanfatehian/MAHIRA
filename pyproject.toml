@@ -1,0 +1,44 @@
+# MAHIRA runs from source as `python -m mahira` with PYTHONPATH=src, and ships
+# as a frozen PyInstaller bundle. There is no packaging step, so this file
+# exists purely to configure tooling.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["venv", "build", "dist", ".mahira", ".tmp"]
+
+[tool.ruff.lint]
+# Deliberately narrow. These rules catch real defects - unused and undefined
+# names, mutable default arguments, loop-variable mistakes - without demanding
+# a rewrite of choices this codebase makes on purpose.
+#
+# Deliberately NOT enabled:
+#   BLE001, S110  ~280 broad `except Exception` handlers. Those are a considered
+#                 decision, not an oversight: a failed ranker, a missing audio
+#                 model or an unreadable settings file has to degrade rather
+#                 than take the app down mid-review. Narrowing them all would
+#                 be a large, risky change to the app's error posture.
+#   UP045, UP006  Optional[x] and typing.List read fine and span hundreds of
+#                 lines for no behavioural gain.
+#   I001          Import sorting would churn nearly every file at once and bury
+#                 real history in the blame.
+select = ["E4", "E7", "E9", "F", "B"]
+
+# zip() without strict=. Adding strict=True would turn a length mismatch into a
+# raised exception mid-review, and strict=False is just today's behaviour spelt
+# out. Neither is worth the churn across the call sites that have it.
+ignore = ["B905"]
+
+[tool.ruff.lint.per-file-ignores]
+# These entry points must set environment variables - Qt logging rules, plugin
+# paths - before PySide6 is imported, so their imports genuinely cannot all sit
+# at the top of the file.
+"src/mahira/app.py" = ["E402"]
+"src/mahira/__main__.py" = ["E402"]
+"src/core/conjugation.py" = ["E402"]
+"src/ui/pages/conjugation.py" = ["E402"]
+# QAbstractItemModel overrides are required by Qt to take a QModelIndex()
+# default, so B008 is unavoidable rather than a mistake.
+"src/ui/pages/vocab_table.py" = ["E402", "B008"]
+# Tests import Qt lazily inside test functions to keep it out of collection.
+"tests/*" = ["E402"]

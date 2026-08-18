@@ -806,7 +806,7 @@ class LearnPage(QWidget):
         col.setSpacing(14)
 
         self.level_cards: Dict[str, LevelCard] = {}
-        for i, lvl in enumerate(CEFR_LEVELS):
+        for lvl in CEFR_LEVELS:
             card = LevelCard(
                 lvl,
                 _accent_for_level(lvl),
