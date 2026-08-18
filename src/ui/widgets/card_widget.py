@@ -289,6 +289,9 @@ class CardWidget(QWidget):
         self.skip_btn.setAccessibleName("Skip this review card")
         self.skip_btn.setMinimumHeight(40)
         self.skip_btn.setStyleSheet(self._skip_btn_style())
+        from ui.widgets.review_controls import harden_skip_button
+
+        harden_skip_button(self.skip_btn)
         action_row.addWidget(self.skip_btn, 1)
 
         input_layout.addLayout(action_row)

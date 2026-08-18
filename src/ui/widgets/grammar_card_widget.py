@@ -197,6 +197,9 @@ class GrammarCardWidget(QWidget):
         self.btn_skip.setAccessibleName("Skip this review card")
         self.btn_skip.setMinimumHeight(42)
         self.btn_skip.setStyleSheet(self._skip_btn_style())
+        from ui.widgets.review_controls import harden_skip_button
+
+        harden_skip_button(self.btn_skip)
         input_row.addWidget(self.btn_skip)
 
         input_layout.addLayout(input_row)

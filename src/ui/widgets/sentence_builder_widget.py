@@ -356,6 +356,9 @@ class SentenceBuilderWidget(QWidget):
         self.btn_skip.setObjectName("ReviewSkipButton")
         self.btn_skip.setAccessibleName("Skip this review card")
         self.btn_skip.setStyleSheet(_btn_secondary())
+        from ui.widgets.review_controls import harden_skip_button
+
+        harden_skip_button(self.btn_skip)
 
         self.btn_check = QPushButton("Check")
         self.btn_check.setObjectName("ReviewCheckButton")
