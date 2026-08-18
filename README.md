@@ -91,8 +91,15 @@ additional books and levels automatically.
 - Each item is modelled with **stability + difficulty**, and the engine computes
   **retrievability** — the probability you'd recall it right now — to schedule
   reviews exactly when you're about to forget.
-- Failed items re‑enter a short relearning step; correct ones are pushed out to
-  the optimal interval for long‑term retention.
+- Failed items re‑enter a short relearning step and come back **before the
+  session ends**; correct ones are pushed out to the optimal interval for
+  long‑term retention.
+- **Target retention** is yours to set (70–97%). Raise it to shorten every
+  interval before an exam, lower it to trade a little forgetting for fewer
+  reviews.
+- Intervals are **fuzzed** so a whole Lektion learned in one sitting doesn't
+  come due as a single spike months later, and a **longest‑interval** cap keeps
+  well‑known cards in rotation instead of disappearing for years.
 
 ### 🧠 Machine‑assisted prioritisation
 - An always‑on recall priority surfaces your weakest items from review #1.
@@ -120,7 +127,10 @@ additional books and levels automatically.
 - Versioned, backup-first database migrations preserve FSRS state and reviews.
   Schema v4 records each genuine primary review as new, due, extra, or legacy
   before the scheduler update, enabling exact daily caps and undo-safe totals.
-- Verified backup, export, managed restore, and rotating diagnostic logs.
+- Verified backup, managed restore, and rotating diagnostic logs. **Export**
+  writes a verified copy of the SQLite database itself, so it is a portable
+  snapshot of everything - cards, FSRS state and review history - rather than
+  a CSV extract.
 - Persistent study/audio/accessibility preferences and independent learner profiles.
 - Resizable keyboard-friendly UI, high contrast, text scaling, and reduced motion.
 

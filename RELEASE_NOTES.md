@@ -24,7 +24,7 @@ MAHIRA 0.4.0 is a major offline-study upgrade. It expands Starten Wir A2 through
 - Database migrations create and verify backups before changing learner data.
 - Existing Windows learner data stored beside older app versions is migrated to the upgrade-safe application data directory.
 - Pull requests and changes to `dev` or `main` now run the fast Windows test gate automatically.
-- The v0.4.0 codebase passes 162 automated tests.
+- The v0.4.0 codebase passes its automated test suite on every push.
 
 ### Upgrading
 
