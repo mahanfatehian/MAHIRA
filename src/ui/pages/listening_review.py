@@ -37,6 +37,10 @@ STYLE_QUESTION = "QLabel { color:#FFFFFF; font-size:21px; font-weight:950; borde
 STYLE_TRANSCRIPT = "QLabel { color:#E6E6E6; font-size:13px; font-weight:650; border:none; background:transparent; line-height:1.4; }"
 STYLE_TRANSLATION = "QLabel { color:#9A9A9A; font-size:12px; font-weight:650; border:none; background:transparent; font-style:italic; }"
 
+# Slightly warmer than the translation line so the tip reads as guidance
+# rather than as more of the passage.
+STYLE_TIP = "QLabel { color:#C8B98A; font-size:12px; font-weight:650; border:none; background:transparent; }"
+
 STYLE_COUNTER = "color:#FFFFFF; font-size:12px; font-weight:800; background:#1A1A1A; border:1px solid #2E2E2E; border-radius:8px; padding:6px 10px;"
 STYLE_COUNTER_HL = "color:#FFD700; font-size:12px; font-weight:800; background:#2A2000; border:1px solid #FFD700; border-radius:8px; padding:6px 10px;"
 
@@ -428,10 +432,15 @@ class ListeningReviewPage(QWidget):
         self.translation_lbl = QLabel("")
         self.translation_lbl.setWordWrap(True)
         self.translation_lbl.setStyleSheet(STYLE_TRANSLATION)
+        self.tip_lbl = QLabel("")
+        self.tip_lbl.setWordWrap(True)
+        self.tip_lbl.setStyleSheet(STYLE_TIP)
+        self.tip_lbl.setAccessibleName("Listening tip")
 
         lay.addWidget(header)
         lay.addWidget(self.transcript_lbl)
         lay.addWidget(self.translation_lbl)
+        lay.addWidget(self.tip_lbl)
 
         self.reveal_card = card
         self.reveal_card.hide()
@@ -735,6 +744,16 @@ class ListeningReviewPage(QWidget):
             self.translation_lbl.show()
         else:
             self.translation_lbl.hide()
+
+        # Shown on reveal rather than as a pre-answer hint: listening_reviews
+        # has no tip_used column, so a hint taken before answering could not be
+        # recorded and would quietly distort the difficulty signal.
+        tip = getattr(item, "tip", None)
+        if tip and str(tip).strip():
+            self.tip_lbl.setText(f"Tip · {str(tip).strip()}")
+            self.tip_lbl.show()
+        else:
+            self.tip_lbl.hide()
         self.reveal_card.show()
 
         self._recommended = 2 if self._ok else 0
