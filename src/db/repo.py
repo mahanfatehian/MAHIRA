@@ -2667,7 +2667,7 @@ class Repo:
 
     @staticmethod
     def _row_to_sentence(r: sqlite3.Row) -> SentenceItem:
-        import json, re
+        import json
 
         def parse_words(raw: str | None, target: str) -> list[str]:
             s = (raw or "").strip()

@@ -508,7 +508,7 @@ class SklearnRanker:
         DB aggregates -- identical to the vector used when ranking, so the model
         never suffers train/serve skew."""
         try:
-            item_id = int(getattr(item, "id"))
+            item_id = int(item.id)
         except Exception:
             return None
         try:

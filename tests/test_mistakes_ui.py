@@ -576,7 +576,6 @@ def test_row_drill_is_typed_and_grammar_production_stays_primary():
 
 
 def test_leech_guidance_is_suggestion_only_and_learn_links_are_strict():
-    from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QFrame, QLabel, QPushButton
 
     page = _recent_page([_recent_items()[0]])

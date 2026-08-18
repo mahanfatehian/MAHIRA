@@ -179,7 +179,6 @@ def app_stylesheet(font_scale: int = 100, theme: str = "graphite") -> str:
     recessed = "#080808" if high_contrast else COLORS["surface_sunken"]
     control = "#171717" if high_contrast else COLORS["surface_secondary"]
     outline = "#626262" if high_contrast else COLORS["outline"]
-    muted = "#C0C0C0" if high_contrast else COLORS["text_secondary"]
     semantic_font_rules = "\n".join(
         (
             'QWidget[mahiraFeaturePage="true"] '

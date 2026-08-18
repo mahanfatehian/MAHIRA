@@ -17,7 +17,9 @@ def test_window_defers_destruction_until_blocking_worker_finishes():
 
     from ui.main_window import MainWindow
 
-    app = QApplication.instance() or QApplication([])
+    # Bound deliberately: the QApplication must outlive this scope or Qt tears
+    # down while the worker thread is still running.
+    app = QApplication.instance() or QApplication([])  # noqa: F841
 
     class SlowWorkerThread(QThread):
         def run(self) -> None:

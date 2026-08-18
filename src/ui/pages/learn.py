@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QFont, QColor, QPixmap
+from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QGroupBox,
     QScrollArea,
-    QGridLayout,
     QHBoxLayout,
     QFrame,
     QStackedWidget,

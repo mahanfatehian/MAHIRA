@@ -8,7 +8,6 @@ module exists to surface - all tied. rank_* breaks ties on (priority,
 
 from __future__ import annotations
 
-import time
 
 import pytest
 

@@ -19,7 +19,7 @@ import datetime as _dt
 
 from PySide6.QtCore import Qt, QPointF, QRectF, QSize
 from PySide6.QtGui import (
-    QBrush, QColor, QFont, QLinearGradient, QPainter, QPainterPath,
+    QColor, QFont, QLinearGradient, QPainter, QPainterPath,
     QPen, QPixmap, QRadialGradient,
 )
 from PySide6.QtWidgets import QToolTip, QWidget
