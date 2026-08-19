@@ -77,7 +77,16 @@ def _by_objective(snapshot):
     return {row.objective: row for row in snapshot.objectives}
 
 
-def test_daily_plan_allocates_all_due_before_new_and_segments_by_deck():
+def test_daily_plan_reserves_room_for_new_work_and_segments_by_deck():
+    """Due work leads, but it no longer consumes an objective's whole share.
+
+    This previously asserted that due was allocated in full before any new
+    card: vocab took both its due items and got no new one. That is exactly
+    what starved new material whenever the backlog reached the daily goal, so
+    each objective now reserves NEW_RESERVE_FRACTION of its share for new work
+    and hands back whatever it cannot use. The cross-objective split, the
+    total, and the per-deck segmenting are unchanged.
+    """
     from core.planner import DailyPlannerService
 
     inventory = [
@@ -98,17 +107,19 @@ def test_daily_plan_allocates_all_due_before_new_and_segments_by_deck():
     ).snapshot(now=1_700_000_000)
 
     rows = _by_objective(snapshot)
-    assert (rows["vocab"].planned_due, rows["vocab"].planned_new) == (2, 0)
+    assert (rows["vocab"].planned_due, rows["vocab"].planned_new) == (1, 1)
     assert (rows["grammar"].planned_due, rows["grammar"].planned_new) == (1, 1)
     assert (rows["sentences"].planned_due, rows["sentences"].planned_new) == (1, 0)
     assert (rows["listening"].planned_due, rows["listening"].planned_new) == (0, 1)
     assert snapshot.planned_total == 6
-    assert sum(row.planned_due for row in snapshot.objectives) == 4
+    assert sum(row.planned_due for row in snapshot.objectives) == 3
+    # Every objective with any demand is still represented, and the goal is
+    # still filled exactly - the reserve moves work, it does not drop it.
     assert [segment.objective for segment in snapshot.segments] == [
         "vocab", "grammar", "sentences", "listening",
     ]
     assert [segment.item_ids for segment in snapshot.segments] == [
-        (1, 2),
+        (1, 3),
         (5, 6),
         (7,),
         (8,),

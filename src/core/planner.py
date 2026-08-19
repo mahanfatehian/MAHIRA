@@ -10,6 +10,15 @@ from db.repo import DailyPlanUsage, PlannerInventoryItem
 
 OBJECTIVES = ("vocab", "grammar", "sentences", "listening")
 
+# Share of the daily goal held back for new material before due work is
+# allocated. Due used to be allocated first out of a single pooled budget, so
+# any backlog at or above the goal drove new cards to exactly zero and the
+# course stopped advancing until the learner dug themselves out. Reserving a
+# slice keeps the syllabus moving; the reserve is only ever as large as the
+# learner's own per-skill new caps, and setting those to zero still pauses new
+# material completely.
+NEW_RESERVE_FRACTION = 0.3
+
 
 @dataclass(frozen=True)
 class ObjectiveCaps:
@@ -265,17 +274,27 @@ class DailyPlannerService:
             weights,
             remaining_goal,
         )
-        due_allocation = {
-            objective: min(due_demand[objective], objective_allocation[objective])
-            for objective in OBJECTIVES
-        }
-        new_allocation = {
-            objective: min(
+
+        # Split each objective's share between due and new. Due used to take
+        # the whole share first, so any backlog at or above the goal drove new
+        # cards to exactly zero and the course stopped advancing. Reserve a
+        # slice for new work instead, then let each side hand back whatever it
+        # cannot use so the plan is never smaller than it was.
+        due_allocation = {}
+        new_allocation = {}
+        for objective in OBJECTIVES:
+            share = objective_allocation[objective]
+            # Round half up rather than ceil: ceil on four small per-objective
+            # shares compounds into noticeably more new work than the fraction
+            # states (12 of 30 rather than 9).
+            reserved = min(
                 new_demand[objective],
-                objective_allocation[objective] - due_allocation[objective],
+                int(share * NEW_RESERVE_FRACTION + 0.5),
             )
-            for objective in OBJECTIVES
-        }
+            due = min(due_demand[objective], share - reserved)
+            new = min(new_demand[objective], share - due)
+            due_allocation[objective] = min(due_demand[objective], share - new)
+            new_allocation[objective] = new
 
         selected: dict[str, list[PlannerInventoryItem]] = {}
         objective_rows: list[ObjectivePlan] = []
