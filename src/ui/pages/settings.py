@@ -110,7 +110,7 @@ class SettingsPage(QWidget):
         )
         self.daily_goal = NumberStepper(5, 200, 5, "daily review goal")
         self.session_limit = NumberStepper(5, 100, 5, "session size")
-        self.new_limit = NumberStepper(0, 30, 1, "new cards per session")
+        self.new_limit = NumberStepper(0, 30, 1, "new cards per focused set")
         self.retention = NumberStepper(70, 97, 1, "target retention")
         self.max_interval = QComboBox()
         for label, days in (
@@ -135,7 +135,8 @@ class SettingsPage(QWidget):
         study_layout.addWidget(
             self._setting_row(
                 "Daily goal",
-                "The progress target shown on Today and Progress.",
+                "Total cards Today plans across all four skills. Also "
+                "editable from Adjust plan on the Today tab.",
                 self.daily_goal,
                 "reviews/day",
             )
@@ -144,7 +145,8 @@ class SettingsPage(QWidget):
         study_layout.addWidget(
             self._setting_row(
                 "Session size",
-                "Maximum cards prepared when a review starts.",
+                "Maximum cards in one sitting. Also the size Today splits its "
+                "plan into focused sets.",
                 self.session_limit,
                 "cards/session",
             )
@@ -152,8 +154,9 @@ class SettingsPage(QWidget):
         study_layout.addWidget(self._divider())
         study_layout.addWidget(
             self._setting_row(
-                "New cards per session",
-                "Keep new material from crowding out due reviews.",
+                "New cards per focused set",
+                "Applies to reviews you start from Setup. Today's plan uses "
+                "the per-skill new limits in Adjust plan instead.",
                 self.new_limit,
                 "new/session",
             )
