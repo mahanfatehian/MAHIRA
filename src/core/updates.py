@@ -37,14 +37,20 @@ class UpdateService:
     def __init__(self, current_version: str | None = None):
         self.current_version = current_version or os.environ.get("MAHIRA_VERSION") or self._bundled_version()
 
-    @staticmethod
-    def _bundled_version() -> str:
+    # Frozen builds ship assets/version.json, written from the release tag. A
+    # source checkout has no such file and genuinely does not know its version,
+    # so it reports an unnumbered dev build rather than a hardcoded release
+    # number that goes stale and makes the update check claim you are current.
+    UNKNOWN_VERSION = "0.0.0-dev"
+
+    @classmethod
+    def _bundled_version(cls) -> str:
         try:
             from mahira.config import resource_root
             payload = json.loads((resource_root() / "assets" / "version.json").read_text(encoding="utf-8"))
-            return str(payload.get("version") or "0.3.0")
+            return str(payload.get("version") or cls.UNKNOWN_VERSION)
         except (OSError, ValueError, TypeError):
-            return "0.3.0"
+            return cls.UNKNOWN_VERSION
 
     def check(self, timeout: float = 5.0) -> UpdateResult:
         request = urllib.request.Request(
