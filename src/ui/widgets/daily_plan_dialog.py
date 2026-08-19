@@ -46,6 +46,7 @@ class DailyPlanDialog(QDialog):
         self._new_controls: dict[str, NumberStepper] = {}
         self._weight_controls: dict[str, NumberStepper] = {}
         self._weight_rows: list[QWidget] = []
+        self._loading = False
 
         self.setWindowTitle("Adjust today's plan")
         self.setAccessibleName("Daily plan settings")
@@ -64,13 +65,34 @@ class DailyPlanDialog(QDialog):
         heading = QLabel("Adjust today's plan")
         set_feature_font(heading, 15, QFont.Weight.Black)
         explanation = QLabel(
-            "Set daily limits for due and new work. These preferences shape "
-            "recommendations without changing card schedules."
+            "The daily goal sets how much work today holds in total. The "
+            "per-skill limits below decide what that work is made of. Neither "
+            "changes a card's schedule."
         )
         explanation.setWordWrap(True)
         explanation.setStyleSheet(f"color:{COLORS['muted']};")
         root.addWidget(heading)
         root.addWidget(explanation)
+
+        # The daily goal lives here as well as in Settings: it is the ceiling
+        # that actually binds the plan, so a dialog called "Adjust today's
+        # plan" that could not change it left every slider below inert.
+        goal_card = QFrame()
+        goal_card.setStyleSheet(card_style())
+        goal_layout = QVBoxLayout(goal_card)
+        goal_layout.setContentsMargins(14, 12, 14, 12)
+        goal_layout.setSpacing(8)
+        goal_title = QLabel("Daily goal")
+        set_feature_font(goal_title, 11, QFont.Weight.Black)
+        goal_layout.addWidget(goal_title)
+        self.goal = NumberStepper(5, 200, 5, "daily goal")
+        self.goal.valueChanged.connect(self._refresh_capacity)
+        goal_layout.addWidget(self._control_row("Cards", self.goal))
+        self.capacity_note = QLabel("")
+        self.capacity_note.setWordWrap(True)
+        self.capacity_note.setStyleSheet(f"color:{COLORS['muted']};")
+        goal_layout.addWidget(self.capacity_note)
+        root.addWidget(goal_card)
 
         self.balance = QCheckBox("Balance across skills")
         self.balance.setAccessibleDescription(
@@ -137,6 +159,8 @@ class DailyPlanDialog(QDialog):
         due = NumberStepper(0, 200, 1, f"{objective} due cap")
         new = NumberStepper(0, 30, 1, f"{objective} new cap")
         weight = NumberStepper(1, 100, 1, f"{objective} weight")
+        due.valueChanged.connect(self._refresh_capacity)
+        new.valueChanged.connect(self._refresh_capacity)
         self._due_controls[objective] = due
         self._new_controls[objective] = new
         self._weight_controls[objective] = weight
@@ -167,12 +191,53 @@ class DailyPlanDialog(QDialog):
         due_caps = value.planner_due_caps
         new_caps = value.planner_new_caps
         weights = value.planner_weights
-        for objective in OBJECTIVES:
-            self._due_controls[objective].setValue(due_caps[objective])
-            self._new_controls[objective].setValue(new_caps[objective])
-            self._weight_controls[objective].setValue(weights[objective])
-        self.balance.setChecked(bool(value.planner_weighted_mix))
+        self._loading = True
+        try:
+            self.goal.setValue(int(getattr(value, "daily_goal", 30)))
+            for objective in OBJECTIVES:
+                self._due_controls[objective].setValue(due_caps[objective])
+                self._new_controls[objective].setValue(new_caps[objective])
+                self._weight_controls[objective].setValue(weights[objective])
+            self.balance.setChecked(bool(value.planner_weighted_mix))
+        finally:
+            self._loading = False
         self._set_weights_visible(self.balance.isChecked())
+        self._refresh_capacity()
+
+    def capacity(self) -> int:
+        """Largest plan the per-skill limits could ever produce."""
+        return sum(
+            self._due_controls[objective].value()
+            + self._new_controls[objective].value()
+            for objective in OBJECTIVES
+        )
+
+    def _refresh_capacity(self, *_args) -> None:
+        """Say which of the two limits is the one actually deciding the plan.
+
+        Without this the caps look authoritative while the goal quietly
+        overrides them, which is exactly the confusion this dialog caused.
+        """
+        if self._loading:
+            return
+        goal = self.goal.value()
+        capacity = self.capacity()
+        if capacity <= 0:
+            self.capacity_note.setText(
+                "Every skill is set to zero, so today's plan will be empty."
+            )
+        elif capacity <= goal:
+            self.capacity_note.setText(
+                f"Your per-skill limits allow {capacity} cards, which is under "
+                f"the goal of {goal}. The per-skill limits decide today's size; "
+                "raise them to get a fuller plan."
+            )
+        else:
+            self.capacity_note.setText(
+                f"The goal of {goal} decides today's size. Your per-skill "
+                f"limits allow up to {capacity}, so they shape the mix rather "
+                "than the total."
+            )
 
     def _set_weights_visible(self, visible: bool) -> None:
         for row in self._weight_rows:
@@ -180,6 +245,7 @@ class DailyPlanDialog(QDialog):
 
     def _save(self) -> None:
         changes = {
+            "daily_goal": self.goal.value(),
             "planner_due_caps": {
                 objective: self._due_controls[objective].value()
                 for objective in OBJECTIVES

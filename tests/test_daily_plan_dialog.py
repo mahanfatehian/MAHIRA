@@ -112,6 +112,7 @@ def test_daily_plan_dialog_loads_values_toggles_weights_and_saves_once(tmp_path)
     path = tmp_path / "settings.json"
     initial = SettingsService(path)
     initial.update(
+        daily_goal=45,
         planner_due_caps={
             "vocab": 11,
             "grammar": 12,
@@ -147,6 +148,7 @@ def test_daily_plan_dialog_loads_values_toggles_weights_and_saves_once(tmp_path)
     dialog.show()
     try:
         QApplication.processEvents()
+        assert dialog.goal.value() == 45
         expected_due = dict(zip(OBJECTIVES, (11, 12, 13, 14)))
         expected_new = dict(zip(OBJECTIVES, (1, 2, 3, 4)))
         expected_weights = dict(zip(OBJECTIVES, (4, 3, 2, 1)))
@@ -178,11 +180,14 @@ def test_daily_plan_dialog_loads_values_toggles_weights_and_saves_once(tmp_path)
             _find_stepper(dialog, objective, "new").setValue(new_values[objective])
             _find_stepper(dialog, objective, "weight").setValue(weight_values[objective])
 
+        dialog.goal.setValue(75)
+
         _button(dialog, "save").click()
         QApplication.processEvents()
 
         assert settings.update_calls == [
             {
+                "daily_goal": 75,
                 "planner_due_caps": due_values,
                 "planner_new_caps": new_values,
                 "planner_weights": weight_values,
@@ -190,6 +195,7 @@ def test_daily_plan_dialog_loads_values_toggles_weights_and_saves_once(tmp_path)
             }
         ]
         reloaded = SettingsService(path).value
+        assert reloaded.daily_goal == 75
         assert reloaded.planner_due_caps == due_values
         assert reloaded.planner_new_caps == new_values
         assert reloaded.planner_weights == weight_values
