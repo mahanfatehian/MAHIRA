@@ -1059,10 +1059,42 @@ class SklearnRanker:
         if not _ensure_sklearn_backend() or joblib is None:
             return
 
+        path = self._model_path(objective, level)
         try:
-            joblib.dump(model, self._model_path(objective, level))
+            joblib.dump(model, path)
         except Exception:
-            pass
+            return
+        self._prune_superseded_models(objective, level, keep=path)
+
+    def _prune_superseded_models(
+        self,
+        objective: str,
+        level: str | None,
+        *,
+        keep: Path,
+    ) -> None:
+        """Delete models this objective/level left behind at older versions.
+
+        The model filename carries a version that is bumped whenever a training
+        change invalidates existing models. Nothing ever removed the old file,
+        so each bump stranded a few hundred KB inside the learner's portable
+        data directory permanently. Models are a rebuildable cache, so the
+        superseded ones are safe to drop.
+        """
+        prefix = f"{_safe_key(objective)}__{_safe_key(level)}__"
+        try:
+            stale = [
+                candidate
+                for candidate in self.model_dir.glob(f"{prefix}*.joblib")
+                if candidate != keep
+            ]
+        except OSError:
+            return
+        for candidate in stale:
+            try:
+                candidate.unlink()
+            except OSError:
+                pass
 
     def _fit(
         self,
