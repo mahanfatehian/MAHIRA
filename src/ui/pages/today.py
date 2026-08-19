@@ -123,12 +123,19 @@ class TodayPage(QWidget):
         plan_header = QHBoxLayout()
         lanes_title = QLabel("Today's plan")
         _set_font(lanes_title, 11, QFont.Weight.Black)
+        # The plan is otherwise only rebuilt by navigating away and back, even
+        # though the failure copy tells the learner to "Refresh Today".
+        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.setAccessibleName("Rebuild today's plan")
+        self.refresh_btn.setStyleSheet(BUTTON_STYLE)
+        self.refresh_btn.clicked.connect(self.on_show)
         self.adjust_plan_btn = QPushButton("Adjust plan...")
         self.adjust_plan_btn.setAccessibleName("Adjust daily plan")
         self.adjust_plan_btn.setStyleSheet(BUTTON_STYLE)
         self.adjust_plan_btn.clicked.connect(self._adjust_plan)
         plan_header.addWidget(lanes_title)
         plan_header.addStretch(1)
+        plan_header.addWidget(self.refresh_btn)
         plan_header.addWidget(self.adjust_plan_btn)
         lanes_layout.addLayout(plan_header)
 
@@ -366,9 +373,20 @@ class TodayPage(QWidget):
         if snapshot.segments:
             self.summary.setText('Your focused plan is ready to study.')
         elif snapshot.backlog_due or snapshot.backlog_new:
-            self.summary.setText(
-                'More practice remains available after the plan.'
-            )
+            # Goal spent, work left. Saying "more practice remains" while every
+            # button is disabled is a dead end, so name the control that opens
+            # it back up - Adjust plan now owns the daily goal.
+            if snapshot.remaining_goal <= 0:
+                self.summary.setText(
+                    f"Daily goal of {snapshot.goal} reached - nicely done. "
+                    f"{snapshot.backlog_due} due and {snapshot.backlog_new} new "
+                    "cards are still waiting; raise the goal in Adjust plan to "
+                    "keep going today."
+                )
+            else:
+                self.summary.setText(
+                    'More practice remains available after the plan.'
+                )
         else:
             self.summary.setText('You are caught up. The plan is complete.')
 
@@ -396,6 +414,7 @@ class TodayPage(QWidget):
                 detail.setText("Refresh Today to rebuild this plan.")
                 button.setEnabled(False)
                 button.setText("Unavailable")
+            self.refresh_btn.setEnabled(True)
             self.show_plan_error("Today's plan could not be refreshed.")
 
         try:
