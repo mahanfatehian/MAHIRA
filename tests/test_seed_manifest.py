@@ -83,13 +83,34 @@ def test_invalid_manifest_fields_fail_strict_validation(
         load_book_manifest(book)
 
 
-def test_absolute_cover_path_is_rejected(tmp_path: Path):
+def test_a_posix_absolute_cover_path_is_rejected(tmp_path: Path):
+    """An absolute POSIX path escapes the book directory."""
     book = tmp_path / "data" / "seeds" / "broken"
-    outside = tmp_path / "outside.jpg"
-    outside.touch()
-    _write_manifest(book, {"cover": outside.as_posix()})
+    _write_manifest(book, {"cover": "/etc/outside.jpg"})
+
+    with pytest.raises(SeedManifestError, match="stay inside the book directory"):
+        load_book_manifest(book)
+
+
+def test_a_windows_absolute_cover_path_is_rejected(tmp_path: Path):
+    """A drive letter is not a portable relative path."""
+    book = tmp_path / "data" / "seeds" / "broken"
+    _write_manifest(book, {"cover": "C:/outside.jpg"})
 
     with pytest.raises(SeedManifestError, match="portable relative path"):
+        load_book_manifest(book)
+
+
+def test_a_cover_outside_the_book_directory_is_rejected(tmp_path: Path):
+    """This previously used tmp_path.as_posix(), so which branch it landed in
+    depended on the host: "C:/..." on Windows carries a colon and was caught as
+    a non-portable path, while "/private/var/..." on macOS fell through to the
+    containment check. The build only ever ran the Windows spelling, so the
+    macOS release build was the first thing to see the other message."""
+    book = tmp_path / "data" / "seeds" / "broken"
+    _write_manifest(book, {"cover": "../escape.jpg"})
+
+    with pytest.raises(SeedManifestError, match="stay inside the book directory"):
         load_book_manifest(book)
 
 
