@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+
 """Fast, read-only vocabulary table with self-quiz and pronunciation.
 
 The table deliberately uses Qt's model/view stack instead of one QWidget per
@@ -666,6 +668,7 @@ class VocabTablePage(QWidget):
         self._model_mgr = None
         self._pron = None
         self._play_svc = None
+        self._audio_prewarm_started = False
         self._audio_thread: Optional[QThread] = None
         self._audio_worker: Optional[_TtsWorker] = None
         self._synth_request: tuple[str, int] | None = None
@@ -818,6 +821,35 @@ class VocabTablePage(QWidget):
 
     def on_show(self) -> None:
         self._load()
+        # Start loading the speech model while the learner reads the table, so
+        # their first click on a speaker is not the thing that pays for it.
+        QTimer.singleShot(0, self._prewarm_audio)
+
+    def _prewarm_audio(self) -> None:
+        """Warm the Piper voice off the GUI thread, once per page instance.
+
+        Both the import of core.audio (~230 ms) and the model load (~3.2 s)
+        happen on the worker, so opening the tab costs nothing. The loaded
+        voice is cached on PiperModelManager at class level, so the manager
+        built later by _ensure_audio finds it already there.
+        """
+        if self._audio_prewarm_started:
+            return
+        self._audio_prewarm_started = True
+
+        def _warm() -> None:
+            try:
+                from core.audio import PiperModelManager
+
+                PiperModelManager().prewarm()
+            except Exception:
+                pass  # audio simply stays unavailable; callers degrade already
+
+        threading.Thread(
+            target=_warm,
+            name="mahira-audio-prewarm",
+            daemon=True,
+        ).start()
 
     def _load(self, *, force: bool = False) -> None:
         signature = self._context_signature()

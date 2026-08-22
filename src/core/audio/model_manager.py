@@ -106,6 +106,42 @@ class PiperModelManager:
         except Exception:
             return False
 
+    def voice_is_loaded(self) -> bool:
+        """True when a first synthesis would not have to load the model."""
+        if self._voice is not None:
+            return True
+        try:
+            key = (
+                str(self.german_model_path.resolve()),
+                str(self.german_config_path.resolve()),
+            )
+        except Exception:
+            return False
+        return key in self._shared_voices
+
+    def prewarm(self) -> None:
+        """Load the voice now, swallowing any failure.
+
+        Loading the ~114 MB model takes about 3.2 seconds. Paying that on the
+        first click means the learner presses the speaker, hears nothing for
+        several seconds, decides it is broken and clicks again - by which time
+        the model is loaded and it plays. Warming it while they are reading the
+        page turns the first click into an ordinary ~290 ms render, or an
+        instant cache hit.
+
+        Synchronous and safe to call from any thread: get_german_voice already
+        double-checks under a process-wide lock, so concurrent callers load the
+        voice exactly once. Callers that must not block should run this on a
+        background thread. Failure is the same "audio unavailable" case every
+        caller already handles, so nothing is raised.
+        """
+        if self.voice_is_loaded():
+            return
+        try:
+            self.get_german_voice()
+        except Exception:
+            pass
+
     def get_german_voice(self) -> PiperVoice:
         PiperVoice = _load_piper_voice_class()
         model_path = self.german_model_path.resolve()
