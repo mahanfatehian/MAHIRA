@@ -10,7 +10,7 @@ the model, while the word-cell delegate paints a compact pronunciation action.
 
 from typing import Any, Optional
 
-from core.vocab_fields import noun_declension_values
+from core.vocab_fields import noun_declension_values, spoken_vocab_text
 
 from PySide6.QtCore import (
     QAbstractTableModel,
@@ -213,6 +213,25 @@ class _VocabTableModel(QAbstractTableModel):
 
     def word_is_visible(self, row: int) -> bool:
         return bool(self.raw_value(row, "word")) and not self.is_hidden(row, "word")
+
+    def audio_text(self, row: int) -> str:
+        """What the voice should say for this row.
+
+        A German noun is spoken with its article, because a noun without its
+        gender is only half-learned. The article is omitted while its column is
+        masked for self-quizzing - speaking it there would read out the answer
+        the learner is trying to recall.
+        """
+        word = self.raw_value(row, "word")
+        if not word:
+            return ""
+        if self.is_hidden(row, "article"):
+            return word
+        return spoken_vocab_text(
+            word,
+            self.raw_value(row, "pos"),
+            self.raw_value(row, "article"),
+        )
 
     def set_column_masked(self, key: str, masked: bool) -> None:
         if key not in _QUIZ_KEYS:
@@ -914,6 +933,12 @@ class VocabTablePage(QWidget):
         if not self._ensure_audio():
             self._set_audio_error(row)
             return
+        # Nouns are spoken with their article; the model resolves that from the
+        # same row, and withholds it while the article column is masked.
+        spoken = self._table_model.audio_text(row)
+        if spoken:
+            text = spoken
+
         # Cancel pending/loading/playing audio before switching the active row;
         # a synchronous `finished` signal then resets the OLD row, never the new.
         if self._play_svc is not None:
