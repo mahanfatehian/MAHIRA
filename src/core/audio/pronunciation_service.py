@@ -23,7 +23,12 @@ class PronunciationService:
     - callers can still explicitly delete clips or clear the cache
     """
 
-    MAX_CACHE_FILES = 256
+    # The byte budget is meant to be the real limit. At the measured mean clip
+    # size of ~30 KB a 256-file cap bound the cache at about 8 MB - 6% of the
+    # stated budget - so clips the learner had already waited for were evicted
+    # and re-rendered. 2048 files is ~62 MB at that mean, keeps the byte
+    # budget in charge, and still bounds the directory scan in _prune_cache.
+    MAX_CACHE_FILES = 2048
     MAX_CACHE_BYTES = 128 * 1024 * 1024
 
     def __init__(self, model_manager: PiperModelManager | None = None) -> None:
@@ -148,7 +153,6 @@ class PronunciationService:
                     except OSError:
                         pass
                 self._mark_cache_used(out_path)
-                self._prune_cache(protect=out_path)
             except Exception:
                 try:
                     tmp_path.unlink()
@@ -156,6 +160,9 @@ class PronunciationService:
                     pass
                 raise
 
+        # Pruning only touches other files and is exception-safe, so it runs
+        # outside the synthesis lock rather than making the next render wait.
+        self._prune_cache(protect=out_path)
         return out_path
 
     @staticmethod
@@ -180,12 +187,11 @@ class PronunciationService:
         kept_files = 0
         kept_bytes = 0
         deleted = 0
-        protected = protect.resolve() if protect is not None else None
+        # Compare by name: every entry came from a glob of this one directory,
+        # so resolve() per file bought nothing and dominated the scan.
+        protected_name = protect.name if protect is not None else None
         for _mtime, size, path in entries:
-            try:
-                is_protected = protected is not None and path.resolve() == protected
-            except OSError:
-                is_protected = False
+            is_protected = protected_name is not None and path.name == protected_name
             fits = (
                 kept_files < self.MAX_CACHE_FILES
                 and kept_bytes + size <= self.MAX_CACHE_BYTES
