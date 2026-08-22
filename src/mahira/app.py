@@ -17,7 +17,7 @@ if "qt.multimedia.ffmpeg" not in _rules:
         _rules + ";qt.multimedia.ffmpeg.info=false;qt.multimedia.ffmpeg.debug=false"
     ).strip(";")
 
-from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtWidgets import QApplication, QWidget
 
 from mahira.config import get_paths, migrate_legacy_windows_state
 from db.init_db import init_db
@@ -53,7 +53,54 @@ def _setup_logging(log_path: Path) -> None:
     )
 
 
-def _startup_splash() -> QSplashScreen:
+class _StartupSplash(QWidget):
+    """Frameless startup banner with the QSplashScreen API we actually use.
+
+    QSplashScreen.show() blocks for a flat ~1.02 s on Windows with PySide6 6.11
+    (measured repeatedly in isolation: 1002-1033 ms), which was a quarter of
+    the whole startup and bought nothing. A plain frameless widget showing the
+    same pixmap paints in ~17 ms.
+    """
+
+    def __init__(self, pixmap: QPixmap) -> None:
+        super().__init__(
+            None,
+            Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint,
+        )
+        self._pixmap = pixmap
+        self._message = ""
+        self._colour = QColor(COLORS["text_secondary"])
+        self.setFixedSize(pixmap.size())
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        screen = QApplication.primaryScreen()
+        if screen is not None:
+            centre = screen.availableGeometry().center()
+            self.move(centre.x() - pixmap.width() // 2, centre.y() - pixmap.height() // 2)
+
+    def showMessage(self, text: str, alignment=None, color=None) -> None:
+        self._message = str(text or "")
+        if color is not None:
+            self._colour = QColor(color)
+        self.update()
+
+    def finish(self, _window) -> None:
+        self.close()
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        painter.drawPixmap(0, 0, self._pixmap)
+        if self._message:
+            painter.setPen(self._colour)
+            painter.setFont(QFont("Segoe UI", 10))
+            painter.drawText(
+                self.rect().adjusted(34, 0, -34, -22),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom,
+                self._message,
+            )
+        painter.end()
+
+
+def _startup_splash() -> "_StartupSplash":
     canvas = QPixmap(560, 260)
     canvas.fill(QColor(COLORS["canvas"]))
     painter = QPainter(canvas)
@@ -70,7 +117,7 @@ def _startup_splash() -> QSplashScreen:
     painter.setPen(QColor(COLORS["outline"]))
     painter.drawLine(34, 188, 526, 188)
     painter.end()
-    splash = QSplashScreen(canvas)
+    splash = _StartupSplash(canvas)
     splash.setAccessibleName("MAHIRA startup status")
     return splash
 
