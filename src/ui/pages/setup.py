@@ -657,7 +657,10 @@ class SetupPage(QWidget):
         self._sync_from_state()
         self._goto(self.stack.currentIndex() or 0)
         self._refresh_structure()
-        self._last_structure_signature = self._state_signature()
+        self._last_structure_signature = (
+            self._state_signature(),
+            self._content_signature(),
+        )
         self._skip_unchanged_initial_show = True
 
         QTimer.singleShot(0, self._post_init_refresh)
@@ -670,6 +673,26 @@ class SetupPage(QWidget):
             int(getattr(state, "lektion_number", None) or 0),
             _norm_objective(getattr(state, "objective", None) or ""),
         )
+
+    def _content_signature(self) -> tuple[int, int]:
+        """Cheap fingerprint of the deck library the lists are built from.
+
+        The context signature alone is not enough: a page constructed before
+        any content existed must still pick it up on its next show, which is
+        why the old guard fell back to rebuilding unconditionally. Deck count
+        plus the highest deck id catches additions and removals in one indexed
+        query, so an unchanged library skips the rebuild instead.
+        """
+        try:
+            with self.session.repo._conn() as conn:
+                row = conn.execute(
+                    "SELECT COUNT(*), COALESCE(MAX(id), 0) FROM decks"
+                ).fetchone()
+            return (int(row[0]), int(row[1]))
+        except Exception:
+            # Unknown library state: force the rebuild rather than show stale
+            # levels and books.
+            return (-1, -1)
 
     def _refresh_structure(self) -> None:
         self._refresh_levels_enabled()
@@ -686,11 +709,15 @@ class SetupPage(QWidget):
     def on_show(self):
         self._book_catalog = _load_book_catalog()
         self._sync_from_state()
-        signature = self._state_signature()
-        if (
-            signature != self._last_structure_signature
-            or not self._skip_unchanged_initial_show
-        ):
+        # Rebuild when the chosen context changed, or when the deck library
+        # itself did. The old condition also fired whenever
+        # _skip_unchanged_initial_show was False, and _post_init_refresh clears
+        # that flag on a zero-delay timer right after construction - so from
+        # the learner's first visit onward it was always true and the whole
+        # four-way rebuild ran on every visit, at ~90 ms and 28 SQLite
+        # connections a time.
+        signature = (self._state_signature(), self._content_signature())
+        if signature != self._last_structure_signature:
             self._refresh_structure()
             self._last_structure_signature = signature
         self._skip_unchanged_initial_show = False
