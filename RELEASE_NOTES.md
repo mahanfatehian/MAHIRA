@@ -1,102 +1,91 @@
-## MAHIRA 0.5.0
+## MAHIRA 0.6.0
 
-MAHIRA 0.5.0 is a correctness release for the recall engine. Several parts of
-the scheduler were doing something other than what the app described, and one
-of the four study lanes was not being scheduled at all. Everything below is
-fixed in place: your cards, review history, FSRS scheduling state, profiles and
-backups carry over untouched.
+MAHIRA 0.6.0 is a speed and pronunciation release. The app spent a second of
+every launch drawing its own splash screen, another waiting for the ranking
+model before it would paint, and repainted the entire vocabulary table on every
+scroll step. Nouns were also spoken without their article, which is half a
+German word. All of that is measured and fixed below.
 
-Two changes alter what a study day looks like, so they are described in full
-before the fix list.
+Your cards, review history, FSRS scheduling state, profiles, settings and
+backups carry over untouched. There is no database migration.
 
-### What changes in your daily plan
+### German nouns are spoken with their article
 
-**New material keeps flowing when you fall behind.** Each skill's share of the
-daily goal used to go to due cards first, and only leftovers reached new ones.
-Once your backlog reached the daily goal, new cards dropped to zero and the
-course stopped advancing until you cleared it. Each skill now holds back part
-of its share for new material. With a heavy backlog and a goal of 30, a plan
-that was 30 due and 0 new is now about 22 due and 8 new. Due work still leads,
-the goal is still filled exactly, and setting a skill's **New** limit to zero in
-**Adjust plan** still pauses new material completely.
+The vocabulary table's speaker read the bare noun, so it gave back "Haus" when
+the thing worth hearing is "das Haus". Gender is the hardest part of German
+vocabulary and the table already shows it in the next column.
 
-**A card you fail comes back before you finish.** FSRS schedules a failed card
-ten minutes out precisely so you meet it again in the same sitting. That was
-written to the database and never acted on, because the session queue was built
-once at the start and only ever shrank. Failed cards now return a few cards
-later, capped so a card you keep failing cannot make a session unfinishable.
-Sessions with lapses will be slightly longer than before.
+Nouns are now read with their article. Words that take two - `der/die Arme`,
+`das/der Event` - are spoken as an alternation, "der oder die Arme", which is
+how a German speaker reads the slash. Nouns that take no article, such as the
+numbers, are unaffected, and so is every verb, adjective and phrase.
 
-### Highlights
+While the article column is hidden for self-quizzing the article is not spoken,
+because that would read out the exact answer you are trying to recall. Reveal
+the cell and it comes back.
 
-- **Listening is scheduled properly.** Listening sessions were selected by a
-  random shuffle of the whole deck. The recall priority, the FSRS state the app
-  was carefully maintaining, and your daily plan all had no effect on which
-  listening cards you saw, and an overdue card could be dropped from a session
-  indefinitely. Listening now uses the same ranking as the other three skills,
-  in both sessions and the daily plan, and learns from your reviews.
-- **Adjust plan can change the daily goal.** The goal is the limit that decides
-  how big your plan is, and it lived in Settings while every control in
-  **Adjust plan** sat under it. Raising those per-skill limits often changed
-  nothing at all. The goal is now in the dialog, with a line telling you which
-  of the two limits is currently deciding your plan.
-- **Choose your target retention.** How much you aim to remember when a card
-  comes back, from 70% to 97%. Raise it before an exam for shorter intervals,
-  lower it to trade a little forgetting for fewer reviews.
-- **Reviews spread out.** Intervals are nudged within a small window, so a
-  lesson learned in one sitting no longer comes due as a single spike months
-  later. Existing cards adopt this at their next review. It can be turned off
-  under **Review spread**.
-- **Set a longest interval.** Cap how far ahead a well-known card can be pushed
-  so it stays in rotation instead of disappearing for years. Unlimited by
-  default, so nothing moves unless you choose it.
-- **New material starts at lesson 1.** Decks are numbered in import order, which
-  is alphabetical by filename, so a new learner's first plan opened on Lektion
-  10. New cards are now introduced in lesson order.
-- **Today stays actionable.** When you hit your goal with work still waiting,
-  the page said "more practice remains available" and disabled every button. It
-  now tells you how much is left and where to raise the goal. A **Refresh**
-  button was also added, which the failure message had been referring to for
-  some time.
+### Faster
 
-### Fixes
+Everything below was measured on a real install with a full learner database,
+before and after.
 
-- The adaptive ranker's weights diverged during training and its output
-  collapsed to two values that were slightly worse than random. From your second
-  review onward, a quarter of every ranking score was effectively a coin flip.
-  Existing model files are retired and retrained from your review history.
-- The recall priority saturated: any card past a threshold scored an identical
-  maximum, so the most at-risk cards could not be told apart and fell back to
-  database order.
-- Pressing Space could activate Skip and silently lapse the card you were
-  looking at.
-- The **Speaking speed** setting only affected Practice Lab. It now applies in
-  every lane that plays audio.
-- The app failed to start if the offline speech engine was missing or broken,
-  even though pronunciation is optional. Study now continues without audio.
-- All 2378 listening items ship an authored tip that was never displayed. Tips
-  now appear with the transcript when the answer is revealed.
-- Settings' **New cards per session** did not affect Today's plan and has been
-  renamed **New cards per focused set**, which is what it always controlled.
-- Superseded ranker model files were left behind in your data folder on every
-  upgrade rather than being cleaned up.
-- A build run from source reported a hardcoded version number that went stale,
-  so the update check compared against the wrong baseline.
+- **Startup is about 40% quicker**, from roughly 4.0 s to 2.4 s.
+  - The startup banner alone blocked for 1.02 s on every launch, entirely
+    inside Qt's splash-screen widget. Replaced with a plain frameless window
+    that paints the same picture in 0.2 ms.
+  - The first page would not paint until scikit-learn, scipy and numpy had
+    finished importing, about 1.1 s. Ranking no longer waits for them; it falls
+    back to the deterministic recall priority it is designed to fall back to,
+    and the model warms up in the background once the window is on screen.
+- **The vocabulary table scrolls properly.** Every scroll step repainted the
+  whole viewport - 693 kpx and 14.4 ms per step, 1.4 s to scroll 100 rows. Now
+  1.1 kpx and 2.2 ms per step. Moving the pointer over a speaker icon also
+  repainted the whole table; that is now limited to the two cells that changed.
+  The rendered result is pixel-identical.
+- **Saving a setting no longer freezes the app.** Every Save rebuilt the
+  application stylesheet and rescaled typography across all 1375 widgets, even
+  when the setting had nothing to do with appearance: 627 ms. Now 5 ms, unless
+  you actually changed the text size or theme.
+- **Opening Setup is 37x cheaper.** A guard meant to skip the level/book/
+  Lektion/objective rebuild never held, so the full rebuild ran on every single
+  visit: 89.7 ms and 28 database connections each time. Now 2.4 ms when nothing
+  has changed, and it still rebuilds when the context or the library does.
+
+### Audio
+
+- **A word that is already prepared plays immediately.** Clicks went through a
+  single worker slot, so tapping a cached word while another was still being
+  rendered left it waiting seconds behind work it had nothing to do with. That
+  is what made the speaker look dead.
+- **The pronunciation cache keeps what you waited for.** It documented a
+  128 MiB budget but also capped itself at 256 files, and clips average 30 KB -
+  so it evicted at about 8 MB, 6% of its own budget, and re-rendered words you
+  had already heard. The cache now holds roughly 60 MB.
+- **Preparing a word no longer holds up the next one.** Cache housekeeping ran
+  inside the lock that guards speech synthesis.
+
+### Known limitation
+
+The first word you play in a session still takes a few seconds while the
+offline voice loads. That load holds Python's interpreter lock for about two
+seconds, so moving it to a background thread does not help - it only moves the
+pause somewhere else, and an earlier attempt in this release did exactly that
+before being measured and removed. Fixing it properly means running speech
+synthesis outside the app process, which is not a change to rush. Every word
+after the first is quick, and repeats are instant.
 
 ### Upgrading
 
-Install 0.5.0 over the previous version. Cards, review history, FSRS state,
-profiles, settings and backups are preserved; there is no database migration in
-this release. Your saved daily plan limits are kept as they are.
+Install 0.6.0 over the previous version. Nothing needs migrating.
 
-Two things reset by design: trained ranker models are discarded and rebuild
-themselves from your existing review history over the next few sessions, and
-interval spreading applies to each card the next time you review it.
+Because nouns are now cached under their article, the words you have already
+heard will be prepared once more the first time you play them. After that they
+are instant again.
 
 ### Downloads
 
-- **Windows 10/11** - run `MAHIRA-Setup-0.5.0-win64.exe`.
-- **macOS (Apple Silicon)** - open `MAHIRA-0.5.0-macos-arm64.dmg` and drag
+- **Windows 10/11** - run `MAHIRA-Setup-0.6.0-win64.exe`.
+- **macOS (Apple Silicon)** - open `MAHIRA-0.6.0-macos-arm64.dmg` and drag
   **MAHIRA** to Applications.
 
 The macOS app is ad-hoc signed rather than notarized. If Gatekeeper blocks the
@@ -109,4 +98,4 @@ xattr -dr com.apple.quarantine /Applications/MAHIRA.app
 Everything runs locally after installation; no account or internet connection is
 required for study.
 
-**Full changes:** [v0.4.0...v0.5.0](https://github.com/mahanfatehian/MAHIRA/compare/v0.4.0...v0.5.0)
+**Full changes:** [v0.5.0...v0.6.0](https://github.com/mahanfatehian/MAHIRA/compare/v0.5.0...v0.6.0)

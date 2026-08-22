@@ -130,7 +130,6 @@ def test_new_content_rebuilds_even_with_an_unchanged_context(tmp_path):
     """
     from types import SimpleNamespace
 
-    from PySide6.QtWidgets import QApplication
 
     from db.init_db import init_db
     from db.repo import Repo
