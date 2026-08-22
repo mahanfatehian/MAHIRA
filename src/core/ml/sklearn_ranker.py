@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,50 @@ np = None
 SGDRegressor = None
 StandardScaler = None
 _SKLEARN_OK: bool | None = None
+
+
+_SKLEARN_WARM_LOCK = threading.Lock()
+_SKLEARN_WARM_THREAD: Any = None
+
+
+def prewarm_sklearn_backend() -> None:
+    """Import the learned-ranking stack on a background thread, once.
+
+    scikit-learn, scipy and numpy together take about 1.1 s to import. That
+    used to happen on the GUI thread the first time anything ranked - which is
+    while the very first page paints - and again on the first rating click of a
+    session. Warming it off-thread keeps both instant.
+    """
+    global _SKLEARN_WARM_THREAD
+    if _SKLEARN_OK is not None:
+        return
+    with _SKLEARN_WARM_LOCK:
+        existing = _SKLEARN_WARM_THREAD
+        if existing is not None and existing.is_alive():
+            return
+        if _SKLEARN_OK is not None:
+            return
+        thread = threading.Thread(
+            target=_ensure_sklearn_backend,
+            name="mahira-sklearn-prewarm",
+            daemon=True,
+        )
+        _SKLEARN_WARM_THREAD = thread
+        thread.start()
+
+
+def _sklearn_backend_ready() -> bool:
+    """True only if the stack is already imported; never waits for it.
+
+    Ranking uses this so a cold start never blocks on scikit-learn. An
+    unavailable backend leaves the model unfitted, which drives the blend
+    weight to zero and falls back to the deterministic recall priority - the
+    documented "ML augments, never gates" behaviour.
+    """
+    if _SKLEARN_OK is None:
+        prewarm_sklearn_backend()
+        return False
+    return _SKLEARN_OK
 
 
 def _ensure_sklearn_backend() -> bool:
@@ -1037,7 +1082,9 @@ class SklearnRanker:
 
         path = self._model_path(objective, level)
 
-        if path.exists() and _ensure_sklearn_backend() and joblib is not None:
+        # Ranking must never wait for the import: a cold Today render would
+        # freeze for ~1.1 s. Not ready yet simply means deterministic priority.
+        if path.exists() and _sklearn_backend_ready() and joblib is not None:
             try:
                 model = joblib.load(path)
                 self._models[key] = model

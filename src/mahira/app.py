@@ -180,6 +180,18 @@ def run(project_root: Path, start_page: str | None = None) -> int:
         win = MainWindow(session=session, start_page=start_page or prefs.last_page)
         win.show()
         splash.finish(win)
+
+        # scikit-learn, scipy and numpy cost ~1.1 s to import. Ranking no
+        # longer waits for them - it falls back to the deterministic recall
+        # priority until they arrive - so warm them once the window is up and
+        # the learner is reading, rather than on their first click.
+        try:
+            from core.ml.sklearn_ranker import prewarm_sklearn_backend
+
+            prewarm_sklearn_backend()
+        except Exception:
+            logging.exception("Could not start the ranking model warm-up")
+
         return app.exec()
 
     except Exception:
