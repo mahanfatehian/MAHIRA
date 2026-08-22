@@ -95,63 +95,106 @@ def test_voice_is_loaded_reports_false_before_any_load(manager, monkeypatch):
     assert manager.voice_is_loaded() is False
 
 
+def test_the_table_does_not_warm_the_voice_on_show():
+    """PiperVoice.load holds the GIL for ~2.0 s.
+
+    Warming it from a worker thread froze the whole UI just the same - the
+    measured worst event-loop gap was 1869 ms against a 12 ms idle baseline -
+    so it only moved the stall from the first click onto every visit to the
+    tab, including for learners who never play any audio.
+    """
+    from ui.pages import vocab_table
+
+    source = vocab_table.__file__
+    with open(source, encoding="utf-8") as handle:
+        text = handle.read()
+    assert "_prewarm_audio" not in text
+    assert "import threading" not in text
+
+
 # --------------------------------------------------------------------------
-# The page must start the warm-up without blocking
+# A cached clip must never queue behind an unrelated synthesis
 # --------------------------------------------------------------------------
 
-def _page(monkeypatch):
+def _table(tmp_path):
     pytest.importorskip("PySide6")
     from types import SimpleNamespace
 
     from PySide6.QtWidgets import QApplication
 
-    from ui.pages import vocab_table
+    from ui.pages.vocab_table import VocabTablePage
 
     QApplication.instance() or QApplication([])
-    page = vocab_table.VocabTablePage(
-        SimpleNamespace(
-            repo=SimpleNamespace(db_path=None),
-            context_label=lambda: "A1",
-        )
+    page = VocabTablePage(
+        SimpleNamespace(repo=SimpleNamespace(db_path=None), context_label=lambda: "A1")
+    )
+    page._table_model.set_rows(
+        [
+            {"word": "Haus", "article": "das", "pos": "noun", "meaning": "house", "plural": ""},
+            {"word": "Tisch", "article": "der", "pos": "noun", "meaning": "table", "plural": ""},
+        ]
     )
     return page
 
 
-def test_the_table_starts_a_prewarm_only_once(monkeypatch):
-    page = _page(monkeypatch)
+class _Pron:
+    def __init__(self, cached):
+        self._cached = cached
+
+    def get_cached_path(self, text):
+        return self._cached.get(text, _Missing())
+
+
+class _Missing:
+    def exists(self):
+        return False
+
+
+class _Play:
+    def __init__(self):
+        self.played = []
+
+    def play_file(self, path):
+        self.played.append(str(path))
+
+    def stop(self):
+        return None
+
+
+def test_a_cached_clip_plays_even_while_another_word_renders(tmp_path):
+    page = _table(tmp_path)
     try:
-        started = []
-        monkeypatch.setattr(
-            threading, "Thread", lambda **kw: started.append(kw) or _FakeThread()
-        )
-        page._prewarm_audio()
-        page._prewarm_audio()
-        page._prewarm_audio()
-        assert len(started) == 1
-        assert started[0]["daemon"] is True
+        wav = tmp_path / "der Tisch.wav"
+        wav.write_bytes(b"RIFF")
+        page._pron = _Pron({"der Tisch": wav})
+        page._play_svc = _Play()
+
+        assert page._play_cached("der Tisch", 1) is True
+        assert page._play_svc.played == [str(wav)]
     finally:
         page.deleteLater()
 
 
-class _FakeThread:
-    def start(self):
-        return None
-
-
-def test_the_prewarm_runs_off_the_gui_thread(monkeypatch):
-    """Both the import and the model load must happen on the worker."""
-    page = _page(monkeypatch)
+def test_an_uncached_clip_reports_that_it_could_not_play(tmp_path):
+    page = _table(tmp_path)
     try:
-        captured = {}
-        monkeypatch.setattr(
-            threading,
-            "Thread",
-            lambda **kw: captured.update(kw) or _FakeThread(),
-        )
-        page._prewarm_audio()
-        assert callable(captured["target"])
-        assert captured["daemon"] is True
-        # Running the target must be safe even if audio is entirely unavailable.
-        captured["target"]()
+        page._pron = _Pron({})
+        page._play_svc = _Play()
+        assert page._play_cached("das Haus", 0) is False
+        assert page._play_svc.played == []
+    finally:
+        page.deleteLater()
+
+
+def test_a_finished_render_does_not_hijack_a_row_the_learner_left(tmp_path):
+    """It would cut off the cached clip that is already playing."""
+    page = _table(tmp_path)
+    try:
+        page._play_svc = _Play()
+        page._synth_request = ("das Haus", 0)
+        page._pending_request = None
+        page._active_audio_row = 1          # learner moved on to another row
+        page._on_tts_done("das Haus", str(tmp_path / "x.wav"))
+        assert page._play_svc.played == []
     finally:
         page.deleteLater()

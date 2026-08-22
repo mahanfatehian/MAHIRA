@@ -1,7 +1,3 @@
-from __future__ import annotations
-
-import threading
-
 """Fast, read-only vocabulary table with self-quiz and pronunciation.
 
 The table deliberately uses Qt's model/view stack instead of one QWidget per
@@ -9,6 +5,8 @@ cell.  Only the rows visible in the viewport are painted, so a large Lektion is
 as cheap to open as a small one.  Column masking and one-cell reveals live in
 the model, while the word-cell delegate paints a compact pronunciation action.
 """
+
+from __future__ import annotations
 
 from typing import Any, Optional
 
@@ -709,7 +707,6 @@ class VocabTablePage(QWidget):
         self._model_mgr = None
         self._pron = None
         self._play_svc = None
-        self._audio_prewarm_started = False
         self._audio_thread: Optional[QThread] = None
         self._audio_worker: Optional[_TtsWorker] = None
         self._synth_request: tuple[str, int] | None = None
@@ -862,35 +859,11 @@ class VocabTablePage(QWidget):
 
     def on_show(self) -> None:
         self._load()
-        # Start loading the speech model while the learner reads the table, so
-        # their first click on a speaker is not the thing that pays for it.
-        QTimer.singleShot(0, self._prewarm_audio)
-
-    def _prewarm_audio(self) -> None:
-        """Warm the Piper voice off the GUI thread, once per page instance.
-
-        Both the import of core.audio (~230 ms) and the model load (~3.2 s)
-        happen on the worker, so opening the tab costs nothing. The loaded
-        voice is cached on PiperModelManager at class level, so the manager
-        built later by _ensure_audio finds it already there.
-        """
-        if self._audio_prewarm_started:
-            return
-        self._audio_prewarm_started = True
-
-        def _warm() -> None:
-            try:
-                from core.audio import PiperModelManager
-
-                PiperModelManager().prewarm()
-            except Exception:
-                pass  # audio simply stays unavailable; callers degrade already
-
-        threading.Thread(
-            target=_warm,
-            name="mahira-audio-prewarm",
-            daemon=True,
-        ).start()
+        # No speech-model warm-up here on purpose. PiperVoice.load holds the
+        # GIL for ~2.0 s, so loading it from a worker thread freezes the whole
+        # UI just the same - it only moves the stall from the first click onto
+        # every visit to this tab, including for learners who never use audio.
+        # Measured: worst event-loop gap 1869 ms against a 12 ms idle baseline.
 
     def _load(self, *, force: bool = False) -> None:
         signature = self._context_signature()
@@ -1021,12 +994,31 @@ class VocabTablePage(QWidget):
 
         request = (text, row)
         if self._audio_thread is not None and self._audio_thread.isRunning():
+            # An already-rendered clip must not wait behind an unrelated
+            # synthesis. Rendering a new word can take seconds, and queueing a
+            # cached one behind it made the speaker look broken.
+            if self._play_cached(text, row):
+                self._pending_request = None
+                return
             # Keep only the learner's latest click; the in-flight render safely
             # finishes into the shared cache and is then superseded.
             self._pending_request = None if request == self._synth_request else request
             return
         self._pending_request = None
         self._start_audio_request(text, row)
+
+    def _play_cached(self, text: str, row: int) -> bool:
+        """Play `text` straight from the cache. True when it was there."""
+        if self._pron is None or self._play_svc is None:
+            return False
+        try:
+            cached = self._pron.get_cached_path(text)
+            if not cached.exists():
+                return False
+        except Exception:
+            return False
+        self._play_svc.play_file(cached)
+        return True
 
     def _start_audio_request(self, text: str, row: int) -> None:
         if self._pron is None or self._play_svc is None:
@@ -1066,6 +1058,11 @@ class VocabTablePage(QWidget):
         row = request[1]
         latest = self._pending_request
         if latest is not None and latest != request:
+            return
+        if self._active_audio_row != row:
+            # The learner clicked elsewhere while this rendered - very likely a
+            # cached row that played immediately. Finishing here would cut that
+            # clip off and play the stale one.
             return
         if not self.isVisible() or not self._table_model.word_is_visible(row):
             self._table_model.set_audio_state(row, "idle")
