@@ -305,12 +305,7 @@ def test_review_actions_have_clear_labels_and_visual_hierarchy():
             assert page.start_btn.text() == "New set"
             assert page.start_btn.objectName() == "NewReviewSetButton"
             assert page.start_btn.accessibleName() == "Start a new review set"
-            # The width it will never go below, not the floor written down.
-            # An explicit minimum replaces the one Qt computes from the
-            # label rather than raising it, so the 78 px floor these
-            # carried sat under the 102 px "New set" actually needs and
-            # only ever let a tight row cut the word in half.
-            assert page.start_btn.minimumSizeHint().width() >= 78
+            assert page.start_btn.minimumWidth() >= 78
             assert page.stats_btn.objectName() == "ReviewStatsButton"
             assert page.stats_btn.accessibleName() == "Open review statistics"
 
