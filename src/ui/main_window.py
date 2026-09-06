@@ -59,8 +59,7 @@ class CurrentPageStack(QStackedWidget):
 
     Settings is intentionally taller than a review page. A stock stacked
     widget reports the largest hidden child's size, which would put a needless
-    scrollbar and empty tail on every legacy tab. Horizontal policy remains
-    Expanding, so this does not reintroduce the earlier clipping regression.
+    scrollbar and empty tail on every legacy tab.
 
     Overriding the two size hints is not enough on its own. QScrollArea sizes
     a resizable widget from heightForWidth() whenever the widget's layout
@@ -80,10 +79,18 @@ class CurrentPageStack(QStackedWidget):
         return current.sizeHint() if current is not None else super().sizeHint()
 
     def minimumSizeHint(self) -> QSize:
+        # The width is reported as well as the height. Answering zero, as this
+        # did, tells the scroll area a page can be made as narrow as asked,
+        # and the page then obliges by squeezing its children below the width
+        # of their own text - which a QLabel resolves by drawing part of a
+        # word and dropping the rest, with the scrollbar switched off so there
+        # is nowhere to go and see it. Reporting the honest width lets the
+        # scroll area offer a bar on the sizes that need one instead. Measured
+        # at the 1080x820 default, no page needs one.
         current = self.currentWidget()
         if current is None:
             return super().minimumSizeHint()
-        return QSize(0, current.minimumSizeHint().height())
+        return current.minimumSizeHint()
 
     def heightForWidth(self, width: int) -> int:
         current = self.currentWidget()
@@ -151,7 +158,10 @@ class MainWindow(QMainWindow):
         self.page_scroll.setObjectName("PageScroll")
         self.page_scroll.setWidgetResizable(True)
         self.page_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        self.page_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # AsNeeded, not AlwaysOff: below roughly 1090 px of window the widest
+        # tabs genuinely do not fit, and the choice is between a bar the
+        # reader can use and text cut off mid-word with no way to reach it.
+        self.page_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.page_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.page_scroll.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.page_scroll.setWidget(self.stack)

@@ -1,0 +1,141 @@
+"""Text that will not fit must stay reachable, never be quietly cut.
+
+The window can be resized down to 860x680, and below roughly 1090 px the
+widest tabs genuinely need more width than they are given. The outer page
+area used to answer that by forcing its horizontal scrollbar off and telling
+the stack it could be any width at all, so pages squeezed their children
+below the width of their own text. A QLabel resolves that by drawing part of
+a word and abandoning the rest - no ellipsis, no bar, nothing to say the
+sentence continued.
+"""
+
+from __future__ import annotations
+
+import os
+
+import pytest
+
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+DEFAULT_W, DEFAULT_H = 1080, 820
+MIN_W, MIN_H = 860, 680
+
+
+def _qapp():
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    return QApplication.instance() or QApplication([])
+
+
+@pytest.fixture()
+def window(tmp_path):
+    from core.session import AppState, SessionService
+    from core.settings import SettingsService
+    from db.init_db import init_db
+    from db.repo import Repo
+    from ui.main_window import MainWindow
+
+    app = _qapp()
+    db_path = tmp_path / "reach.db"
+    init_db(db_path)
+    repo = Repo(db_path)
+    book_id = repo.ensure_book("reach_book", "Reach Book")
+    lektion_id = repo.ensure_lektion(book_id, "A1", 1, "Reach Lesson")
+    deck_id, _changed = repo.upsert_deck(
+        "A1", "vocab", "reach.csv", "reach-sha", lektion_id=lektion_id
+    )
+    for i in range(40):
+        repo.insert_vocab(deck_id, "noun", f"Wort{i}", "das", "n", f"Plural{i}", f"meaning {i}")
+
+    settings = SettingsService(tmp_path / "settings.json")
+    settings.update(
+        level="A1",
+        book_slug="reach_book",
+        lektion_number=1,
+        objective="vocab",
+        strict_answers=True,
+        audio_autoplay=False,
+    )
+    session = SessionService(repo, AppState("A1", "vocab", "reach_book", 1))
+    session.settings = settings
+    session.enable_ml_ranking = False
+
+    win = MainWindow(session, start_page="today")
+    win.resize(DEFAULT_W, DEFAULT_H)
+    win.show()
+    for _ in range(4):
+        app.processEvents()
+    yield win
+    win.close()
+    win.deleteLater()
+    app.processEvents()
+
+
+def _show(app, window, key):
+    window._show(key)
+    for _ in range(4):
+        app.processEvents()
+    return window.pages[key]
+
+
+def test_the_default_window_needs_no_sideways_scrolling_anywhere(window):
+    """Offering a bar must not mean showing one at the size people run."""
+    from ui.main_window import PAGE_KEYS
+
+    app = _qapp()
+    bar = window.page_scroll.horizontalScrollBar()
+    sideways = []
+    for key in PAGE_KEYS:
+        _show(app, window, key)
+        if bar.maximum() > 0:
+            sideways.append(f"{key} ({bar.maximum()} px)")
+    assert not sideways, (
+        f"these tabs ask to be scrolled sideways at the default "
+        f"{DEFAULT_W}x{DEFAULT_H} window: {', '.join(sideways)}"
+    )
+
+
+def test_a_page_too_wide_for_the_window_can_be_scrolled_to(window):
+    """At the smallest window the widest tabs overflow - reachably."""
+    from ui.main_window import PAGE_KEYS
+
+    app = _qapp()
+    window.resize(MIN_W, MIN_H)
+    for _ in range(4):
+        app.processEvents()
+
+    scroll = window.page_scroll
+    overflowed = []
+    unreachable = []
+    for key in PAGE_KEYS:
+        page = _show(app, window, key)
+        viewport_w = scroll.viewport().width()
+        needed = page.minimumSizeHint().width()
+        travel = scroll.horizontalScrollBar().maximum()
+        if needed <= viewport_w:
+            continue
+        overflowed.append(key)
+        if travel <= 0:
+            unreachable.append(
+                f"{key}: needs {needed}px in a {viewport_w}px viewport with no bar"
+            )
+        elif travel < needed - viewport_w - 2:
+            unreachable.append(
+                f"{key}: scrolls {travel}px of a {needed - viewport_w}px overflow"
+            )
+
+    assert not unreachable, "\n".join(unreachable)
+    assert overflowed, (
+        f"nothing overflowed at {MIN_W}x{MIN_H}; this test proved nothing"
+    )
+
+
+def test_the_stack_reports_the_width_its_page_needs(window):
+    """Answering zero is what let a page be squeezed under its own text."""
+    app = _qapp()
+    for key in ("progress", "vocab_table", "settings"):
+        page = _show(app, window, key)
+        assert window.stack.minimumSizeHint().width() == page.minimumSizeHint().width()
+        assert window.stack.minimumSizeHint().width() > 0
