@@ -34,8 +34,15 @@ def window(tmp_path):
     from db.init_db import init_db
     from db.repo import Repo
     from ui.main_window import MainWindow
+    from ui.theme import apply_application_theme
 
     app = _qapp()
+    # Pin the type scale these assertions are measured against. The theme is
+    # applied to the whole QApplication and outlives the test that set it, and
+    # one suite deliberately applies 140% - past the 90-130 the settings screen
+    # allows - which leaves every later layout measurement reading a size no
+    # reader can actually select.
+    apply_application_theme(app, 100, "graphite")
     db_path = tmp_path / "fit.db"
     init_db(db_path)
     repo = Repo(db_path)
