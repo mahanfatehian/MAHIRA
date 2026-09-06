@@ -139,3 +139,44 @@ def test_the_stack_reports_the_width_its_page_needs(window):
         page = _show(app, window, key)
         assert window.stack.minimumSizeHint().width() == page.minimumSizeHint().width()
         assert window.stack.minimumSizeHint().width() > 0
+
+
+def test_no_label_anywhere_is_narrower_than_its_own_text(window):
+    """The property all of this exists to produce, swept over every tab.
+
+    An explicit minimum width replaces the one Qt works out from a widget's
+    own contents rather than raising it, so a floor set below what the text
+    needs does not protect the widget - it licenses the layout to cut it. The
+    review pages each carried a 78 px floor under a 102 px "New set", and the
+    Vocab Review counter a 60 px floor under a chip that never needs less
+    than 82. Those are the last labels that were still being cut at the
+    smallest window once the page could scroll sideways to reach them.
+    """
+    from PySide6.QtWidgets import QLabel, QPushButton
+
+    from ui.main_window import PAGE_KEYS
+
+    app = _qapp()
+    cut = []
+    checked = 0
+    for width, height in ((MIN_W, MIN_H), (DEFAULT_W, DEFAULT_H), (1280, 900)):
+        window.resize(width, height)
+        for _ in range(4):
+            app.processEvents()
+        for key in PAGE_KEYS:
+            page = _show(app, window, key)
+            widgets = list(page.findChildren(QLabel)) + list(page.findChildren(QPushButton))
+            for widget in widgets:
+                text = widget.text()
+                if not widget.isVisible() or not text:
+                    continue
+                if isinstance(widget, QLabel) and widget.wordWrap():
+                    continue
+                checked += 1
+                over = (widget.fontMetrics().horizontalAdvance(text)
+                        - widget.contentsRect().width())
+                if over > 1:
+                    cut.append(f"{width}x{height} {key}: {text!r} cut by {over} px")
+
+    assert not cut, chr(10).join(cut)
+    assert checked > 200, f"only {checked} labels examined; the sweep is not reaching them"

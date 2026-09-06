@@ -125,7 +125,11 @@ class GrammarReviewPage(QWidget):
 
         self.counter_lbl = QLabel("0 / 0")
         self.counter_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.counter_lbl.setMinimumWidth(60)
+        # No explicit floor: an explicit minimum width replaces the one Qt
+        # works out from the text rather than adding to it, and 60 px is
+        # under what this chip ever needs - 82 px for "0 / 0" and 130 px
+        # for "100 / 100" - so it only licensed a tight row to squeeze the
+        # count narrower than its own digits.
         self.counter_lbl.setStyleSheet(
             "QLabel { "
             "color:#FFFFFF; "
@@ -142,7 +146,6 @@ class GrammarReviewPage(QWidget):
         self.start_btn.setObjectName("NewReviewSetButton")
         self.start_btn.setAccessibleName("Start a new review set")
         self.start_btn.setToolTip("Start a fresh review set")
-        self.start_btn.setMinimumWidth(78)
         self.start_btn.setStyleSheet(
             "QPushButton { "
             "background-color: #244B36; "
