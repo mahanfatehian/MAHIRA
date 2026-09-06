@@ -61,6 +61,18 @@ class CurrentPageStack(QStackedWidget):
     widget reports the largest hidden child's size, which would put a needless
     scrollbar and empty tail on every legacy tab. Horizontal policy remains
     Expanding, so this does not reintroduce the earlier clipping regression.
+
+    Overriding the two size hints is not enough on its own. QScrollArea sizes
+    a resizable widget from heightForWidth() whenever the widget's layout
+    advertises it, in preference to either hint, and QStackedLayout answers
+    with the tallest page rather than the visible one. Settings needs 1656 px
+    at a 1080x820 window, so every other page was stretched to 1656 px inside
+    a 744 px viewport and earned a 910 px outer scrollbar it had no content
+    for - a second scrollbar over the top of the page's own, which dragged the
+    header out of view and lost the reader's place. Vocab Table asks for
+    416 px. Delegating the height query to the current page too gives every
+    page an outer scrollbar if and only if it really is taller than the
+    viewport, which measures as Settings and Progress alone.
     """
 
     def sizeHint(self) -> QSize:
@@ -72,6 +84,24 @@ class CurrentPageStack(QStackedWidget):
         if current is None:
             return super().minimumSizeHint()
         return QSize(0, current.minimumSizeHint().height())
+
+    def heightForWidth(self, width: int) -> int:
+        current = self.currentWidget()
+        if current is None:
+            return super().heightForWidth(width)
+        return current.heightForWidth(width)
+
+    def hasHeightForWidth(self) -> bool:
+        # Not what fixes the scrollbar: QScrollArea puts this question to the
+        # layout rather than to us, and a stacked layout answers for every page
+        # at once, so removing this changes no measured geometry today. It is
+        # here to keep the pair consistent - a widget that answers the height
+        # query for one page should say whether that page has one - for any
+        # future parent that does ask the widget.
+        current = self.currentWidget()
+        if current is None:
+            return super().hasHeightForWidth()
+        return current.hasHeightForWidth()
 
     def setCurrentWidget(self, widget: QWidget) -> None:
         super().setCurrentWidget(widget)
