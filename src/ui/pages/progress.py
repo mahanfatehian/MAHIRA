@@ -213,6 +213,11 @@ class ProgressPage(QWidget):
         activity_layout.addWidget(self.heatmap)
 
         self.activity_caption = QLabel("")
+        # A whole sentence, and the longest one on the page. On a single line
+        # it ran 138 px past the card at the default window size and 358 px at
+        # the smallest, and a QLabel simply cuts what will not fit - mid-word,
+        # with nothing to show it did. Wrapping spends a second line instead.
+        self.activity_caption.setWordWrap(True)
         self.activity_caption.setStyleSheet(
             "QLabel { font-size:11px; color:#7E7E7E; background:transparent; border:none; }"
         )

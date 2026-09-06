@@ -823,6 +823,8 @@ class LearnPage(QWidget):
         self.level_hint = QLabel("")
         self.level_hint.setFont(QFont("Segoe UI", 9))
         self.level_hint.setAlignment(Qt.AlignCenter)
+        # Full sentences, cut by 90 px at the default window size without one.
+        self.level_hint.setWordWrap(True)
         self.level_hint.setStyleSheet("QLabel { color:#B0B0B0; }")
         lay.addWidget(self.level_hint)
         return w
