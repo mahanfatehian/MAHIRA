@@ -515,6 +515,19 @@ class _VocabTableView(QTableView):
     def model(self) -> _VocabTableModel:  # type: ignore[override]
         return super().model()  # type: ignore[return-value]
 
+    def updateGeometries(self) -> None:  # noqa: N802 - Qt API
+        # Qt sizes the wheel step for a pixel-scrolled table from the viewport
+        # rather than the rows, and picked 47 against a 48 px row here. Three
+        # of those is 141 px, so every notch left the top row a pixel short of
+        # its own boundary and the error accumulated down the list - after ten
+        # notches the reader is looking at half of one word and half of the
+        # next. Stepping by exactly one row keeps whole rows on whole
+        # boundaries, so a notch always moves three complete words.
+        super().updateGeometries()
+        row_height = self.verticalHeader().defaultSectionSize()
+        if row_height > 0:
+            self.verticalScrollBar().setSingleStep(row_height)
+
     def paintEvent(self, event) -> None:  # noqa: N802 - Qt API
         # Honour the WA_OpaquePaintEvent promise: the delegate draws card-like
         # cells and does not cover the gutters between them or the area below
