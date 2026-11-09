@@ -1,2 +1,19 @@
 sentence,words,tip,translation_en
-Ich bin in einem Sportverein.,Ich|bin|in|einem|Sportverein|.,Sample row for Lektion 7 - replace with the real sentence seeds.,I am in a sports club.
+Wir könnten montags joggen gehen.,Wir|könnten|montags|joggen|gehen|.,Put 'könnten' in position 2 and the infinitives 'joggen gehen' at the end.,We could go jogging on Mondays.
+Welche Sportart sollte ich machen?,Welche|Sportart|sollte|ich|machen|?,Start with the question phrase 'Welche Sportart' followed by 'sollte'.,Which type of sport should I do?
+Der Mann möchte gerne abnehmen.,Der|Mann|möchte|gerne|abnehmen|.,Put the modal verb 'möchte' in position 2 and 'abnehmen' at the end.,The man would like to lose weight.
+Die Frau arbeitet als Trainerin.,Die|Frau|arbeitet|als|Trainerin|.,Use 'arbeitet als' to state someone's profession.,The woman works as a trainer.
+Zwei Kilometer sind nicht so viel.,Zwei|Kilometer|sind|nicht|so|viel|.,The subject 'Zwei Kilometer' takes the plural verb 'sind'.,Two kilometers are not that much.
+Er braucht jetzt eine Pause.,Er|braucht|jetzt|eine|Pause|.,Place the time adverb 'jetzt' after the conjugated verb 'braucht'.,He needs a break now.
+Ich bin in einem Sportverein.,Ich|bin|in|einem|Sportverein|.,Use the dative article 'einem' after 'in' for location.,I am in a sports club.
+Du solltest weniger Computerspiele spielen.,Du|solltest|weniger|Computerspiele|spielen|.,Put 'solltest' in position 2 and the infinitive 'spielen' at the end.,You should play fewer computer games.
+Ich möchte immer sofort abwaschen.,Ich|möchte|immer|sofort|abwaschen|.,Separable verb 'abwaschen' stays together in the infinitive at the end.,I want to always wash the dishes immediately.
+Wir sollten mehr Fahrrad fahren.,Wir|sollten|mehr|Fahrrad|fahren|.,Place 'sollten' in position 2 and 'Fahrrad fahren' at the end.,We should ride our bikes more.
+Ich will meine Post gleich öffnen.,Ich|will|meine|Post|gleich|öffnen|.,Put 'will' in position 2 and 'öffnen' at the very end.,I want to open my mail right away.
+Du solltest deine Post sofort bearbeiten.,Du|solltest|deine|Post|sofort|bearbeiten|.,Put 'solltest' in position 2 and 'bearbeiten' at the end.,You should process your mail immediately.
+Was nehmen Sie sich immer wieder vor?,Was|nehmen|Sie|sich|immer|wieder|vor|?,The separable prefix 'vor' goes to the very end of the question.,What do you keep resolving to do?
+"Ich nehme mir vor, mehr Sport zu machen.","Ich|nehme|mir|vor|,|mehr|Sport|zu|machen|.",Use an infinitive clause with 'zu machen' at the end.,I resolve to do more sports.
+Leider schaffe ich es oft nicht.,Leider|schaffe|ich|es|oft|nicht|.,Invert the subject and verb ('schaffe ich') because 'Leider' is in position 1.,Unfortunately I often don't manage it.
+Mein innerer Schweinehund ist zu groß.,Mein|innerer|Schweinehund|ist|zu|groß|.,'Mein innerer Schweinehund' is the subject in position 1.,My lack of willpower is too big.
+Warum laufen die Personen zusammen?,Warum|laufen|die|Personen|zusammen|?,Question word 'Warum' in position 1 followed by 'laufen'.,Why are the people running together?
+Du könntest im Park trainieren.,Du|könntest|im|Park|trainieren|.,Put 'könntest' in position 2 and 'trainieren' at the end.,You could work out in the park.
