@@ -1,2 +1,31 @@
 sentence,words,tip,translation_en
-Die Maschine läuft den ganzen Tag.,Die|Maschine|läuft|den|ganzen|Tag|.,Sample row for Lektion 9 - replace with the real sentence seeds.,The machine runs all day.
+"Wenn es warm ist, essen wir Salat.",Wenn|es|warm|ist|,|essen|wir|Salat|.,Start with the 'Wenn' clause and put 'ist' at the end. Then invert the main clause.,If it is warm, we eat salad.
+"Wir essen Salat, wenn es warm ist.",Wir|essen|Salat|,|wenn|es|warm|ist|.,The 'wenn' clause at the end sends 'ist' to the very end of the sentence.,We eat salad when it is warm.
+"Wenn es schnell gehen muss, koche ich Nudeln.",Wenn|es|schnell|gehen|muss|,|koche|ich|Nudeln|.,In the 'Wenn' clause, put the modal 'muss' at the very end after the infinitive.,If it has to go quickly, I cook pasta.
+"Schade, dass es keine Pizza gibt.",Schade|,|dass|es|keine|Pizza|gibt|.,'dass' pushes the verb 'gibt' to the end.,Too bad that there is no pizza.
+"Ich denke, dass das Steak lecker ist.",Ich|denke|,|dass|das|Steak|lecker|ist|.,'dass' pushes the verb 'ist' to the end.,I think that the steak is delicious.
+"Ich hoffe, dass wir einen Tisch bekommen.",Ich|hoffe|,|dass|wir|einen|Tisch|bekommen|.,The conjugated verb 'bekommen' stands at the end of the 'dass' clause.,I hope that we get a table.
+"Es überrascht mich, dass Fleisch so teuer ist.",Es|überrascht|mich|,|dass|Fleisch|so|teuer|ist|.,Use 'Es überrascht mich' to express surprise before the 'dass' clause.,It surprises me that meat is so expensive.
+"Gut, dass du reserviert hast.",Gut|,|dass|du|reserviert|hast|.,Put 'hast' after the Partizip II 'reserviert' at the end.,Good thing that you reserved.
+"Entschuldigung, wir würden gern bestellen.",Entschuldigung|,|wir|würden|gern|bestellen|.,Put 'bestellen' at the end of the sentence after 'würden gern'.,Excuse me, we would like to order.
+"Bringen Sie mir lieber den Fisch.",Bringen|Sie|mir|lieber|den|Fisch|.,Start with the formal imperative 'Bringen Sie'.,Please bring me the fish instead.
+"Ich nehme den Fisch mit Salat.",Ich|nehme|den|Fisch|mit|Salat|.,'nehmen' is followed by the accusative 'den Fisch'.,I will take the fish with salad.
+"Auf dem Tisch fehlt noch eine Gabel.",Auf|dem|Tisch|fehlt|noch|eine|Gabel|.,'eine Gabel' is the subject in the nominative case.,A fork is still missing from the table.
+"Könnten Sie uns bitte das Öl bringen?",Könnten|Sie|uns|bitte|das|Öl|bringen|?,Put 'bringen' at the end of the polite request.,Could you please bring us the oil?
+"Haben Sie vielleicht noch eine Serviette?",Haben|Sie|vielleicht|noch|eine|Serviette|?,Ask for an item using 'Haben Sie...'.,Do you perhaps have another napkin?
+"Wir haben leider keinen Pfeffer mehr.",Wir|haben|leider|keinen|Pfeffer|mehr|.,'Pfeffer' is masculine, so use 'keinen' in the accusative.,Unfortunately we don't have any pepper left.
+"Das Messer ist nicht sauber.",Das|Messer|ist|nicht|sauber|.,Use 'das Messer' (neuter) as the subject.,The knife is not clean.
+"Verzeihen Sie, aber die Suppe ist kalt.",Verzeihen|Sie|,|aber|die|Suppe|ist|kalt|.,'Verzeihen Sie' is a formal way to say excuse me/forgive me.,Excuse me, but the soup is cold.
+"Die Kartoffeln waren leider völlig versalzen.",Die|Kartoffeln|waren|leider|völlig|versalzen|.,'waren' is the Präteritum of 'sind', followed by the adjective 'versalzen'.,The potatoes were unfortunately completely oversalted.
+"Das tut mir leid. Ich bringe eine neue.",Das|tut|mir|leid|.|Ich|bringe|eine|neue|.,Two short sentences to apologize and offer a replacement.,I am sorry about that. I will bring a new one.
+"Die Rechnung, bitte. Wir möchten zahlen.",Die|Rechnung|,|bitte|.|Wir|möchten|zahlen|.,Put 'zahlen' at the end of the modal clause.,The bill, please. We would like to pay.
+"Zusammen oder getrennt?",Zusammen|oder|getrennt|?,Short phrase used by waiters when asking how to split the bill.,Together or separately?
+"Hier bitte, stimmt so.",Hier|bitte|,|stimmt|so|.,'stimmt so' is the standard phrase to tell the waiter to keep the change.,Here you go, keep the change.
+"Als Vorspeise nehme ich eine Suppe.",Als|Vorspeise|nehme|ich|eine|Suppe|.,'Als Vorspeise' in position 1 causes verb-subject inversion ('nehme ich').,As an appetizer I will take a soup.
+"Als Hauptgericht esse ich heute Steak.",Als|Hauptgericht|esse|ich|heute|Steak|.,Put 'esse' in position 2 before 'ich'.,As a main course I am eating steak today.
+"Die Deutschen essen am liebsten Fleisch und Brot.",Die|Deutschen|essen|am|liebsten|Fleisch|und|Brot|.,Use 'am liebsten' for 'prefer to eat / like eating best'.,Germans prefer eating meat and bread.
+"Ich trinke oft Mineralwasser mit Kohlensäure.",Ich|trinke|oft|Mineralwasser|mit|Kohlensäure|.,'mit Kohlensäure' means sparkling / carbonated.,I often drink sparkling mineral water.
+"Limonade hat viel zu viel Zucker.",Limonade|hat|viel|zu|viel|Zucker|.,'viel zu viel' means 'way too much'.,Soda has way too much sugar.
+"Ich koche oft ein Menü für meine Familie.",Ich|koche|oft|ein|Menü|für|meine|Familie|.,'für' is always followed by the accusative case ('meine').,I often cook a menu/meal for my family.
+"Wenn du kaufst, denk an das Getreide.",Wenn|du|kaufst|,|denk|an|das|Getreide|.,End the 'Wenn' clause with 'kaufst' and start the main clause with the imperative 'denk'.,When you buy, remember the grain/cereal.
+"Im Restaurant isst sie lieber Fisch als Fleisch.",Im|Restaurant|isst|sie|lieber|Fisch|als|Fleisch|.,Use 'lieber ... als' to express a preference for one thing over another.,In the restaurant she prefers eating fish over meat.
