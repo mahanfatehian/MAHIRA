@@ -1,2 +1,40 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Das ist null Glückwunsch. (congratulation),der,sein,Sample row for Lektion 12 - replace with the real grammar seeds.,That is the congratulation.,"der Glückwunsch - definite article, nominative."
+"Ich freue null, denn die Sonne scheint. (myself)",mich,freuen,1st person singular reflexive pronoun,I am happy because the sun is shining.,sich freuen: ich → mich.
+Freust du null auf den Urlaub? (yourself),dich,freuen,2nd person singular reflexive pronoun,Are you looking forward to the vacation?,sich freuen: du → dich.
+Er ärgert null über den Stau. (himself),sich,ärgern,3rd person singular reflexive pronoun,He is annoyed about the traffic jam.,sich ärgern: er/sie/es → sich.
+Wir treffen null morgen in der Stadt. (ourselves),uns,treffen,1st person plural reflexive pronoun,We are meeting in the city tomorrow.,sich treffen: wir → uns.
+Könnt ihr null an ihren Namen erinnern? (yourselves),euch,erinnern,2nd person plural reflexive pronoun,Can you all remember her name?,sich erinnern: ihr → euch.
+Die Gäste unterhalten null über den Film. (themselves),sich,unterhalten,3rd person plural reflexive pronoun,The guests are talking about the movie.,sich unterhalten: sie (plural) → sich.
+Ich muss null nach der Arbeit ausruhen. (myself),mich,ausruhen,1st person singular reflexive pronoun,I have to rest after work.,sich ausruhen: ich → mich.
+Beschwerst du null über die Kälte? (yourself),dich,beschweren,2nd person singular reflexive pronoun,Are you complaining about the cold?,sich beschweren: du → dich.
+Sie entschuldigt null für den Fehler. (herself),sich,entschuldigen,3rd person singular reflexive pronoun,She apologizes for the mistake.,sich entschuldigen: sie → sich.
+Wir bedanken null für die schönen Geschenke. (ourselves),uns,bedanken,1st person plural reflexive pronoun,We thank you for the beautiful gifts.,sich bedanken: wir → uns.
+Streitet ihr null schon wieder? (yourselves),euch,streiten,2nd person plural reflexive pronoun,Are you guys arguing again?,sich streiten: ihr → euch.
+"Fühlen Sie null heute besser, Herr Müller? (yourself - formal)",sich,fühlen,Formal 'Sie' reflexive pronoun,"Do you feel better today, Mr. Müller?",sich fühlen: Sie (formal) → sich.
+Ich fühle null heute prima! (myself),mich,fühlen,1st person singular reflexive pronoun,I feel great today!,sich fühlen: ich → mich.
+Triffst du null nachher mit deinen Freunden? (yourself),dich,treffen,2nd person singular reflexive pronoun,Are you meeting with your friends later?,sich treffen: du → dich.
+Ich erinnere null sehr gern an meine Kindheit. (myself),mich,erinnern,1st person singular reflexive pronoun,I like to remember my childhood.,sich erinnern: ich → mich.
+Ihr unterhaltet null zu laut! (yourselves),euch,unterhalten,2nd person plural reflexive pronoun,You guys are conversing too loudly!,sich unterhalten: ihr → euch.
+Ich freue mich null die Party morgen. (forward to),auf,freuen,Preposition for looking forward to a future event,I am looking forward to the party tomorrow.,sich freuen + auf + Akkusativ (future).
+Er freut sich sehr null das schöne Geschenk. (about),über,freuen,Preposition for being happy about something received,He is very happy about the beautiful gift.,sich freuen + über + Akkusativ (present/past).
+Wir ärgern uns oft null das schlechte Wetter. (about),über,ärgern,Preposition used with 'sich ärgern',We are often annoyed about the bad weather.,sich ärgern + über + Akkusativ.
+Erinnerst du dich noch null unseren alten Lehrer? (to/of),an,erinnern,Preposition used with 'sich erinnern',Do you still remember our old teacher?,sich erinnern + an + Akkusativ.
+Ich treffe mich am Nachmittag null meinem Bruder. (with),mit,treffen,Preposition used with 'sich treffen',I am meeting with my brother in the afternoon.,sich treffen + mit + Dativ.
+Wir unterhalten uns stundenlang null Musik. (about),über,unterhalten,Preposition used with 'sich unterhalten',We converse for hours about music.,sich unterhalten + über + Akkusativ.
+Sie streitet sich jeden Tag null ihrem Freund. (with),mit,streiten,Preposition for the person you argue with,She argues with her boyfriend every day.,sich streiten + mit + Dativ.
+Er streitet sich immer null das Geld. (about / over),über,streiten,Preposition for the topic of an argument,He always argues about the money.,sich streiten + über + Akkusativ.
+Ich möchte mich null Ihre Hilfe bedanken. (for),für,bedanken,Preposition for what you are thankful for,I would like to thank you for your help.,sich bedanken + für + Akkusativ.
+Ich bedanke mich null dir für die Hilfe. (with / to),bei,bedanken,Preposition for the person you thank,I thank you for the help.,sich bedanken + bei + Dativ.
+Der Gast beschwert sich null das kalte Essen. (about),über,beschweren,Preposition for the thing you complain about,The guest complains about the cold food.,sich beschweren + über + Akkusativ.
+Sie beschwert sich null dem Kellner. (with / to),bei,beschweren,Preposition for the person you complain to,She complains to the waiter.,sich beschweren + bei + Dativ.
+Er entschuldigt sich null die späte Antwort. (for),für,entschuldigen,Preposition for the reason of the apology,He apologizes for the late reply.,sich entschuldigen + für + Akkusativ.
+Ich entschuldige mich null meiner Chefin. (with / to),bei,entschuldigen,Preposition for the person you apologize to,I apologize to my boss.,sich entschuldigen + bei + Dativ.
+Wir gratulieren null herzlich zum Geburtstag! (you - informal),dir,gratulieren,The verb 'gratulieren' takes the dative,We congratulate you warmly on your birthday!,gratulieren + Dativ: du → dir.
+"Ich gratuliere null zum Jubiläum, Frau Weber. (you - formal)",Ihnen,gratulieren,Formal dative pronoun,"I congratulate you on your anniversary, Ms. Weber.",gratulieren + Dativ: Sie → Ihnen.
+Wir wünschen null viel Erfolg im neuen Job! (him),ihm,wünschen,The person you wish something to takes the dative,We wish him much success in the new job!,wünschen + Dativ: er → ihm.
+Ich wünsche null alles Gute für die Zukunft! (you - plural),euch,wünschen,Dative plural pronoun,I wish you all the best for the future!,wünschen + Dativ: ihr → euch.
+null du dich heute ein bisschen besser? (Do you feel),Fühlst,fühlen,Conjugation for 'du',Do you feel a little better today?,fühlen: du fühlst.
+Ich null mich auf ein baldiges Wiedersehen! (rejoice / look forward),freue,freuen,Conjugation for 'ich',I look forward to seeing you again soon!,freuen: ich freue.
+Worüber null ihr euch? (are you arguing),streitet,streiten,Conjugation for 'ihr',What are you guys arguing about?,streiten: ihr streitet.
+Sie null sich nach der Arbeit aus. (rest),ruhen,ausruhen,Conjugation for 'sie' (plural),They rest after work.,ausruhen is separable: sie ruhen ... aus.
+Worauf freust du null am meisten? (yourself),dich,freuen,Reflexive pronoun,What are you looking forward to the most?,sich freuen: du → dich.
