@@ -1,2 +1,11 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Alltag,der,m,der Alltag.,Alltage,everyday life / daily routine,Mein Alltag war sehr anstrengend.,My daily routine was very exhausting.,Das ist der Alltag.,That is the everyday life / daily routine.
+noun,Alltag,der,m,"Masculine, usually no plural.",-,everyday life,Wie sah dein Alltag aus?,What did your everyday life look like?,Der Alltag war anstrengend.,Everyday life was exhausting.
+noun,Arbeitstag,der,m,Compound ending in der Tag.,Arbeitstage,workday,Der Arbeitstag begann um sieben.,The workday began at seven.,Ein langer Arbeitstag.,A long workday.
+noun,Freizeit,die,f,"Feminine, usually no plural.",-,free time,Wir hatten wenig Freizeit.,We had little free time.,In der Freizeit traf ich Freunde.,In my free time I met friends.
+noun,Wohnung,die,f,Feminine noun.,Wohnungen,apartment,Ich wohnte in einer kleinen Wohnung.,I lived in a small apartment.,Die Wohnung war nah an der Firma.,The apartment was near the company.
+noun,Firma,die,f,Feminine noun.,Firmen,company,Die Firma lag im Zentrum.,The company was in the center.,Ich fuhr jeden Tag zur Firma.,I went to the company every day.
+noun,Kollege,der,m,Masculine n-noun.,Kollegen,colleague,Am Abend traf ich Kollegen.,In the evening I met colleagues.,Die Kollegen halfen mir.,The colleagues helped me.
+verb,aufstehen,-,-,"stand auf, ist aufgestanden.",-,to get up,Ich stand um sechs auf.,I got up at six.,Wann stehst du auf?,When do you get up?
+verb,aussehen,-,-,"sah aus, hat ausgesehen.",-,to look / appear,Wie sah dein Alltag aus?,What did your everyday life look like?,Das sieht anstrengend aus.,That looks exhausting.
+adjective,anstrengend,-,-,Adjective.,-,exhausting,Die Arbeit war anstrengend.,The work was exhausting.,Ein anstrengender Tag.,An exhausting day.
+adjective,müde,-,-,Adjective.,-,tired,Ich kam müde nach Hause.,I came home tired.,Am Abend war ich müde.,In the evening I was tired.
