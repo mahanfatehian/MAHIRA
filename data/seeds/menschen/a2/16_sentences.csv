@@ -1,2 +1,15 @@
 sentence,words,tip,translation_en
-Wir suchen eine Unterkunft für zwei Nächte.,Wir|suchen|eine|Unterkunft|für|zwei|Nächte|.,Sample row for Lektion 16 - replace with the real sentence seeds.,We are looking for accommodation for two nights.
+"Darf ich fragen, ob Sie noch ein Zimmer frei haben?","Darf|ich|fragen|,|ob|Sie|noch|ein|Zimmer|frei|haben|?",ob sends haben to the end.,May I ask whether you still have a room free?
+"Ich weiß nicht, wo der Bahnhof ist.","Ich|weiß|nicht|,|wo|der|Bahnhof|ist|.",wo plus ist at the end.,I do not know where the station is.
+Könnten Sie mir den Weg beschreiben?,Könnten|Sie|mir|den|Weg|beschreiben|?,Könnten Sie is polite.,Could you describe the way to me?
+Haben Sie noch ein Zimmer frei?,Haben|Sie|noch|ein|Zimmer|frei|?,"Direct question, verb first.",Do you still have a room free?
+Was kostet das Doppelzimmer?,Was|kostet|das|Doppelzimmer|?,Direct question.,What does the double room cost?
+Gehen Sie am Frühstücksraum vorbei.,Gehen|Sie|am|Frühstücksraum|vorbei|.,vorbeigoen takes an plus dative.,Go past the breakfast room.
+"Ich frage, ob das Zimmer ein Bad hat.","Ich|frage|,|ob|das|Zimmer|ein|Bad|hat|.",hat at the end.,I am asking whether the room has a bathroom.
+Wo ist der Aufzug?,Wo|ist|der|Aufzug|?,Direct wo-question.,Where is the elevator?
+"Ich bin nicht sicher, ob wir ein Doppelzimmer brauchen.","Ich|bin|nicht|sicher|,|ob|wir|ein|Doppelzimmer|brauchen|.",ob wir brauchen.,I am not sure whether we need a double room.
+"Sagen Sie mir, wann das Frühstück beginnt.","Sagen|Sie|mir|,|wann|das|Frühstück|beginnt|.",wann plus beginnt at the end.,Tell me when breakfast starts.
+Die Rezeption ist links neben der Treppe.,Die|Rezeption|ist|links|neben|der|Treppe|.,neben plus dative.,Reception is on the left next to the stairs.
+Jedes Zimmer hat ein Bad.,Jedes|Zimmer|hat|ein|Bad|.,jedes Zimmer.,Every room has a bathroom.
+Gehen Sie geradeaus und dann links.,Gehen|Sie|geradeaus|und|dann|links|.,dann links.,Go straight and then left.
+Leider ist alles belegt.,Leider|ist|alles|belegt|.,belegt means booked.,Unfortunately everything is booked.

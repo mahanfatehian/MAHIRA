@@ -1,2 +1,13 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Das ist null Unterkunft. (accommodation),die,sein,Sample row for Lektion 16 - replace with the real grammar seeds.,That is the accommodation.,"die Unterkunft - definite article, nominative."
+"Darf ich fragen, null Sie noch ein Zimmer frei haben? (whether)",ob,haben,ob sends the verb to the end,May I ask whether you still have a room free?,Indirect yes/no question: ob + verb at the end.
+"Ich weiß nicht, null der Bahnhof ist. (where)",wo,sein,W-question in a subordinate clause,I do not know where the station is.,"wo, and ist at the end."
+"Könnten Sie mir sagen, null ich zum Hotel komme? (how)",wie,kommen,polite Könnten Sie,Could you tell me how I get to the hotel?,wie plus verb at the end.
+Haben Sie noch ein Zimmer null? (free),frei,haben,frei after the noun,Do you still have a room free?,frei is the adjective the guest needs.
+"Ich möchte wissen, null das Zimmer kostet. (what)",was,kosten,was as the object,I would like to know what the room costs.,was kostet at the end: was das Zimmer kostet.
+"Wissen Sie, null der Frühstücksraum ist? (where)",wo,sein,wo plus ist at the end,Do you know where the breakfast room is?,Indirect wo-question.
+Gehen Sie am Frühstücksraum null und dann links. (past),vorbei,gehen,vorbei after the place,Go past the breakfast room and then left.,an etwas vorbeigehen.
+null Sie mir bitte den Weg beschreiben? (Could),Könnten,beschreiben,Konjunktiv II for a polite request,"Could you describe the way to me, please?",Könnten Sie is more polite than Können Sie.
+"Ich frage, ob das Zimmer ein Bad null. (has)",hat,haben,hat at the end after ob,I am asking whether the room has a bathroom.,ob ... hat.
+"Entschuldigung, null der Aufzug? (where is)",wo ist,sein,"Direct question, verb in position 2","Excuse me, where is the elevator?",A direct question does not send the verb to the end.
+"Ich bin nicht sicher, null wir ein Doppelzimmer brauchen. (whether)",ob,brauchen,ob clause,I am not sure whether we need a double room.,ob wir ... brauchen.
+"Sagen Sie mir bitte, null ich an der Rezeption klingeln soll. (when)",wann,sollen,wann plus soll at the end,Please tell me when I should ring at reception.,soll at the end.

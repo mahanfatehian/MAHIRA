@@ -1,2 +1,14 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Unterkunft,die,f,die Unterkunft.,Unterkünfte,accommodation,Wir suchen eine Unterkunft für zwei Nächte.,We are looking for accommodation for two nights.,Das ist die Unterkunft.,That is the accommodation.
+noun,Zimmer,das,n,Neuter noun.,Zimmer,room,Haben Sie noch ein Zimmer frei?,Do you still have a room free?,Das Zimmer hat ein Bad.,The room has a bathroom.
+noun,Doppelzimmer,das,n,Compound ending in das Zimmer.,Doppelzimmer,double room,Wir brauchen ein Doppelzimmer.,We need a double room.,Das Doppelzimmer kostet achtzig Euro.,The double room costs eighty euros.
+noun,Einzelzimmer,das,n,Compound ending in das Zimmer.,Einzelzimmer,single room,Es gibt noch ein Einzelzimmer.,There is still a single room.,Das Einzelzimmer ist kleiner.,The single room is smaller.
+noun,Rezeption,die,f,Feminine noun.,Rezeptionen,reception,Die Rezeption ist links.,Reception is on the left.,Klingeln Sie an der Rezeption.,Ring at reception.
+noun,Aufzug,der,m,Masculine noun.,Aufzüge,elevator,Wo ist der Aufzug?,Where is the elevator?,Der Aufzug ist neben der Treppe.,The elevator is next to the stairs.
+noun,Treppe,die,f,Feminine noun.,Treppen,stairs,Gehen Sie die Treppe hoch.,Go up the stairs.,Die Treppe ist neben dem Aufzug.,The stairs are next to the elevator.
+noun,Frühstücksraum,der,m,Compound ending in der Raum.,Frühstücksräume,breakfast room,Wo ist der Frühstücksraum?,Where is the breakfast room?,Gehen Sie am Frühstücksraum vorbei.,Go past the breakfast room.
+noun,Weg,der,m,Masculine noun.,Wege,way,Könnten Sie mir den Weg beschreiben?,Could you describe the way to me?,Der Weg ist leicht.,The way is easy.
+verb,buchen,-,-,Regular: hat gebucht.,-,to book,Ich möchte ein Zimmer buchen.,I would like to book a room.,Haben Sie schon gebucht?,Have you already booked?
+verb,beschreiben,-,-,"Strong: beschreibt, hat beschrieben.",-,to describe,Beschreiben Sie mir den Weg.,Describe the way to me.,Er hat das Zimmer beschrieben.,He described the room.
+verb,klingeln,-,-,Regular: hat geklingelt.,-,to ring,Bitte klingeln Sie an der Rezeption.,Please ring at reception.,Es hat an der Tür geklingelt.,Someone rang at the door.
+adjective,frei,-,-,Adjective.,-,free / available,Ist das Zimmer noch frei?,Is the room still free?,Heute ist kein Zimmer frei.,No room is free today.
+adjective,belegt,-,-,Participle used as an adjective.,-,occupied / booked,Alles ist belegt.,Everything is booked.,Das Zimmer ist belegt.,The room is occupied.
