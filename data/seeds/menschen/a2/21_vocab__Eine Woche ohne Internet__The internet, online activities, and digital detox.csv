@@ -1,2 +1,12 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Anschluss,der,m,der Anschluss.,Anschlüsse,connection,Der Anschluss ist sehr schnell.,The connection is very fast.,Das ist der Anschluss.,That is the connection.
+noun,Internet,das,n,"Neuter, usually no plural.",-,internet,Ohne Internet bin ich unruhig.,Without the internet I am restless.,Ich gehe ins Internet.,I go on the internet.
+noun,Smartphone,das,n,Neuter loanword.,Smartphones,smartphone,Ich gehe mit dem Smartphone ins Netz.,I go online with the smartphone.,Das Smartphone liegt auf dem Tisch.,The smartphone is on the table.
+noun,Zettel,der,m,Masculine noun.,Zettel,slip of paper,Die Nummern stehen auf dem Zettel.,The numbers are on the slip of paper.,Ich schreibe einen Zettel.,I write a slip of paper.
+noun,Serie,die,f,Feminine noun.,Serien,series,Ich gucke keine Serien.,I do not watch series.,Die Serie ist lang.,The series is long.
+noun,Telefonzelle,die,f,Compound ending in die Zelle.,Telefonzellen,phone booth,Ich suche eine Telefonzelle.,I am looking for a phone booth.,Die Telefonzelle ist an der Ecke.,The phone booth is on the corner.
+noun,Netz,das,n,Neuter noun.,Netze,net / network,Ich gehe ins Netz.,I go online.,Ohne Netz kann ich nicht mailen.,Without the net I cannot email.
+verb,kommunizieren,-,-,Regular: hat kommuniziert.,-,to communicate,Ich kommuniziere über das Internet.,I communicate via the internet.,Wir kommunizieren per Mail.,We communicate by email.
+verb,aufwachsen,-,-,Perfekt with sein: ist aufgewachsen.,-,to grow up,Ich bin mit digitaler Technik aufgewachsen.,I grew up with digital technology.,Wo bist du aufgewachsen?,Where did you grow up?
+adjective,unruhig,-,-,Adjective.,-,restless,Ohne Internet bin ich unruhig.,Without the internet I am restless.,Ein unruhiger Tag.,A restless day.
+adjective,offline,-,-,Not declined here.,-,offline,Ich bin offline.,I am offline.,Ein offline Tag.,An offline day.
+adjective,normal,-,-,Adjective.,-,normal,Das Internet ist für mich normal.,The internet is normal for me.,Ein normaler Tag.,A normal day.
