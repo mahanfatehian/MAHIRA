@@ -1,2 +1,14 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Sendung,die,f,die Sendung.,Sendungen,programme / broadcast,Die Sendung läuft jeden Abend.,The programme runs every evening.,Das ist die Sendung.,That is the programme / broadcast.
+noun,Krimi,der,m,Short form of Kriminalfilm.,Krimis,crime show / crime story,Der Krimi fängt um acht an.,The crime show starts at eight.,Ich lese gern Krimis.,I like reading crime stories.
+noun,Nachricht,die,f,Often plural: die Nachrichten.,Nachrichten,news item,Die Nachrichten kommen um acht.,The news comes at eight.,Ich sehe lieber die Nachrichten.,I prefer the news.
+noun,Sendung,die,f,Nouns ending in -ung are feminine.,Sendungen,program,Die Sendung dauert zwanzig Minuten.,The program lasts twenty minutes.,Welche Sendung sehen Sie?,Which program are you watching?
+noun,Zuschauer,der,m,Masculine agent noun.,Zuschauer,viewer,Viele Zuschauer sitzen vor dem Fernseher.,Many viewers sit in front of the television.,Die Zuschauer dürfen wählen.,The viewers may choose.
+noun,Fernseher,der,m,Masculine noun ending in -er.,Fernseher,television set,Der Fernseher steht im Wohnzimmer.,The television is in the living room.,Wir sitzen vor dem Fernseher.,We sit in front of the television.
+noun,Spielfilm,der,m,Compound ending in der Film.,Spielfilme,feature film,Danach kommt ein Spielfilm.,Then a feature film comes on.,Ich sehe lieber einen Spielfilm.,I prefer a feature film.
+noun,Wetter,das,n,"Neuter, usually no plural.",-,weather,Bei schlechtem Wetter sehe ich Krimis.,In bad weather I watch crime shows.,Das Wetter ist heute schlecht.,The weather is bad today.
+verb,anfangen,-,-,"Separable: fängt an, hat angefangen.",-,to start,Der Krimi fängt um acht an.,The crime show starts at eight.,Wann fängt die Sendung an?,When does the program start?
+verb,dauern,-,-,Regular: hat gedauert.,-,to last,Die Sendung dauert zwanzig Minuten.,The program lasts twenty minutes.,Wie lange dauert der Film?,How long does the film last?
+verb,umschalten,-,-,"Separable: schaltet um, hat umgeschaltet.",-,to switch channels,Schalten Sie bitte nicht um.,Please do not switch over.,Er hat während der Nachrichten umgeschaltet.,He switched over during the news.
+verb,wiederholen,-,-,Regular: hat wiederholt.,-,to repeat,Die Sendung wird morgen wiederholt.,The program will be repeated tomorrow.,Können Sie den Satz wiederholen?,Can you repeat the sentence?
+adjective,schlecht,-,-,Adjective.,-,bad,Bei schlechtem Wetter bleibe ich zu Hause.,In bad weather I stay at home.,Das Wetter ist schlecht.,The weather is bad.
+adjective,gern,-,-,Adverb of liking.,-,gladly / like to,Ich sehe gern Krimis.,I like watching crime shows.,Würden Sie den Film gern sehen?,Would you like to see the film?
