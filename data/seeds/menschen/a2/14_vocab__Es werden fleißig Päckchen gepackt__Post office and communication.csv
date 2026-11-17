@@ -1,2 +1,16 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Päckchen,das,n,das Päckchen.,Päckchen,small parcel,Ich schicke ein Päckchen nach Berlin.,I am sending a parcel to Berlin.,Das ist das Päckchen.,That is the small parcel.
+noun,Päckchen,das,n,"Diminutive, neuter.",Päckchen,small parcel,Das Päckchen wird nicht geöffnet.,The parcel is not opened.,Ich bringe ein Päckchen zur Post.,I am taking a parcel to the post office.
+noun,Paket,das,n,Neuter noun.,Pakete,parcel,Das Paket wird gewogen.,The parcel is weighed.,Die Pakete werden morgen abgeholt.,The parcels are picked up tomorrow.
+noun,Brief,der,m,Masculine noun.,Briefe,letter,Der Brief wird heute abgeschickt.,The letter is sent today.,Die Adresse steht auf dem Brief.,The address is on the letter.
+noun,Marke,die,f,Feminine noun.,Marken,stamp,Die Marke wird aufgeklebt.,The stamp is stuck on.,Ich brauche eine Marke.,I need a stamp.
+noun,Schalter,der,m,Masculine noun.,Schalter,counter,Am Schalter wird die Quittung ausgestellt.,The receipt is issued at the counter.,Der Schalter ist bis sechs Uhr offen.,The counter is open until six.
+noun,Quittung,die,f,Nouns ending in -ung are feminine.,Quittungen,receipt,Die Quittung wird ausgestellt.,The receipt is issued.,Bitte heben Sie die Quittung auf.,Please keep the receipt.
+noun,Adresse,die,f,Feminine noun.,Adressen,address,Die Adresse wird deutlich geschrieben.,The address is written clearly.,Ist die Adresse richtig?,Is the address correct?
+noun,Formular,das,n,Neuter noun.,Formulare,form,Das Formular muss unterschrieben werden.,The form has to be signed.,Die Formulare liegen am Schalter.,The forms are at the counter.
+noun,Geschenkpapier,das,n,Compound ending in das Papier.,-,wrapping paper,Der Karton wird mit Geschenkpapier beklebt.,The box is covered with wrapping paper.,Das Geschenkpapier ist blau.,The wrapping paper is blue.
+verb,abschicken,-,-,"Separable: schickt ab, hat abgeschickt.",-,to send off,Wir schicken den Brief heute ab.,We are sending the letter today.,Der Brief wird abgeschickt.,The letter is being sent.
+verb,bekleben,-,-,Regular: hat beklebt.,-,to cover by sticking something on,Anna beklebt den Karton.,Anna covers the box.,Der Karton wird beklebt.,The box is covered.
+verb,wiegen,-,-,"Strong: wiegt, hat gewogen.",-,to weigh,Der Beamte wiegt das Paket.,The clerk weighs the parcel.,Das Paket wird gewogen.,The parcel is weighed.
+verb,ausfüllen,-,-,"Separable: füllt aus, hat ausgefüllt.",-,to fill in,Bitte füllen Sie das Formular aus.,Please fill in the form.,Das Formular wird ausgefüllt.,The form is filled in.
+verb,unterschreiben,-,-,"Separable: unterschreibt, hat unterschrieben.",-,to sign,Bitte unterschreiben Sie hier.,Please sign here.,Das Formular wird unterschrieben.,The form is signed.
+adjective,deutlich,-,-,Adjective and adverb.,-,clear,Schreiben Sie die Adresse deutlich.,Write the address clearly.,Die Schrift ist nicht deutlich.,The writing is not clear.
