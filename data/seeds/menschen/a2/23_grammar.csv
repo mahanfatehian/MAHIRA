@@ -1,2 +1,13 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Das ist null Bewerbung. (job application),die,sein,Sample row for Lektion 23 - replace with the real grammar seeds.,That is the job application.,"die Bewerbung - definite article, nominative."
+"Das ist der Beruf, null zu mir passt. (that)",der,passen,relative pronoun in the nominative,That is the profession that suits me.,der replaces der Beruf. The verb is at the end.
+"Ich suche eine Arbeit, null ich gern mache. (that)",die,machen,relative pronoun in the accusative,I am looking for a job that I like doing.,die replaces eine Arbeit. No ending change in the feminine accusative.
+"Das ist der Kollege, null Kaffee kocht. (who)",der,kochen,der for a masculine person,That is the colleague who makes coffee.,der plus verb at the end.
+"Die Firma, null mich eingeladen hat, ist klein. (that)",die,einladen,die for a feminine noun,The company that invited me is small.,die hat at the end of the relative clause.
+"Das Büro, null ich suche, soll nah sein. (that)",das,suchen,das for a neuter accusative,The office that I am looking for should be nearby.,das ich suche.
+"Kennst du den Mann, null dort steht? (who)",der,stehen,der for der Mann,Do you know the man who is standing there?,der dort steht.
+"Ich möchte einen Job, null mir Spaß macht. (that)",der,machen,"der for der Job, nominative in the clause",I want a job that is fun for me.,der mir Spaß macht. The relative pronoun is the subject.
+"Die Kollegin, null ich gefragt habe, war freundlich. (whom)",die,fragen,die in the accusative,The colleague whom I asked was friendly.,die ich gefragt habe.
+"Das ist ein Beruf, null viele Chancen hat. (that)",der,haben,der as subject,That is a profession that has many opportunities.,der viele Chancen hat.
+"Die Bewerbung, null ich geschickt habe, war kurz. (that)",die,schicken,die as object,The application that I sent was short.,die ich geschickt habe.
+"Menschen, null gern im Team arbeiten, passen hierher. (who)",die,arbeiten,die for plural,People who like working in a team fit in here.,plural relative pronoun die.
+"Der Chef, null uns eingestellt hat, ist neu. (who)",der,einstellen,der as subject,The boss who hired us is new.,der uns eingestellt hat.

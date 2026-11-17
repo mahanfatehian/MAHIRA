@@ -1,2 +1,13 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Bewerbung,die,f,die Bewerbung.,Bewerbungen,job application,Ich schreibe eine Bewerbung.,I am writing a job application.,Das ist die Bewerbung.,That is the job application.
+noun,Beruf,der,m,Masculine noun.,Berufe,profession,"Das ist der Beruf, der zu mir passt.",That is the profession that suits me.,Welchen Beruf suchst du?,Which profession are you looking for?
+noun,Bewerbung,die,f,Nouns ending in -ung are feminine.,Bewerbungen,application,Die Bewerbung war kurz.,The application was short.,Ich schicke die Bewerbung heute.,I am sending the application today.
+noun,Kollege,der,m,Masculine n-noun.,Kollegen,colleague,"Das ist der Kollege, der Kaffee kocht.",That is the colleague who makes coffee.,Mein Kollege ist freundlich.,My colleague is friendly.
+noun,Kollegin,die,f,Feminine form.,Kolleginnen,colleague,Die Kollegin war freundlich.,The colleague was friendly.,Ich habe die Kollegin gefragt.,I asked the colleague.
+noun,Chance,die,f,Feminine noun.,Chancen,opportunity,Der Beruf hat viele Chancen.,The profession has many opportunities.,Das ist eine gute Chance.,That is a good opportunity.
+noun,Team,das,n,Neuter noun.,Teams,team,Ich arbeite gern im Team.,I like working in a team.,Das Team ist klein.,The team is small.
+noun,Büro,das,n,Neuter noun.,Büros,office,Das Büro soll hell sein.,The office should be bright.,Das Büro ist nah.,The office is nearby.
+verb,passen,-,-,Regular: hat gepasst.,-,to suit / fit,Der Beruf passt zu mir.,The profession suits me.,Passt der Job zu dir?,Does the job suit you?
+verb,einstellen,-,-,"Separable: stellt ein, hat eingestellt.",-,to hire,Der Chef hat uns eingestellt.,The boss hired us.,Die Firma stellt neue Leute ein.,The company is hiring new people.
+verb,sich bewerben,-,-,"bewirbt sich, hat sich beworben.",-,to apply,Ich bewerbe mich um die Stelle.,I am applying for the position.,Hast du dich schon beworben?,Have you already applied?
+adjective,freundlich,-,-,Adjective.,-,friendly,Die Kollegin war freundlich.,The colleague was friendly.,Ein freundlicher Chef.,A friendly boss.
+adjective,hell,-,-,Adjective.,-,bright,Das Büro soll hell sein.,The office should be bright.,Ein helles Zimmer.,A bright room.
