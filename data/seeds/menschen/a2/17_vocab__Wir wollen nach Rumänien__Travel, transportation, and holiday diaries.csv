@@ -1,2 +1,14 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Reiseziel,das,n,das Reiseziel.,Reiseziele,travel destination,Unser Reiseziel ist Rumänien.,Our travel destination is Romania.,Das ist das Reiseziel.,That is the travel destination.
+noun,Reise,die,f,Feminine noun.,Reisen,trip,Die Reise dauert acht Stunden.,The trip lasts eight hours.,Wir haben die Reise gebucht.,We booked the trip.
+noun,Fahrkarte,die,f,Compound ending in die Karte.,Fahrkarten,ticket,Ich habe die Fahrkarte gekauft.,I bought the ticket.,Die Fahrkarte ist für Freitag.,The ticket is for Friday.
+noun,Koffer,der,m,Masculine noun.,Koffer,suitcase,Der Koffer ist zu schwer.,The suitcase is too heavy.,Ich nehme einen kleinen Koffer mit.,I am taking a small suitcase.
+noun,Gleis,das,n,Neuter noun.,Gleise,platform / track,Der Zug fährt von Gleis 4 ab.,The train leaves from platform 4.,Auf welchem Gleis steht der Zug?,Which platform is the train on?
+noun,Ausweis,der,m,Masculine noun.,Ausweise,ID card,Nimm den Ausweis mit.,Take your ID with you.,Ohne Ausweis geht es nicht.,It does not work without ID.
+noun,Grenze,die,f,Feminine noun.,Grenzen,border,Wir fahren über die Grenze.,We are crossing the border.,An der Grenze braucht man den Ausweis.,You need ID at the border.
+noun,Reisetagebuch,das,n,Compound ending in das Buch.,Reisetagebücher,travel diary,Ich schreibe ins Reisetagebuch.,I write in the travel diary.,Das Reisetagebuch liegt im Koffer.,The travel diary is in the suitcase.
+verb,abfahren,-,-,"Separable, Perfekt with sein: ist abgefahren.",-,to depart,Der Zug fährt um acht ab.,The train leaves at eight.,Wir sind pünktlich abgefahren.,We left on time.
+verb,ankommen,-,-,"Separable, Perfekt with sein: ist angekommen.",-,to arrive,Wir sind in Bukarest angekommen.,We arrived in Bucharest.,Wann kommt der Zug an?,When does the train arrive?
+verb,buchen,-,-,Regular: hat gebucht.,-,to book,Wir haben die Reise gebucht.,We booked the trip.,Hast du das Hotel gebucht?,Have you booked the hotel?
+verb,mitnehmen,-,-,"Separable: nimmt mit, hat mitgenommen.",-,to take along,Nimm den Ausweis mit.,Take your ID with you.,Ich nehme nur eine Tasche mit.,I am only taking a bag.
+adjective,pünktlich,-,-,Adjective and adverb.,-,on time,Der Zug war pünktlich.,The train was on time.,Wir sind pünktlich abgefahren.,We left on time.
+adjective,schwer,-,-,Adjective.,-,heavy,Der Koffer ist zu schwer.,The suitcase is too heavy.,Ein schwerer Koffer ist unpraktisch.,A heavy suitcase is impractical.

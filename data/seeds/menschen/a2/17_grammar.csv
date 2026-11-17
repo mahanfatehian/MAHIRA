@@ -1,2 +1,13 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Das ist null Reiseziel. (travel destination),das,sein,Sample row for Lektion 17 - replace with the real grammar seeds.,That is the travel destination.,"das Reiseziel - definite article, nominative."
+Wir wollen null Rumänien fahren. (to),nach,fahren,nach plus country without an article,We want to travel to Romania.,"nach Deutschland, nach Rumänien. in die Schweiz is the exception with an article."
+Wir fahren mit dem null. (train),Zug,fahren,mit plus dative,We are going by train.,mit dem Zug.
+Die Reise null acht Stunden. (lasts),dauert,dauern,dauern,The trip lasts eight hours.,dauern: die Reise dauert.
+Wir sind gestern in Bukarest null. (arrived),angekommen,ankommen,Perfekt of ankommen,We arrived in Bucharest yesterday.,sein plus angekommen.
+Hast du die Fahrkarte schon null? (bought),gekauft,kaufen,Perfekt,Have you already bought the ticket?,gekauft at the end.
+"null fahrt ihr, mit dem Zug oder mit dem Bus? (How)",Wie,fahren,wie for the means,"How are you traveling, by train or by bus?",Wie fahrt ihr?
+Der Koffer ist zu null. (heavy),schwer,sein,schwer,The suitcase is too heavy.,zu schwer.
+Wir haben die Reise letzte Woche null. (booked),gebucht,buchen,Perfekt of buchen,We booked the trip last week.,gebucht.
+In Rumänien null wir drei Tage. (stay),bleiben,bleiben,bleiben,We are staying in Romania for three days.,bleiben: wir bleiben.
+Der Zug fährt null Gleis 4 ab. (from),von,abfahren,von plus dative,The train departs from platform 4.,von Gleis 4. abfahren is separable.
+Ich nehme nur einen kleinen null mit. (suitcase),Koffer,mitnehmen,accusative,I am only taking a small suitcase.,mitnehmen.
+Wir sind um acht Uhr null. (left),abgefahren,abfahren,Perfekt with sein,We left at eight.,sein plus abgefahren.
