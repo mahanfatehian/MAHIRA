@@ -1,2 +1,15 @@
 sentence,words,tip,translation_en
-Ich lese jede Woche eine Zeitschrift.,Ich|lese|jede|Woche|eine|Zeitschrift|.,Sample row for Lektion 20 - replace with the real sentence seeds.,I read a magazine every week.
+Herr Kraus musste raus.,Herr|Kraus|musste|raus|.,musste is the past of muss.,Mr. Kraus had to go out.
+Frau Klein konnte nicht rein.,Frau|Klein|konnte|nicht|rein|.,konnte is the past of kann.,Ms. Klein could not get in.
+Herr Klar durfte bleiben.,Herr|Klar|durfte|bleiben|.,durfte is the past of darf.,Mr. Klar was allowed to stay.
+Frau Stauff wollte nicht rauf.,Frau|Stauff|wollte|nicht|rauf|.,wollte is the past of will.,Ms. Stauff did not want to go up.
+Ich konnte den Artikel nicht verstehen.,Ich|konnte|den|Artikel|nicht|verstehen|.,konnte plus infinitive.,I could not understand the article.
+Wir wollten das Buch zu Ende lesen.,Wir|wollten|das|Buch|zu|Ende|lesen|.,wollten plus infinitive.,We wanted to finish the book.
+Die Kinder durften laut lesen.,Die|Kinder|durften|laut|lesen|.,durften.,The children were allowed to read aloud.
+Du musstest früher nach Hause.,Du|musstest|früher|nach|Hause|.,musstest.,You had to go home earlier.
+Ihr solltet doch mitkommen.,Ihr|solltet|doch|mitkommen|.,solltet.,You were supposed to come along.
+Man musste in der Bibliothek leise sein.,Man|musste|in|der|Bibliothek|leise|sein|.,musste plus infinitive.,You had to be quiet in the library.
+Ich wollte den Roman kaufen.,Ich|wollte|den|Roman|kaufen|.,wollte.,I wanted to buy the novel.
+Der Roman war ausgeliehen.,Der|Roman|war|ausgeliehen|.,ausgeliehen.,The novel was on loan.
+Sie hatte die Brille vergessen.,Sie|hatte|die|Brille|vergessen|.,"Plusquamperfekt-style hatte vergessen, acceptable as past perfect.",She had forgotten her glasses.
+Ich durfte jede Woche ein Buch ausleihen.,Ich|durfte|jede|Woche|ein|Buch|ausleihen|.,durfte plus infinitive.,I was allowed to borrow a book every week.

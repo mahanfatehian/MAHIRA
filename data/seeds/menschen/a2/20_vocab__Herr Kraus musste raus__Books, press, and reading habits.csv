@@ -1,2 +1,11 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Zeitschrift,die,f,die Zeitschrift.,Zeitschriften,magazine,Ich lese jede Woche eine Zeitschrift.,I read a magazine every week.,Das ist die Zeitschrift.,That is the magazine.
+noun,Bibliothek,die,f,Feminine noun.,Bibliotheken,library,In der Bibliothek musste man leise sein.,In the library you had to be quiet.,Ich leihe Bücher in der Bibliothek aus.,I borrow books at the library.
+noun,Roman,der,m,Masculine noun.,Romane,novel,Ich wollte den Roman kaufen.,I wanted to buy the novel.,Der Roman war ausgeliehen.,The novel was on loan.
+noun,Artikel,der,m,Masculine noun.,Artikel,article,Ich konnte den Artikel nicht verstehen.,I could not understand the article.,Der Artikel steht in der Zeitung.,The article is in the newspaper.
+noun,Zeitung,die,f,Feminine noun.,Zeitungen,newspaper,Sie liest jeden Morgen die Zeitung.,She reads the newspaper every morning.,Der Artikel ist in der Zeitung.,The article is in the newspaper.
+noun,Brille,die,f,Feminine noun.,Brillen,glasses,Sie hatte die Brille vergessen.,She had forgotten her glasses.,Ohne Brille kann ich nicht lesen.,I cannot read without glasses.
+noun,Geschichte,die,f,Feminine noun.,Geschichten,story,Die Eltern wollten die Geschichte hören.,The parents wanted to hear the story.,Die Geschichte war kurz.,The story was short.
+verb,ausleihen,-,-,"Separable: leiht aus, hat ausgeliehen.",-,to borrow / lend,Ich durfte ein Buch ausleihen.,I was allowed to borrow a book.,Der Roman war ausgeliehen.,The novel was on loan.
+verb,verstehen,-,-,"Strong: versteht, hat verstanden.",-,to understand,Ich konnte den Artikel nicht verstehen.,I could not understand the article.,Verstehst du den Satz?,Do you understand the sentence?
+adjective,leise,-,-,Adjective and adverb.,-,quiet,Man musste leise sein.,You had to be quiet.,Eine leise Stimme.,A quiet voice.
+adjective,laut,-,-,Adjective and adverb.,-,loud / aloud,Die Kinder durften laut lesen.,The children were allowed to read aloud.,Bitte nicht so laut.,Please not so loud.
