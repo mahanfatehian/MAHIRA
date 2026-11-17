@@ -1,2 +1,12 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Vorschlag,der,m,der Vorschlag.,Vorschläge,suggestion,Das ist ein guter Vorschlag.,That is a good suggestion.,Das ist der Vorschlag.,That is the suggestion.
+noun,Konzert,das,n,Neuter noun.,Konzerte,concert,Das Konzert beginnt um acht.,The concert begins at eight.,Die Karten für das Konzert sind ausverkauft.,The concert tickets are sold out.
+noun,Theater,das,n,Neuter noun.,Theater,theater,Ich würde gern ins Theater gehen.,I would like to go to the theater.,Das Theater ist in der Altstadt.,The theater is in the old town.
+noun,Museum,das,n,Neuter noun.,Museen,museum,Mir wäre ein Museum lieber.,I would prefer a museum.,Das Museum ist montags zu.,The museum is closed on Mondays.
+noun,Karte,die,f,Feminine noun.,Karten,ticket,Sollen wir Karten kaufen?,Shall we buy tickets?,Die Karten sind ausverkauft.,The tickets are sold out.
+noun,Stück,das,n,Neuter noun.,Stücke,play,Das Stück gefällt mir.,I like the play.,Das Stück beginnt um sieben.,The play begins at seven.
+noun,Vorstellung,die,f,Nouns ending in -ung are feminine.,Vorstellungen,showing / performance,Wir nehmen die frühere Vorstellung.,We are taking the earlier showing.,Die Vorstellung ist ausverkauft.,The performance is sold out.
+noun,Halle,die,f,Feminine noun.,Hallen,hall,Das Konzert ist in der alten Halle.,The concert is in the old hall.,Die Halle ist groß.,The hall is large.
+verb,vorschlagen,-,-,"Strong: schlägt vor, hat vorgeschlagen.",-,to suggest,Was schlägst du vor?,What do you suggest?,Er hat das Museum vorgeschlagen.,He suggested the museum.
+verb,ausverkaufen,-,-,Usually participle ausverkauft.,-,to sell out,Die Karten sind ausverkauft.,The tickets are sold out.,Das Konzert war schnell ausverkauft.,The concert was sold out quickly.
+adjective,laut,-,-,Adjective.,-,loud,Im Kino ist es mir zu laut.,The cinema is too loud for me.,Die Musik ist laut.,The music is loud.
+adjective,gern,-,-,Adverb.,-,gladly,Ich würde gern tanzen.,I would like to dance.,Gehst du gern ins Theater?,Do you like going to the theater?
