@@ -1,2 +1,16 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Aussprache,die,f,die Aussprache.,Aussprachen,pronunciation,Ihre Aussprache ist sehr gut.,Your pronunciation is very good.,Das ist die Aussprache.,That is the pronunciation.
+noun,Stipendium,das,n,Neuter noun ending in -um.,Stipendien,scholarship,Paul hat ein Stipendium bekommen.,Paul got a scholarship.,Das Stipendium ist für Frankfurt.,The scholarship is for Frankfurt.
+noun,Semester,das,n,Neuter loanword.,Semester,semester,Im vierten Semester hat er das Stipendium bekommen.,He got the scholarship in the fourth semester.,Das Semester beginnt im Oktober.,The semester begins in October.
+noun,Kurs,der,m,Masculine noun.,Kurse,course,Sie hat einen Deutschkurs besucht.,She took a German course.,Der Kurs war am Abend.,The course was in the evening.
+noun,Wort,das,n,Neuter noun; plural Wörter.,Wörter,word,Mein erstes Wort war Bratwurst.,My first word was Bratwurst.,Ich lerne fünf Wörter am Tag.,I learn five words a day.
+noun,Satz,der,m,Masculine noun.,Sätze,sentence,Das war mein erster deutscher Satz.,That was my first German sentence.,Der Satz war sehr kurz.,The sentence was very short.
+noun,Fehler,der,m,Masculine noun; plural is the same.,Fehler,mistake,Wir korrigieren die Fehler im Heft.,We correct the mistakes in the notebook.,Ein Fehler ist kein Problem.,A mistake is not a problem.
+noun,Karte,die,f,Feminine noun.,Karten,card,Ich schreibe die Wörter auf Karten.,I write the words on cards.,Die Karte liegt auf dem Tisch.,The card is on the table.
+noun,Muttersprachler,der,m,Masculine agent noun.,Muttersprachler,native speaker,Man muss mit Muttersprachlern sprechen.,You have to speak with native speakers.,Marie ist Muttersprachlerin.,Marie is a native speaker.
+verb,beibringen,-,-,"Separable: bringt bei, hat beigebracht.",-,to teach someone something,Marie hat mir die ersten Wörter beigebracht.,Marie taught me the first words.,Kannst du mir den Satz beibringen?,Can you teach me the sentence?
+verb,kennenlernen,-,-,Separable in the Perfekt: hat kennengelernt.,-,to meet for the first time,Paul hat Marie in Berlin kennengelernt.,Paul met Marie in Berlin.,Wo habt ihr euch kennengelernt?,Where did you meet?
+verb,korrigieren,-,-,Regular: hat korrigiert.,-,to correct,Ich korrigiere die Fehler selbst.,I correct the mistakes myself.,Die Lehrerin hat den Satz korrigiert.,The teacher corrected the sentence.
+verb,aufschreiben,-,-,"Separable: schreibt auf, hat aufgeschrieben.",-,to write down,Schreib das neue Wort auf.,Write the new word down.,Ich habe den Satz aufgeschrieben.,I wrote the sentence down.
+verb,sich verlieben,-,-,Reflexive: hat sich verliebt.,-,to fall in love,Paul hat sich in Marie verliebt.,Paul fell in love with Marie.,Sie haben sich in Berlin verliebt.,They fell in love in Berlin.
+adjective,erst-,-,-,Ordinal; changes with the noun.,-,first,Das war mein erstes deutsches Wort.,That was my first German word.,Im ersten Semester war alles neu.,In the first semester everything was new.
+adjective,kaum,-,-,"Adverb, not declined.",-,hardly,Ich konnte damals kaum Deutsch.,I could hardly speak German then.,Er hat kaum Fehler gemacht.,He hardly made any mistakes.

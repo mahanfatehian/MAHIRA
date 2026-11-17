@@ -1,2 +1,17 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Das ist null Aussprache. (pronunciation),die,sein,Sample row for Lektion 13 - replace with the real grammar seeds.,That is the pronunciation.,"die Aussprache - definite article, nominative."
+"null ich klein war, habe ich Deutsch mit Marie gelernt. (When)",Als,lernen,als for one past event,"When I was little, I learned German with Marie.","als + past, verb at the end of the clause."
+"Als Paul in Berlin null, hat er Marie kennengelernt. (was)",war,sein,Präteritum of sein in an als clause,"When Paul was in Berlin, he met Marie.",sein: er war.
+"Als sie wieder zu Hause null, hat sie einen Kurs besucht. (was)",war,sein,verb at the end after als,"When she was home again, she took a course.",als sends the verb to the end.
+"Ich habe das Stipendium bekommen, null ich im vierten Semester war. (when)",als,sein,als in the middle of the sentence,I got the scholarship when I was in the fourth semester.,"als, not wenn, for a single past time."
+null du das erste deutsche Wort gelernt? (When did you),Wann hast,lernen,Question about a first time,When did you learn the first German word?,Perfekt question: Wann hast du ... gelernt?
+Mein erstes deutsches Wort null Bratwurst. (was),war,sein,Präteritum of sein,My first German word was Bratwurst.,sein: es war.
+"Als ich Marie null, konnte ich kaum Deutsch. (met)",kennengelernt habe,kennenlernen,Perfekt at the end of an als clause,"When I met Marie, I could hardly speak German.",Partizip plus habe at the end.
+"Paul spricht gut Deutsch, null er viel geübt hat. (because)",weil,üben,weil gives the reason and sends the verb to the end,Paul speaks German well because he practiced a lot.,"weil, not als, for a reason."
+"Als wir uns null, haben wir nur Deutsch gesprochen. (saw each other)",gesehen haben,sehen,Perfekt of sich sehen,"When we saw each other, we spoke only German.",gesehen haben at the end.
+null Kind hat Paul die ersten Wörter von Marie gelernt. (As a),Als,lernen,Als Kind means as a child,As a child Paul learned the first words from Marie.,"Als Kind is a time phrase, not a clause."
+"Nachdem der Kurs null war, konnte er schon Sätze sagen. (finished)",zu Ende,sein,zu Ende sein,"After the course was over, he could already say sentences.",zu Ende sein = to be finished.
+"Ich erinnere mich noch, null mein erster Satz war. (what)",was,sein,indirect question after erinnern,I still remember what my first sentence was.,was sends war to the end.
+Marie null Paul nach Berlin eingeladen. (has invited),hat,einladen,Perfekt auxiliary,Marie invited Paul to Berlin.,einladen: hat eingeladen.
+"Als er zurückkam, null er sofort einen Deutschkurs. (looked for)",suchte,suchen,Präteritum of suchen,"When he came back, he immediately looked for a German course.",suchen: er suchte.
+"null man eine Sprache lernen will, muss man sprechen. (If / whenever)",Wenn,wollen,"wenn for a general condition, not one past time","If you want to learn a language, you have to speak.",wenn is repeated or general; als is one past event.
+Paul hat das Stipendium im null Semester bekommen. (fourth),vierten,bekommen,dative after im,Paul got the scholarship in the fourth semester.,im vierten Semester.
