@@ -1,2 +1,11 @@
 pos,word,article,gender,gender_tip,plural,meaning,ex1_de,ex1_en,ex2_de,ex2_en
-noun,Verkehr,der,m,der Verkehr.,Verkehre,traffic,Der Verkehr ist heute sehr stark.,The traffic is very heavy today.,Das ist der Verkehr.,That is the traffic.
+noun,Wagen,der,m,Masculine noun.,Wagen,car,Ich habe meinen Wagen verkauft.,I sold my car.,Der Wagen steht in der Garage.,The car is in the garage.
+noun,Rad,das,n,Neuter; also Fahrrad.,Räder,bike,Ich fahre mit dem Rad.,I ride a bike.,Das Rad steht unten.,The bike is downstairs.
+noun,Stau,der,m,Masculine noun.,Staus,traffic jam,Ich stehe oft im Stau.,I am often stuck in traffic.,Der Stau dauert eine Stunde.,The traffic jam lasts an hour.
+noun,Straßenbahn,die,f,Compound ending in die Bahn.,Straßenbahnen,tram,Die Straßenbahn ist zuverlässig.,The tram is reliable.,Ich nehme die Straßenbahn.,I take the tram.
+noun,Haltestelle,die,f,Feminine noun.,Haltestellen,stop,Die Haltestelle ist nah.,The stop is close.,An welcher Haltestelle steigen Sie aus?,At which stop do you get off?
+noun,Monatskarte,die,f,Compound ending in die Karte.,Monatskarten,monthly pass,Ich kaufe eine Monatskarte.,I buy a monthly pass.,Die Monatskarte gilt im Bus.,The monthly pass is valid on the bus.
+verb,verkaufen,-,-,Regular: hat verkauft.,-,to sell,Ich habe den Wagen verkauft.,I sold the car.,Verkaufen Sie Ihr Auto?,Are you selling your car?
+verb,sparen,-,-,Regular: hat gespart.,-,to save,Seitdem spare ich Geld.,Since then I save money.,Ich spare jeden Monat.,I save every month.
+adjective,zuverlässig,-,-,Adjective.,-,reliable,Die Bahn ist zuverlässig.,The train is reliable.,Ein zuverlässiger Bus.,A reliable bus.
+adjective,entfernt,-,-,Adjective.,-,away / distant,Die Haltestelle ist fünf Minuten entfernt.,The stop is five minutes away.,Das Büro ist nicht weit entfernt.,The office is not far away.

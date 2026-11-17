@@ -1,2 +1,13 @@
 test_text,answer,test_verb,tip,meaning,grammar_tip
-Das ist null Verkehr. (traffic),der,sein,Sample row for Lektion 22 - replace with the real grammar seeds.,That is the traffic.,"der Verkehr - definite article, nominative."
+"null ich meinen Wagen verkauft habe, fahre ich mit dem Rad. (Since)",Seit,fahren,"seit plus a clause, verb at the end","Since I sold my car, I ride a bike.","Seit ich ... habe, then the main clause."
+Ich wohne seit null Jahren in dieser Stadt. (five),fünf,wohnen,seit plus dative time span,I have been living in this city for five years.,seit fünf Jahren. German uses the present.
+"Seitdem ich kein Auto mehr habe, null ich mehr zu Fuß. (go)",gehe,gehen,seitdem like seit,"Since I no longer have a car, I walk more.",gehe in position 2.
+Der Bus fährt alle null Minuten. (ten),zehn,fahren,alle plus time,The bus runs every ten minutes.,alle zehn Minuten.
+Ich habe den Wagen null. (sold),verkauft,verkaufen,Partizip of verkaufen,I have sold the car.,haben plus verkauft. The seit clause uses the same participle.
+Ohne Auto ist der Weg zur Arbeit null. (longer),länger,sein,comparative,Without a car the way to work is longer.,länger.
+null wann stehst du im Stau? (Since),Seit,stehen,seit wann,Since when have you been stuck in traffic?,Seit wann plus present.
+Ich fahre jetzt mit dem null. (bike),Rad,fahren,mit dem Rad,I now ride a bike.,mit dem Rad.
+Der Stau null oft eine Stunde. (lasts),dauert,dauern,dauern,The traffic jam often lasts an hour.,dauert.
+"Seit ich das Auto verkauft habe, spare ich null. (money)",Geld,sparen,accusative,"Since I sold the car, I save money.",Geld.
+Die Straßenbahn ist null als das Auto. (more reliable),zuverlässiger,sein,comparative,The tram is more reliable than the car.,zuverlässiger.
+Ich bin seit März null Auto. (without),ohne,sein,ohne plus accusative,I have been without a car since March.,ohne Auto.
